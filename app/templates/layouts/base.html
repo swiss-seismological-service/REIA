@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head profile="http://www.w3.org/2005/10/profile">
+
+    <meta http-equiv="Content-Type" content="text/html" charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{% block description %}{% endblock %}">
+
+    <title>{% block title %}{% endblock %}</title>
+
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg')}}">
+    <link rel="mask-icon" href="{{ url_for('static', filename='img/icon.svg')}}" color="blue">
+
+    {% assets "css_bundle" %}
+    <link rel="stylesheet" href="{{ ASSET_URL }}">
+    {% endassets %}
+</head>
+
+<body>
+    {% block body %}{% endblock %}
+
+    {% assets "js_bundle" %}
+    <script type="text/javascript" src="{{ ASSET_URL }}" async></script>
+    {% endassets %}
+
+</body>
+
+</html>
