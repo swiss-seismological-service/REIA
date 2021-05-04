@@ -7,6 +7,8 @@ import os
 from app.extensions import csrf, assets
 from app.bundles import bundles
 
+from datamodel.base import session
+
 from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
@@ -43,3 +45,9 @@ assets.register('css_bundle', bundles['css_bundle'])
 def page_not_found(e):
     # note that we set the 404 status explicitly
     return render_template('404.html'), 404
+
+
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    print('TEARDOWN')
+    session.remove()
