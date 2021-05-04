@@ -49,5 +49,4 @@ def page_not_found(e):
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):
-    print('TEARDOWN')
     session.remove()

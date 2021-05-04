@@ -1,8 +1,67 @@
 import functools
+import datetime
 
 from sqlalchemy import (
     Column, Integer, Float, DateTime, Boolean, String)
 from sqlalchemy.ext.declarative import declared_attr
+
+
+class CreationInfoMixin(object):
+    """
+    `SQLAlchemy <https://www.sqlalchemy.org/>`_ mixin emulating type
+    :code:`CreationInfo` from `QuakeML <https://quake.ethz.ch/quakeml/>`_.
+    """
+    m_creationinfo_author = Column(String)
+    m_creationinfo_authoruri_resourceid = Column(String)
+    m_creationinfo_authoruri_used = Column(Boolean)
+    m_creationinfo_agencyid = Column(String)
+    m_creationinfo_agencyuri_resourceid = Column(String)
+    m_creationinfo_agencyuri_used = Column(Boolean)
+    m_creationinfo_creationtime = Column(DateTime,
+                                         default=datetime.datetime.utcnow())
+    m_creationinfo_version = Column(String)
+    m_creationinfo_copyrightowner = Column(String)
+    m_creationinfo_copyrightowneruri_resourceid = Column(String)
+    m_creationinfo_copyrightowneruri_used = Column(Boolean)
+    m_creationinfo_license = Column(String)
+
+
+class PublicIdMixin(object):
+    m_publicid_resourceid = Column(String)
+
+
+def ClassificationMixin(name, column_prefix=None):
+    """
+    """
+    if column_prefix is None:
+        column_prefix = '%s_' % name
+
+    column_prefix = column_prefix.lower()
+
+    @declared_attr
+    def _concept(cls):
+        return Column('%sconcept' % column_prefix, String)
+
+    @declared_attr
+    def _classificationsource_resourceid(cls):
+        return Column('%sclassificationsource_resourceid'
+                      % column_prefix, String)
+
+    @declared_attr
+    def _conceptschema_resourceid(cls):
+        return Column('%sconceptschema_resourceid' % column_prefix, String)
+
+    _func_map = (('concept', _concept),
+                 ('classificationsource_resourceid',
+                  _classificationsource_resourceid),
+                 ('conceptschema_resourceid', _conceptschema_resourceid))
+
+    def __dict__(func_map, attr_prefix):
+
+        return {'{}{}'.format(attr_prefix, attr_name): attr
+                for attr_name, attr in func_map}
+
+    return type(name, (object,), __dict__(_func_map, column_prefix))
 
 
 def QuantityMixin(name, quantity_type, column_prefix=None, optional=False,
