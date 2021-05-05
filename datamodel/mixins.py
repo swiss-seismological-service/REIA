@@ -2,7 +2,7 @@ import functools
 import datetime
 
 from sqlalchemy import (
-    Column, Integer, Float, DateTime, Boolean, String)
+    Column, Integer, Float, DateTime, String)
 from sqlalchemy.ext.declarative import declared_attr
 
 
@@ -13,25 +13,28 @@ class CreationInfoMixin(object):
     """
     m_creationinfo_author = Column(String)
     m_creationinfo_authoruri_resourceid = Column(String)
-    m_creationinfo_authoruri_used = Column(Boolean)
     m_creationinfo_agencyid = Column(String)
     m_creationinfo_agencyuri_resourceid = Column(String)
-    m_creationinfo_agencyuri_used = Column(Boolean)
     m_creationinfo_creationtime = Column(DateTime,
                                          default=datetime.datetime.utcnow())
     m_creationinfo_version = Column(String)
     m_creationinfo_copyrightowner = Column(String)
     m_creationinfo_copyrightowneruri_resourceid = Column(String)
-    m_creationinfo_copyrightowneruri_used = Column(Boolean)
     m_creationinfo_license = Column(String)
 
 
 class PublicIdMixin(object):
+    """
+    `SQLAlchemy <https://www.sqlalchemy.org/>`_ mixin emulating type
+    :code:`CreationInfo` from `QuakeML <https://quake.ethz.ch/quakeml/>`_.
+    """
     m_publicid_resourceid = Column(String)
 
 
 def ClassificationMixin(name, column_prefix=None):
     """
+    `SQLAlchemy <https://www.sqlalchemy.org/>`_ mixin emulating type
+    :code:`Classification` from `QuakeML <https://quake.ethz.ch/quakeml/>`_.
     """
     if column_prefix is None:
         column_prefix = '%s_' % name
@@ -149,27 +152,12 @@ def QuantityMixin(name, quantity_type, column_prefix=None, optional=False,
     def _confidence_level(cls):
         return Column('%sconfidencelevel' % column_prefix, Float)
 
-    @declared_attr
-    def _pdf_variable_content(cls):
-        return Column('%spdf_variable_content' % column_prefix, String)
-
-    @declared_attr
-    def _pdf_probability_content(cls):
-        return Column('%spdf_probability_content' % column_prefix, String)
-
-    @declared_attr
-    def _pdf_probability_used(cls):
-        return Column('%spdf_probability_used' % column_prefix, Boolean)
-
     _func_map = (('value',
                   create_value(quantity_type, column_prefix, optional)),
                  ('uncertainty', _uncertainty),
                  ('loweruncertainty', _lower_uncertainty),
                  ('upperuncertainty', _upper_uncertainty),
-                 ('confidencelevel', _confidence_level),
-                 ('pdf_variable_content', _pdf_variable_content),
-                 ('pdf_probability_content', _pdf_probability_content),
-                 ('pdf_probability_used', _pdf_probability_used),
+                 ('confidencelevel', _confidence_level)
                  )
 
     def __dict__(func_map, attr_prefix):

@@ -26,13 +26,15 @@ ORMBase.query = session.query_property()
 
 
 def init_db():
-    # import all modules here that might define models so that
-    # they will be registered properly on the metadata.  Otherwise
-    # you will have to import them first before calling init_db()
+    """
+    Initializes the Database.
+    All DB modules need to be imported when calling this function.
+    """
     ORMBase.metadata.create_all(engine)
 
 
 def drop_db():
+    """Drops all database Tables but leaves the DB itself in place"""
     m = MetaData()
     m.reflect(engine)
     m.drop_all(engine)
