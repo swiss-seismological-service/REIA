@@ -1,6 +1,7 @@
-from datamodel.asset import Asset
-from datamodel.site import Site
-from datamodel.calculation import (Calculation, CalculationParameters)
+from datamodel.asset import (
+    AssetCollection, Asset, Site, PostalCode, Municipality, Canton)
+from datamodel.lossmodel import (LossModel, LossCalculation)
 from datamodel.vulnerability import (
-    VulnerabilityFunction, VulnerabilityModel, IntensitySpecificVulnerability)
-from datamodel.loss import LossByAsset, LossByRealization
+    VulnerabilityFunction, VulnerabilityModel)
+from datamodel.lossvalues import (
+    MeanAssetLoss, SiteLoss, PostalCodeLoss, TaxonomyLoss)
