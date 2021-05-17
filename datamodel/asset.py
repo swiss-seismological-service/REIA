@@ -15,11 +15,13 @@ class AssetCollection(ORMBase, PublicIdMixin, CreationInfoMixin):
     m_assets = relationship(
         'Asset',
         back_populates='m_assetCollection',
-        single_parent=True)
+        single_parent=True,
+        cascade='all, delete, delete-orphan')
     m_sites = relationship(
         'Site',
         back_populates='m_assetCollection',
-        single_parent=True)
+        single_parent=True,
+        cascade='all, delete, delete-orphan')
 
 
 class Asset(PublicIdMixin,
@@ -104,7 +106,8 @@ class Municipality(ORMBase):
     m_postalCodes = relationship(
         'PostalCode',
         back_populates='m_municipality',
-        single_parent=True)
+        single_parent=True,
+        cascade='all, delete, delete-orphan')
 
 
 class Canton(ORMBase):
@@ -114,5 +117,6 @@ class Canton(ORMBase):
     m_municipalities = relationship(
         'Municipality',
         back_populates='m_canton',
-        single_parent=True
+        single_parent=True,
+        cascade='all, delete, delete-orphan'
     )

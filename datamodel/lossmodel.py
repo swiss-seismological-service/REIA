@@ -38,7 +38,8 @@ class LossModel(PublicIdMixin, ORMBase):
         'LossCalculation',
         back_populates='m_lossModel',
         single_parent=True,
-        lazy='joined')
+        lazy='joined',
+        cascade='all, delete, delete-orphan')
 
 
 class LossCalculation(ORMBase, CreationInfoMixin, EpochMixin('m_timestamp')):
@@ -54,7 +55,8 @@ class LossCalculation(ORMBase, CreationInfoMixin, EpochMixin('m_timestamp')):
     m_losses = relationship(
         'LossValue',
         back_populates='m_lossCalculation',
-        single_parent=True)
+        single_parent=True,
+        cascade='all, delete, delete-orphan')
 
     m_lossCategory = Column(String(20), nullable=False)
     m_aggregateBy = Column(String(20))
