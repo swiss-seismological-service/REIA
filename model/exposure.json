@@ -1,4 +1,14 @@
 {
     "category": "buildings",
-    "name": ""
+    "name": "Exposure_1km_v03a_CH_modalAmpl_amplAvg",
+    "taxonomySource": "SPG (EPFL)",
+    "publicId": "id123",
+    "tags": [
+        "canton",
+        "municipality",
+        "postalcode"
+    ],
+    "costType": [
+        "structural"
+    ]
 }

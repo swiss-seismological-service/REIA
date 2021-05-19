@@ -58,7 +58,8 @@ def run():
         'http://localhost:8800/v1/calc/run', files=files1)
 
     response = requests.post(
-        'http://localhost:8800/v1/calc/run', files=files2, data={'hazard_job_id': -1})
+        'http://localhost:8800/v1/calc/run', files=files2,
+        data={'hazard_job_id': -1})
 
     if response.ok:
         print("Upload completed successfully!")
@@ -73,12 +74,17 @@ def run_python():
     from openquake.commonlib import logs
     from openquake.calculators.base import calculators
     h_id = 0
-    with logs.init('job', '/mnt/c/workspaces/SED/files-event-specific-loss/oq_calculations/test_calculation/prepare_job_mmi.ini') as log:  # initialize logs
+
+    with logs.init(
+        'job', '/mnt/c/workspaces/SED/files-event-specific-loss/'
+            'oq_calculations/test_calculation/prepare_job_mmi.ini') as log:
         calc = calculators(log.get_oqparam(), log.calc_id)
         calc.run()  # run the calculator
         h_id = log.calc_id
 
-    with logs.init('job', '/mnt/c/workspaces/SED/files-event-specific-loss/oq_calculations/test_calculation/job.ini', hc_id=h_id) as log:  # initialize logs
+    with logs.init(
+        'job', '/mnt/c/workspaces/SED/files-event-specific-loss/'
+            'oq_calculations/test_calculation/job.ini', hc_id=h_id) as log:
         calc = calculators(log.get_oqparam(), log.calc_id)
         calc.run()  # run the calculator
 
@@ -91,32 +97,19 @@ def read():
 
 @read.command()
 def exposure():
+    # TODO: read exposure.json into AssetCollection
+
+    # TODO: read exposure.csv and parse to assets and sites
+
+    # TODO: make all necessary relationships to assetCollection
+
     pass
 
-# @app.cli.group()
-# def translate():
-#     """Translation and localization commands."""
-#     pass
-# @translate.command()
-# @click.argument('lang')
-# def init(lang):
-#     """Initialize a new language."""
-#     if os.system('pybabel extract -F babel.cfg -k _l -o messages.pot .'):
-#         raise RuntimeError('extract command failed')
-#     if os.system(
-#             'pybabel init -i messages.pot -d project/translations -l ' + lang):
-#         raise RuntimeError('init command failed')
-#     os.remove('messages.pot')
-# @translate.command()
-# def update():
-#     """Update all languages."""
-#     if os.system('pybabel extract -F babel.cfg -k _l -o messages.pot .'):
-#         raise RuntimeError('extract command failed')
-#     if os.system('pybabel update -i messages.pot -d project/translations'):
-#         raise RuntimeError('update command failed')
-#     os.remove('messages.pot')
-# @translate.command()
-# def compile():
-#     """Compile all languages."""
-#     if os.system('pybabel compile -d project/translations'):
-#         raise RuntimeError('compile command failed')
+
+@ read.command()
+def vulnerability():
+    # TODO: read vulnerability xml to VulnerabilityModel
+
+    # TODO: read vulnerability xml to VulnerabilityFunctions
+
+    pass
