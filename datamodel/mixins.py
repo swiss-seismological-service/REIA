@@ -12,16 +12,16 @@ class CreationInfoMixin(object):
     `SQLAlchemy <https://www.sqlalchemy.org/>`_ mixin emulating type
     :code:`CreationInfo` from `QuakeML <https://quake.ethz.ch/quakeml/>`_.
     """
-    m_creationinfo_author = Column(String)
-    m_creationinfo_authoruri_resourceid = Column(String)
-    m_creationinfo_agencyid = Column(String)
-    m_creationinfo_agencyuri_resourceid = Column(String)
-    m_creationinfo_creationtime = Column(DateTime,
-                                         default=datetime.datetime.utcnow())
-    m_creationinfo_version = Column(String)
-    m_creationinfo_copyrightowner = Column(String)
-    m_creationinfo_copyrightowneruri_resourceid = Column(String)
-    m_creationinfo_license = Column(String)
+    creationinfo_author = Column(String)
+    creationinfo_authoruri_resourceid = Column(String)
+    creationinfo_agencyid = Column(String)
+    creationinfo_agencyuri_resourceid = Column(String)
+    creationinfo_creationtime = Column(DateTime,
+                                       default=datetime.datetime.utcnow())
+    creationinfo_version = Column(String)
+    creationinfo_copyrightowner = Column(String)
+    creationinfo_copyrightowneruri_resourceid = Column(String)
+    creationinfo_license = Column(String)
 
 
 class PublicIdMixin(object):
@@ -29,7 +29,7 @@ class PublicIdMixin(object):
     `SQLAlchemy <https://www.sqlalchemy.org/>`_ mixin emulating type
     :code:`CreationInfo` from `QuakeML <https://quake.ethz.ch/quakeml/>`_.
     """
-    m_publicid_resourceid = Column(String)
+    publicid_resourceid = Column(String)
 
 
 def ClassificationMixin(name, column_prefix=None):

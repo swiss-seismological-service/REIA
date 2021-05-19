@@ -5,7 +5,7 @@ from datamodel.mixins import RealQuantityMixin, ClassificationMixin
 from datamodel.base import ORMBase
 
 
-class LossValue(ORMBase, RealQuantityMixin('m_loss')):
+class LossValue(ORMBase, RealQuantityMixin('loss')):
     """
         .. note::
 
@@ -18,9 +18,9 @@ class LossValue(ORMBase, RealQuantityMixin('m_loss')):
         BigInteger,
         ForeignKey('loss_losscalculation._oid'),
         nullable=False)
-    m_lossCalculation = relationship(
+    lossCalculation = relationship(
         'LossCalculation',
-        back_populates='m_losses')
+        back_populates='losses')
 
     _type = Column(String(25))
 
@@ -39,7 +39,7 @@ class MeanAssetLoss(LossValue):
         BigInteger,
         ForeignKey('loss_asset._oid'),
         nullable=False)
-    m_asset = relationship('Asset')
+    asset = relationship('Asset')
 
     __mapper_args__ = {
         'polymorphic_identity': 'meanassetloss'
@@ -51,13 +51,13 @@ class SiteLoss(LossValue):
     __tablename__ = 'loss_siteloss'
     _oid = Column(BigInteger, ForeignKey(
         'loss_lossvalue._oid'), primary_key=True)
-    m_realizationId = Column(Integer, nullable=False)
+    realizationId = Column(Integer, nullable=False)
     _site_oid = Column(
         BigInteger,
         ForeignKey('loss_site._oid'),
         nullable=False
     )
-    m_site = relationship('Site')
+    site = relationship('Site')
 
     __mapper_args__ = {
         'polymorphic_identity': 'siteloss'
@@ -69,25 +69,25 @@ class PostalCodeLoss(LossValue):
     __tablename__ = 'loss_postalcodeloss'
     _oid = Column(BigInteger, ForeignKey(
         'loss_lossvalue._oid'), primary_key=True)
-    m_realizationId = Column(Integer, nullable=False)
+    realizationId = Column(Integer, nullable=False)
     _postalCode_oid = Column(
         BigInteger,
         ForeignKey('loss_postalcode._oid'),
         nullable=False
     )
-    m_postalCode = relationship('PostalCode')
+    postalCode = relationship('PostalCode')
 
     __mapper_args__ = {
         'polymorphic_identity': 'postalcodeloss'
     }
 
 
-class TaxonomyLoss(LossValue, ClassificationMixin('m_taxonomy'),):
+class TaxonomyLoss(LossValue, ClassificationMixin('taxonomy'),):
     """Loss by asset model"""
     __tablename__ = 'loss_taxonomyloss'
     _oid = Column(BigInteger, ForeignKey(
         'loss_lossvalue._oid'), primary_key=True)
-    m_realizationId = Column(Integer, nullable=False)
+    realizationId = Column(Integer, nullable=False)
 
     __mapper_args__ = {
         'polymorphic_identity': 'taxonomyloss'

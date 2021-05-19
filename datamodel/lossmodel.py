@@ -14,49 +14,49 @@ loss_vulnerability_association = Table(
 
 class LossModel(PublicIdMixin, ORMBase):
     """Calculation model"""
-    m_shakemapid_resourceid = Column(String(100), nullable=False)
-    m_preparationCalculationMode = Column(String(20), nullable=False)
-    m_mainCalculationMode = Column(String(20), nullable=False)
-    m_numberOfGroundMotionFields = Column(Integer, nullable=False)
-    m_maximumDistance = Column(Integer)
-    m_masterSeed = Column(Integer)
-    m_randomSeed = Column(Integer)
-    m_truncationLevel = Column(Float)
+    shakemapid_resourceid = Column(String(100), nullable=False)
+    preparationCalculationMode = Column(String(20), nullable=False)
+    mainCalculationMode = Column(String(20), nullable=False)
+    numberOfGroundMotionFields = Column(Integer, nullable=False)
+    maximumDistance = Column(Integer)
+    masterSeed = Column(Integer)
+    randomSeed = Column(Integer)
+    truncationLevel = Column(Float)
 
     _assetCollection_oid = Column(
         BigInteger,
         ForeignKey('loss_assetcollection._oid'),
         nullable=False)
-    m_assetCollection = relationship(
+    assetCollection = relationship(
         'AssetCollection',
-        back_populates='m_lossModels')
-    m_vulnerabilityModels = relationship(
+        back_populates='lossModels')
+    vulnerabilityModels = relationship(
         'VulnerabilityModel',
         secondary=loss_vulnerability_association,
-        back_populates='m_lossModels')
-    m_lossCalculations = relationship(
+        back_populates='lossModels')
+    lossCalculations = relationship(
         'LossCalculation',
-        back_populates='m_lossModel',
+        back_populates='lossModel',
         single_parent=True,
         lazy='joined',
         cascade='all, delete, delete-orphan')
 
 
-class LossCalculation(ORMBase, CreationInfoMixin, EpochMixin('m_timestamp')):
+class LossCalculation(ORMBase, CreationInfoMixin, EpochMixin('timestamp')):
     """Calculation Parameters model"""
     _lossModel_oid = Column(
         BigInteger,
         ForeignKey('loss_lossmodel._oid'),
         nullable=False)
-    m_lossModel = relationship(
+    lossModel = relationship(
         'LossModel',
-        back_populates='m_lossCalculations',
+        back_populates='lossCalculations',
         lazy='joined')
-    m_losses = relationship(
+    losses = relationship(
         'LossValue',
-        back_populates='m_lossCalculation',
+        back_populates='lossCalculation',
         single_parent=True,
         cascade='all, delete, delete-orphan')
 
-    m_lossCategory = Column(String(20), nullable=False)
-    m_aggregateBy = Column(String(20))
+    lossCategory = Column(String(20), nullable=False)
+    aggregateBy = Column(String(20))
