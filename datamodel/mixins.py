@@ -12,16 +12,16 @@ class CreationInfoMixin(object):
     `SQLAlchemy <https://www.sqlalchemy.org/>`_ mixin emulating type
     :code:`CreationInfo` from `QuakeML <https://quake.ethz.ch/quakeml/>`_.
     """
-    creationinfo_author = Column(String)
-    creationinfo_authoruri_resourceid = Column(String)
-    creationinfo_agencyid = Column(String)
-    creationinfo_agencyuri_resourceid = Column(String)
-    creationinfo_creationtime = Column(DateTime,
+    creationInfo_author = Column(String)
+    creationInfo_authoruri_resourceid = Column(String)
+    creationInfo_agencyid = Column(String)
+    creationInfo_agencyuri_resourceid = Column(String)
+    creationInfo_creationtime = Column(DateTime,
                                        default=datetime.datetime.utcnow())
-    creationinfo_version = Column(String)
-    creationinfo_copyrightowner = Column(String)
-    creationinfo_copyrightowneruri_resourceid = Column(String)
-    creationinfo_license = Column(String)
+    creationInfo_version = Column(String)
+    creationInfo_copyrightowner = Column(String)
+    creationInfo_copyrightowneruri_resourceid = Column(String)
+    creationInfo_license = Column(String)
 
 
 class PublicIdMixin(object):
@@ -29,7 +29,7 @@ class PublicIdMixin(object):
     `SQLAlchemy <https://www.sqlalchemy.org/>`_ mixin emulating type
     :code:`CreationInfo` from `QuakeML <https://quake.ethz.ch/quakeml/>`_.
     """
-    publicid_resourceid = Column(String)
+    publicId_resourceId = Column(String)
 
 
 def ClassificationMixin(name, column_prefix=None):
@@ -48,17 +48,17 @@ def ClassificationMixin(name, column_prefix=None):
 
     @declared_attr
     def _classificationsource_resourceid(cls):
-        return Column('%sclassificationsource_resourceid'
+        return Column('%sclassificationSource_resourceId'
                       % column_prefix, String)
 
     @declared_attr
     def _conceptschema_resourceid(cls):
-        return Column('%sconceptschema_resourceid' % column_prefix, String)
+        return Column('%sconceptSchema_resourceId' % column_prefix, String)
 
     _func_map = (('concept', _concept),
                  ('classificationsource_resourceid',
                   _classificationsource_resourceid),
-                 ('conceptschema_resourceid', _conceptschema_resourceid))
+                 ('conceptSchema_resourceId', _conceptschema_resourceid))
 
     def __dict__(func_map, attr_prefix):
 
@@ -139,26 +139,26 @@ def QuantityMixin(name, quantity_type, column_prefix=None, optional=False,
 
     @declared_attr
     def _uncertainty(cls):
-        return Column('%suncertainty' % column_prefix, Float)
+        return Column('%sUncertainty' % column_prefix, Float)
 
     @declared_attr
     def _lower_uncertainty(cls):
-        return Column('%sloweruncertainty' % column_prefix, Float)
+        return Column('%slowerUncertainty' % column_prefix, Float)
 
     @declared_attr
     def _upper_uncertainty(cls):
-        return Column('%supperuncertainty' % column_prefix, Float)
+        return Column('%supperUncertainty' % column_prefix, Float)
 
     @declared_attr
     def _confidence_level(cls):
-        return Column('%sconfidencelevel' % column_prefix, Float)
+        return Column('%sconfidenceLevel' % column_prefix, Float)
 
     _func_map = (('value',
                   create_value(quantity_type, column_prefix, optional)),
                  ('uncertainty', _uncertainty),
-                 ('loweruncertainty', _lower_uncertainty),
-                 ('upperuncertainty', _upper_uncertainty),
-                 ('confidencelevel', _confidence_level)
+                 ('lowerUncertainty', _lower_uncertainty),
+                 ('upperUncertainty', _upper_uncertainty),
+                 ('confidenceLevel', _confidence_level)
                  )
 
     def __dict__(func_map, attr_prefix):
@@ -228,9 +228,9 @@ def EpochMixin(name, epoch_type=None, column_prefix=None):
         def _make_datetime(boundary, **kwargs):
 
             if boundary is Boundary.LEFT:
-                name = 'starttime'
+                name = 'startTime'
             elif boundary is Boundary.RIGHT:
-                name = 'endtime'
+                name = 'endTime'
             else:
                 raise ValueError('Invalid boundary: {!r}.'.format(boundary))
 
@@ -244,21 +244,21 @@ def EpochMixin(name, epoch_type=None, column_prefix=None):
         return _make_datetime(boundary, **kwargs)
 
     if epoch_type is None or epoch_type == 'default':
-        _func_map = (('starttime', create_datetime(Boundary.LEFT,
+        _func_map = (('startTime', create_datetime(Boundary.LEFT,
                                                    column_prefix,
                                                    nullable=False)),
-                     ('endtime', create_datetime(Boundary.RIGHT,
+                     ('endTime', create_datetime(Boundary.RIGHT,
                                                  column_prefix)))
     elif epoch_type == 'open':
-        _func_map = (('starttime', create_datetime(Boundary.LEFT,
+        _func_map = (('startTime', create_datetime(Boundary.LEFT,
                                                    column_prefix)),
-                     ('endtime', create_datetime(Boundary.RIGHT,
+                     ('endTime', create_datetime(Boundary.RIGHT,
                                                  column_prefix)))
     elif epoch_type == 'finite':
-        _func_map = (('starttime', create_datetime(Boundary.LEFT,
+        _func_map = (('startTime', create_datetime(Boundary.LEFT,
                                                    column_prefix,
                                                    nullable=False)),
-                     ('endtime', create_datetime(Boundary.RIGHT,
+                     ('endTime', create_datetime(Boundary.RIGHT,
                                                  column_prefix,
                                                  nullable=False)))
     else:

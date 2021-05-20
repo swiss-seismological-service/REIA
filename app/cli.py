@@ -1,10 +1,12 @@
 from app import app
 from flask import render_template
 from datamodel import *
-from datamodel.base import init_db, drop_db
+from datamodel.base import init_db, drop_db, session
 import requests
 import io
 from jinja2 import Template
+
+BPTH = '/home/nicolas/workspaces/SED/ebr/model/'
 
 INPUT = {
     "category": "buildings",
@@ -72,9 +74,10 @@ def list():
 @oqapi.command()
 def run2():
     bpth = '/home/nicolas/workspaces/SED/ebr/model/'
+    test = session.query(AssetCollection).first()
     file1 = createFP('prepare_risk.ini', data=PREPARE)
     # print(file1.read())
-    file2 = createFP('exposure.xml', data=INPUT)
+    file2 = createFP('exposure.xml', data=test.__dict__)
     # print(file2.read())
     files = {'job_config': file1,
              'input_model_1': file2,
@@ -153,8 +156,15 @@ def read():
 
 @ read.command()
 def exposure():
+    import json
     # TODO: read exposure.json into AssetCollection
+    with open(BPTH + 'exposure.json') as json_file:
+        data = json.load(json_file)
+    print(data)
 
+    assetCollection = AssetCollection(**data)
+    session.add(assetCollection)
+    session.commit()
     # TODO: read exposure.csv and parse to assets and sites
 
     # TODO: make all necessary relationships to assetCollection
@@ -167,15 +177,7 @@ def vulnerability():
     # TODO: read vulnerability xml to VulnerabilityModel
 
     # TODO: read vulnerability xml to VulnerabilityFunctions
-
+    test = session.query(AssetCollection).first()
+    file1 = createFP('exposure.xml', data=test.__dict__)
+    print(file1.read())
     pass
-
-
-@read.command()
-def test():
-    print(createFP('exposure.xml', data=INPUT))
-    bpth = '/mnt/c/workspaces/SED/files-event-specific-loss' \
-        '/oq_calculations/test_calculation/'
-
-    file = open(bpth + 'prepare_job_mmi.ini', 'rb')
-    print(file)

@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <nrml xmlns="http://openquake.org/xmlns/nrml/0.5" xmlns:gml="http://www.opengis.net/gml">
-   <exposureModel category="{{data.category}}" id="{{data.id}}" taxonomySource="{{data.taxonomySource}}">
+   <exposureModel category="{{data.category}}" id="{{data.publicId_resourceId}}" taxonomySource="{{data.taxonomySource}}">
       <description>Exposure Model, {{data.name}}</description>
       <conversions>
          <costTypes>
