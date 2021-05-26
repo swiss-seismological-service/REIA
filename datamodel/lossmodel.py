@@ -14,7 +14,6 @@ loss_vulnerability_association = Table(
 
 class LossModel(PublicIdMixin, ORMBase):
     """Calculation model"""
-    shakemapid_resourceid = Column(String(100), nullable=False)
     preparationCalculationMode = Column(String(20), nullable=False)
     mainCalculationMode = Column(String(20), nullable=False)
     numberOfGroundMotionFields = Column(Integer, nullable=False)
@@ -44,6 +43,8 @@ class LossModel(PublicIdMixin, ORMBase):
 
 class LossCalculation(ORMBase, CreationInfoMixin, EpochMixin('timestamp')):
     """Calculation Parameters model"""
+    shakemapid_resourceid = Column(String(100), nullable=False)
+
     _lossModel_oid = Column(
         BigInteger,
         ForeignKey('loss_lossmodel._oid'),
@@ -60,3 +61,11 @@ class LossCalculation(ORMBase, CreationInfoMixin, EpochMixin('timestamp')):
 
     lossCategory = Column(String(20), nullable=False)
     aggregateBy = Column(String(20))
+
+
+class LossConfig(ORMBase):
+    lossCategory = Column(String(20), nullable=False)
+    aggregateBy = Column(String(20))
+    lossModel = relationship(
+        'LossModel',
+        lazy='joined')
