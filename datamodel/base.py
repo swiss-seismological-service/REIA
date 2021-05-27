@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from config import Config
 
 engine = create_engine(Config.DB_CONNECTION_STRING,
-                       echo=True, future=True)
+                       echo=False, future=True)
 
 session = scoped_session(sessionmaker(autocommit=False,
                                       autoflush=False,

@@ -1,10 +1,10 @@
 from app import app
-from flask import render_template
 from datamodel import *
 from datamodel.base import init_db, drop_db, session
 import requests
 import io
-from jinja2 import Template
+
+import pandas as pd
 
 BPTH = '/home/nicolas/workspaces/SED/ebr/model/'
 
@@ -154,8 +154,8 @@ def read():
     pass
 
 
-@ read.command()
-def exposure():
+@read.command()
+def ac():
     import json
     # TODO: read exposure.json into AssetCollection
     with open(BPTH + 'exposure.json') as json_file:
@@ -165,7 +165,43 @@ def exposure():
     assetCollection = AssetCollection(**data)
     session.add(assetCollection)
     session.commit()
+
+
+@ read.command()
+def exposure():
     # TODO: read exposure.csv and parse to assets and sites
+    df = pd.read_csv(BPTH + 'exposure_assets.csv', index_col='id')
+    ac_id = 1
+
+    for row in df.itertuples():
+        q = session.query(Site).filter(
+            Site.longitude_value == row.lon,
+            Site.latitude_value == row.lat,
+            Site._assetCollection_oid == ac_id).first()
+
+        if q is None:
+            site = Site(longitude_value=row.lon,
+                        latitude_value=row.lat,
+                        _assetCollection_oid=ac_id)
+            session.add(site)
+            session.flush()
+        else:
+            site = q
+        print(row.Index)
+    print('sessions done')
+
+    for row in df.itertuples():
+        asset = Asset(taxonomy_concept=row.taxonomy,
+                      buildingCount=row.number,
+                      contentvalue_value=row.contents,
+                      occupancydaytime_value=row.day,
+                      structuralvalue_value=row.structural,
+                      _assetCollection_oid=ac_id,
+                      site=site)
+        session.add(asset)
+        print(row.Index)
+
+    # print(session.query(Asset).first().site.longitude_value)
 
     # TODO: make all necessary relationships to assetCollection
 
