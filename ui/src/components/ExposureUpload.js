@@ -1,61 +1,62 @@
-import React, { useState } from 'react';
+import React from 'react';
 import 'whatwg-fetch';
-import { Button } from '@material-ui/core';
-import { uploadFile } from '../util/api';
+import { Button, Grid, Paper, Typography } from '@material-ui/core';
 
-function ExposureUpload() {
-    const [selectedExposureJSON, setselectedExposureJSON] = useState();
-    const [selectedExposureCSV, setselectedExposureCSV] = useState();
+import { postExposure } from '../util/api';
+import FileUpload from '../util/fileUpload';
 
-    const handleSubmission = () => {
-        uploadFile(selectedExposureJSON, 'data', '/exposures');
+class ExposureUpload extends React.Component {
+    state = {
+        selectedExposureJSON: null,
+        selectedExposureCSV: null,
     };
 
-    return (
-        <div>
-            <label htmlFor="contained-button-file">
-                <input
-                    style={{ display: 'none' }}
-                    id="contained-button-file"
-                    type="file"
-                    onChange={(e) => setselectedExposureJSON(e.target.files)}
-                    name="file"
-                />
-                <Button variant="contained" color="primary" component="span">
-                    Upload Exposure JSON
-                </Button>
-            </label>
-            {selectedExposureJSON ? (
-                <p>Filename: {selectedExposureJSON[0].name}</p>
-            ) : (
-                <p>Select a file to show details</p>
-            )}
+    handleSubmission = () => {
+        postExposure({ ...this.state });
+    };
 
-            <label htmlFor="contained-button-file2">
-                <input
-                    style={{ display: 'none' }}
-                    id="contained-button-file2"
-                    type="file"
-                    onChange={(e) => setselectedExposureCSV(e.target.files)}
-                    name="file2"
-                />
-                <Button variant="contained" color="primary" component="span">
-                    Upload Exposure CSV
-                </Button>
-            </label>
-            {selectedExposureCSV ? (
-                <p>Filename: {selectedExposureCSV[0].name}</p>
-            ) : (
-                <p>Select a file to show details</p>
-            )}
+    setSelectedExposureJSON = (file) => {
+        this.setState({ selectedExposureJSON: file[0] });
+    };
 
-            <div>
-                <Button variant="contained" color="secondary" onClick={handleSubmission}>
-                    Submit
-                </Button>
-            </div>
-        </div>
-    );
+    setSelectedExposureCSV = (file) => {
+        this.setState({ selectedExposureCSV: file[0] });
+    };
+
+    render() {
+        return (
+            <Paper className="paper">
+                <Typography gutterBottom variant="h5" component="h2">
+                    Exposure Model
+                </Typography>
+                <Grid container spacing={3} className="grid">
+                    <Grid item xs={2}>
+                        <FileUpload
+                            currentFile={this.state.selectedExposureJSON}
+                            setFile={this.setSelectedExposureJSON}
+                            name="exposureJSON"
+                        >
+                            Exposure JSON
+                        </FileUpload>
+                    </Grid>
+                    <Grid item xs={2}>
+                        <FileUpload
+                            currentFile={this.state.selectedExposureCSV}
+                            setFile={this.setSelectedExposureCSV}
+                            name="exposureCSV"
+                        >
+                            Exposure CSV
+                        </FileUpload>
+                    </Grid>
+                    <Grid item xs={2}>
+                        <Button variant="contained" color="secondary" onClick={this.handleSubmission}>
+                            Submit
+                        </Button>
+                    </Grid>
+                </Grid>
+            </Paper>
+        );
+    }
 }
 
 export default ExposureUpload;

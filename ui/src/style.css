@@ -1,3 +1,12 @@
-h1 {
-    color: orange;
+body {
+    padding: 20px;
+}
+
+.paper {
+    padding: 15px;
+    margin: 20px 0;
+}
+
+.grid {
+    align-items: center;
 }

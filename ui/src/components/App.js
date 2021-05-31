@@ -1,20 +1,29 @@
 import React from 'react';
 import 'whatwg-fetch';
 import ExposureUpload from './ExposureUpload';
+import ExposureGrid from './ExposureGrid';
+import { getExposure } from '../util/api';
 
 class App extends React.Component {
-    state = {};
-
-    ENDPOINT = '/test';
+    state = {
+        exposureModels: null,
+    };
 
     componentDidMount = () => {
-        console.log('hi');
+        this.updateExposureModels();
+    };
+
+    updateExposureModels = () => {
+        getExposure().then((response) => {
+            this.setState({ exposureModels: response });
+        });
     };
 
     render() {
         return (
             <>
                 <ExposureUpload />
+                <ExposureGrid data={this.state.exposureModels} />
             </>
         );
     }
