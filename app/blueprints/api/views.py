@@ -15,8 +15,10 @@ def index():
 
 @api.get('/test')
 def test():
-    data = [{'id': 1, '_oid': 1, 'name': 'clara', 'address': 'abc weg 3', 'plz': '1234'},
-            {'id': 2, '_oid': 2, 'name': 'peter', 'address': 'abd weg 2', 'plz': '1244'}]
+    data = [{'id': 1, '_oid': 1, 'name': 'clara',
+             'address': 'abc weg 3', 'plz': '1234'},
+            {'id': 2, '_oid': 2, 'name': 'peter',
+            'address': 'abd weg 2', 'plz': '1244'}]
     return make_response(jsonify(data), 200)
 
 

@@ -1,6 +1,6 @@
 from app import app
 from datamodel import *
-from datamodel.base import init_db, drop_db, session
+from datamodel.base import init_db, drop_db, session, engine
 import requests
 import io
 
@@ -169,41 +169,46 @@ def ac():
 
 @ read.command()
 def exposure():
-    # TODO: read exposure.csv and parse to assets and sites
-    df = pd.read_csv(BPTH + 'exposure_assets.csv', index_col='id')
     ac_id = 1
+    # read into dataframe and rename columns to fit datamodel
+    df = pd.read_csv(BPTH + 'exposure_assets.csv', index_col='id')
+    df = df.rename(columns={'taxonomy': 'taxonomy_concept',
+                            'number': 'buildingCount',
+                            'contents': 'contentvalue_value',
+                            'day': 'occupancydaytime_value',
+                            'structural': 'structuralvalue_value'})
+    df['_assetCollection_oid'] = ac_id
 
-    for row in df.itertuples():
-        q = session.query(Site).filter(
-            Site.longitude_value == row.lon,
-            Site.latitude_value == row.lat,
-            Site._assetCollection_oid == ac_id).first()
+    # group by sites
+    dg = df.groupby(['lon', 'lat'])
+    all_sites = []
 
-        if q is None:
-            site = Site(longitude_value=row.lon,
-                        latitude_value=row.lat,
-                        _assetCollection_oid=ac_id)
-            session.add(site)
-            session.flush()
-        else:
-            site = q
-        print(row.Index)
-    print('sessions done')
+    # create site models
+    for name, _ in dg:
+        site = Site(longitude_value=name[0],
+                    latitude_value=name[1],
+                    _assetCollection_oid=ac_id)
+        session.add(site)
+        all_sites.append(site)
+    # flush sites to get an ID but keep fast accessible in memory
+    session.flush()
 
-    for row in df.itertuples():
-        asset = Asset(taxonomy_concept=row.taxonomy,
-                      buildingCount=row.number,
-                      contentvalue_value=row.contents,
-                      occupancydaytime_value=row.day,
-                      structuralvalue_value=row.structural,
-                      _assetCollection_oid=ac_id,
-                      site=site)
-        session.add(asset)
-        print(row.Index)
+    # assign ID back to dataframe using group index
+    df['GN'] = dg.grouper.group_info[0]
+    df['_site_oid'] = df.apply(lambda x: all_sites[x['GN']]._oid, axis=1)
 
-    # print(session.query(Asset).first().site.longitude_value)
+    # commit so that FK exists in databse
+    session.commit()
 
-    # TODO: make all necessary relationships to assetCollection
+    # write selected columns directly to database
+    df.loc[:, ['taxonomy_concept',
+               'buildingCount',
+               'contentvalue_value',
+               'occupancydaytime_value',
+               'structuralvalue_value',
+               '_assetCollection_oid',
+               '_site_oid']] \
+        .to_sql('loss_asset', engine, if_exists='append', index=False)
 
     pass
 
