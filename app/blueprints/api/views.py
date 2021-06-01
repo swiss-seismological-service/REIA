@@ -27,11 +27,14 @@ def test():
 @api.post('/exposure')
 @csrf.exempt
 def post_exposure():
+    # create asset collection from json file
     file_ac = request.files.get('exposureJSON')
     data = json.load(file_ac)
     assetCollection = AssetCollection(**data)
     session.add(assetCollection)
     session.flush()
+
+    # read assets into pandas dataframe and rename columns
     file_assets = request.files.get('exposureCSV')
     df = pd.read_csv(file_assets, index_col='id')
 
@@ -53,6 +56,7 @@ def post_exposure():
                     _assetCollection_oid=assetCollection._oid)
         session.add(site)
         all_sites.append(site)
+
     # flush sites to get an ID but keep fast accessible in memory
     session.flush()
 

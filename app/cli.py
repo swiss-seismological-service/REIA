@@ -154,65 +154,6 @@ def read():
     pass
 
 
-@read.command()
-def ac():
-    import json
-    # TODO: read exposure.json into AssetCollection
-    with open(BPTH + 'exposure.json') as json_file:
-        data = json.load(json_file)
-    print(data)
-
-    assetCollection = AssetCollection(**data)
-    session.add(assetCollection)
-    session.commit()
-
-
-@ read.command()
-def exposure():
-    ac_id = 1
-    # read into dataframe and rename columns to fit datamodel
-    df = pd.read_csv(BPTH + 'exposure_assets.csv', index_col='id')
-    df = df.rename(columns={'taxonomy': 'taxonomy_concept',
-                            'number': 'buildingCount',
-                            'contents': 'contentvalue_value',
-                            'day': 'occupancydaytime_value',
-                            'structural': 'structuralvalue_value'})
-    df['_assetCollection_oid'] = ac_id
-
-    # group by sites
-    dg = df.groupby(['lon', 'lat'])
-    all_sites = []
-
-    # create site models
-    for name, _ in dg:
-        site = Site(longitude_value=name[0],
-                    latitude_value=name[1],
-                    _assetCollection_oid=ac_id)
-        session.add(site)
-        all_sites.append(site)
-    # flush sites to get an ID but keep fast accessible in memory
-    session.flush()
-
-    # assign ID back to dataframe using group index
-    df['GN'] = dg.grouper.group_info[0]
-    df['_site_oid'] = df.apply(lambda x: all_sites[x['GN']]._oid, axis=1)
-
-    # commit so that FK exists in databse
-    session.commit()
-
-    # write selected columns directly to database
-    df.loc[:, ['taxonomy_concept',
-               'buildingCount',
-               'contentvalue_value',
-               'occupancydaytime_value',
-               'structuralvalue_value',
-               '_assetCollection_oid',
-               '_site_oid']] \
-        .to_sql('loss_asset', engine, if_exists='append', index=False)
-
-    pass
-
-
 @ read.command()
 def vulnerability():
     # TODO: read vulnerability xml to VulnerabilityModel
