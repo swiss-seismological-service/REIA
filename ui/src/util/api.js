@@ -8,16 +8,12 @@ export async function getExposure() {
     return response;
 }
 
-export async function uploadFile(files, data, endpoint) {
+export async function postExposure(files) {
     const formData = new FormData();
+    formData.append('exposureJSON', files.selectedExposureJSON);
+    formData.append('exposureCSV', files.selectedExposureCSV);
 
-    [...files].forEach((file, index) => {
-        formData.append(`file${index}`, file);
-    });
-
-    formData.append('data', data);
-
-    const response = fetch(endpoint, {
+    const response = fetch('/exposure', {
         method: 'POST',
         body: formData,
     })
@@ -29,12 +25,21 @@ export async function uploadFile(files, data, endpoint) {
     return response;
 }
 
-export async function postExposure(files) {
-    const formData = new FormData();
-    formData.append('exposureJSON', files.selectedExposureJSON);
-    formData.append('exposureCSV', files.selectedExposureCSV);
+export async function getVulnerability() {
+    const response = fetch('/vulnerability')
+        .then((resp) => {
+            if (!resp.ok) throw Error(resp.statusText);
+            return resp.json();
+        })
+        .then((json) => json);
+    return response;
+}
 
-    const response = fetch('/exposure', {
+export async function postVulnerability(files) {
+    const formData = new FormData();
+    formData.append('vulnerabilityModel', files.selectedVulnerabilityModel);
+
+    const response = fetch('/vulnerability', {
         method: 'POST',
         body: formData,
     })

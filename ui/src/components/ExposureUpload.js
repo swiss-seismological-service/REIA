@@ -12,8 +12,9 @@ class ExposureUpload extends React.Component {
     };
 
     handleSubmission = () => {
+        this.props.reload(null, true);
         postExposure({ ...this.state }).then((response) => {
-            this.props.reload(response);
+            this.props.reload(response, false);
         });
     };
 

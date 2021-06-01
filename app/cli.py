@@ -4,8 +4,6 @@ from datamodel.base import init_db, drop_db, session, engine
 import requests
 import io
 
-import pandas as pd
-
 BPTH = '/home/nicolas/workspaces/SED/ebr/model/'
 
 INPUT = {
@@ -153,13 +151,6 @@ def read():
     """read model"""
     pass
 
-
-@ read.command()
-def vulnerability():
-    # TODO: read vulnerability xml to VulnerabilityModel
-
-    # TODO: read vulnerability xml to VulnerabilityFunctions
-    test = session.query(AssetCollection).first()
-    file1 = createFP('exposure.xml', data=test.__dict__)
-    print(file1.read())
-    pass
+    # test = session.query(AssetCollection).first()
+    # file1 = createFP('exposure.xml', data=test.__dict__)
+    # print(file1.read())
