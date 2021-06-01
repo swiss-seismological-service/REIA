@@ -19,10 +19,14 @@ class App extends React.Component {
         });
     };
 
+    setExposureModels = (newModel) => {
+        this.setState({ exposureModels: newModel });
+    };
+
     render() {
         return (
             <>
-                <ExposureUpload />
+                <ExposureUpload reload={this.setExposureModels} />
                 <ExposureGrid data={this.state.exposureModels} />
             </>
         );

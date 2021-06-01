@@ -12,7 +12,9 @@ class ExposureUpload extends React.Component {
     };
 
     handleSubmission = () => {
-        postExposure({ ...this.state });
+        postExposure({ ...this.state }).then((response) => {
+            this.props.reload(response);
+        });
     };
 
     setSelectedExposureJSON = (file) => {

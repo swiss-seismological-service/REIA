@@ -15,6 +15,12 @@ export default function ExposureGrid(props) {
             type: 'number',
             width: 120,
         },
+        {
+            field: 'nSites',
+            headerName: 'Sites',
+            type: 'number',
+            width: 120,
+        },
     ];
 
     return (
