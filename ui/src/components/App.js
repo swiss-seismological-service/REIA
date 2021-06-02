@@ -5,7 +5,15 @@ import { DataGrid } from '@material-ui/data-grid';
 import ExposureUpload from './ExposureUpload';
 import VulnerabilityUpload from './VulnerabilityUpload';
 import LossModelUpload from './LossModelUpload';
-import { getExposure, getLossModel, getVulnerability } from '../util/api';
+import LossConfigUpload from './LossConfigUpload';
+import { getData } from '../util/api';
+
+const columnsLossConfig = [
+    { field: 'id', headerName: 'ID', width: 50 },
+    { field: 'lossCategory', headerName: 'Loss Category', width: 200 },
+    { field: 'aggregateBy', headerName: 'Aggregate By', width: 300 },
+    { field: 'lossModel', headerName: 'Loss Model', width: 200 },
+];
 
 const columnsLossModel = [
     { field: 'id', headerName: 'ID', width: 50 },
@@ -24,8 +32,8 @@ const columnsLossModel = [
 
 const columnsVulnerability = [
     { field: 'id', headerName: 'ID', width: 50 },
-    { field: 'lossCategory', headerName: 'lossCategory', width: 300 },
-    { field: 'assetCategory', headerName: 'assetCategory', width: 150 },
+    { field: 'lossCategory', headerName: 'Loss Category', width: 300 },
+    { field: 'assetCategory', headerName: 'Asset Category', width: 150 },
     { field: 'description', headerName: 'description', width: 150 },
     { field: 'nFunctions', headerName: 'Functions', type: 'number', width: 120 },
 ];
@@ -49,30 +57,17 @@ class App extends React.Component {
         vulnerabilityLoading: true,
         lossModels: null,
         lossModelLoading: true,
+        lossConfigs: null,
+        lossConfigLoading: true,
     };
 
     componentDidMount = () => {
-        this.getExposureModel();
-        this.getVulnerabilityModel();
-        this.getLossModel();
-    };
-
-    getExposureModel = () => {
-        getExposure().then((response) => {
-            this.setState({ exposureModels: response, exposureLoading: false });
-        });
-    };
-
-    getVulnerabilityModel = () => {
-        getVulnerability().then((response) => {
-            this.setState({ vulnerabilityModels: response, vulnerabilityLoading: false });
-        });
-    };
-
-    getLossModel = () => {
-        getLossModel().then((response) => {
-            this.setState({ lossModels: response, lossModelLoading: false });
-        });
+        getData('/exposure').then((res) => this.setState({ exposureModels: res, exposureLoading: false }));
+        getData('/vulnerability').then((res) =>
+            this.setState({ vulnerabilityModels: res, vulnerabilityLoading: false })
+        );
+        getData('/lossmodel').then((res) => this.setState({ lossModels: res, lossModelLoading: false }));
+        getData('/lossconfig').then((res) => this.setState({ lossConfigs: res, lossConfigLoading: false }));
     };
 
     updateModelState = (newState) => {
@@ -82,6 +77,16 @@ class App extends React.Component {
     render() {
         return (
             <>
+                {' '}
+                <LossConfigUpload reload={this.updateModelState} />
+                <DataGrid
+                    rows={this.state.lossConfigs || []}
+                    columns={columnsLossConfig}
+                    pageSize={5}
+                    loading={this.state.lossConfigLoading}
+                    disableColumnMenu
+                    autoHeight
+                />
                 <LossModelUpload reload={this.updateModelState} />
                 <DataGrid
                     rows={this.state.lossModels || []}
