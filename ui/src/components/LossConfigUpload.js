@@ -13,9 +13,9 @@ export default function LossConfigUpload(props) {
     const [values, setValues] = useState(initial);
 
     const handleSubmission = () => {
-        props.reload({ lossConfig: null, lossConfigLoading: true });
+        props.reload({ lossConfigs: null, lossConfigLoading: true });
         postLossConfig(values).then((response) => {
-            props.reload({ lossConfig: response, lossConfigLoading: false });
+            props.reload({ lossConfigs: response, lossConfigLoading: false });
         });
     };
 

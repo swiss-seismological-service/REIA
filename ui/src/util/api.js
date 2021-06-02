@@ -61,6 +61,9 @@ export async function postLossModel(values) {
 export async function postLossConfig(data) {
     const response = fetch('/lossconfig', {
         method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
         body: JSON.stringify(data),
     })
         .then((resp) => {

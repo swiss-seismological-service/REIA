@@ -1,3 +1,4 @@
+from datamodel.lossmodel import LossConfig
 from flask import Blueprint, jsonify, make_response, request
 from app.extensions import csrf
 from datamodel import (AssetCollection, Asset, Site,
@@ -233,3 +234,34 @@ def post_loss_model():
     session.commit()
 
     return get_loss_model()
+
+
+@api.get('/lossconfig')
+@csrf.exempt
+def get_loss_config():
+    loss_config = session.query(LossConfig).all()
+
+    response = []
+    for config in loss_config:
+        new_config = {
+            'id': config._oid,
+            'lossCategory': config.lossCategory,
+            'aggregateBy': config.aggregateBy,
+            'lossModel': config._lossModel_oid
+        }
+        response.append(new_config)
+
+    return make_response(jsonify(response), 200)
+
+
+@api.post('/lossconfig')
+@csrf.exempt
+def post_loss_config():
+    data = request.get_json()
+    loss_config = LossConfig(
+        lossCategory=data['lossCategory'],
+        aggregateBy=data['aggregateBy'],
+        _lossModel_oid=data['lossModelId'])
+    session.add(loss_config)
+    session.commit()
+    return get_loss_config()
