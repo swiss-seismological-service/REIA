@@ -1,0 +1,10 @@
+{
+    "preparationCalculationMode": "scenario",
+    "mainCalculationMode": "scenario_risk",
+    "description": "Test Scenario for Shakemap from SED",
+    "masterSeed": 23,
+    "randomSeed": 42,
+    "numberOfGroundMotionFields": 500,
+    "maximumDistance": 300,
+    "truncationLevel": null
+}

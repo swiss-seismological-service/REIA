@@ -17,6 +17,7 @@ class LossModel(PublicIdMixin, ORMBase):
     preparationCalculationMode = Column(String(20), nullable=False)
     mainCalculationMode = Column(String(20), nullable=False)
     numberOfGroundMotionFields = Column(Integer, nullable=False)
+    description = Column(String(100))
     maximumDistance = Column(Integer)
     masterSeed = Column(Integer)
     randomSeed = Column(Integer)
