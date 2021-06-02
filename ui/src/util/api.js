@@ -10,8 +10,8 @@ export async function getExposure() {
 
 export async function postExposure(files) {
     const formData = new FormData();
-    formData.append('exposureJSON', files.selectedExposureJSON);
-    formData.append('exposureCSV', files.selectedExposureCSV);
+    formData.append('exposureJSON', files.exposureJSON[0]);
+    formData.append('exposureCSV', files.exposureCSV[0]);
 
     const response = fetch('/exposure', {
         method: 'POST',
@@ -37,9 +37,36 @@ export async function getVulnerability() {
 
 export async function postVulnerability(files) {
     const formData = new FormData();
-    formData.append('vulnerabilityModel', files.selectedVulnerabilityModel);
+    formData.append('vulnerabilityModel', files[0]);
 
     const response = fetch('/vulnerability', {
+        method: 'POST',
+        body: formData,
+    })
+        .then((resp) => {
+            if (!resp.ok) throw Error(resp.statusText);
+            return resp.json();
+        })
+        .then((json) => json);
+    return response;
+}
+
+export async function getLossModel() {
+    const response = fetch('/lossmodel')
+        .then((resp) => {
+            if (!resp.ok) throw Error(resp.statusText);
+            return resp.json();
+        })
+        .then((json) => json);
+    return response;
+}
+
+export async function postLossModel(values) {
+    const formData = new FormData();
+    formData.append('lossModel', values.modelJson[0]);
+    formData.append('assetCollection', values.assetCollectionId);
+    formData.append('vulnerabilityModels', values.vulnerabilityModelIds);
+    const response = fetch('/lossmodel', {
         method: 'POST',
         body: formData,
     })

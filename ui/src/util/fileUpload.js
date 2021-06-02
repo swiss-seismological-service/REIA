@@ -10,7 +10,7 @@ export default function FileUpload(props) {
                         style={{ display: 'none' }}
                         id={`${props.name}-button`}
                         type="file"
-                        onChange={(e) => props.setFile(e.target.files)}
+                        onChange={(e) => props.setFile(e)}
                         name={props.name}
                     />
                     <Button variant="contained" color="primary" component="span">
@@ -19,7 +19,7 @@ export default function FileUpload(props) {
                 </label>
             </Grid>
             <Grid item xs={6}>
-                {props.currentFile ? <p>{props.currentFile.name.substring(0, 15)}...</p> : <p>Select a File...</p>}
+                {props.currentFile ? <p>{props.currentFile[0].name.substring(0, 15)}...</p> : <p>Select a File...</p>}
             </Grid>
         </Grid>
     );

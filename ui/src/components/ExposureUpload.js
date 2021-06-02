@@ -1,65 +1,54 @@
-import React from 'react';
-import 'whatwg-fetch';
+import React, { useState } from 'react';
 import { Button, Grid, Paper, Typography } from '@material-ui/core';
 
 import { postExposure } from '../util/api';
 import FileUpload from '../util/fileUpload';
 
-class ExposureUpload extends React.Component {
-    state = {
-        selectedExposureJSON: null,
-        selectedExposureCSV: null,
-    };
+const initial = {
+    exposureJSON: null,
+    exposureCSV: null,
+};
 
-    handleSubmission = () => {
-        this.props.reload(null, true);
-        postExposure({ ...this.state }).then((response) => {
-            this.props.reload(response, false);
+export default function ExposureUpload(props) {
+    const [values, setValues] = useState(initial);
+
+    const handleSubmission = () => {
+        props.reload({ exposureModels: null, exposureLoading: true });
+        postExposure(values).then((response) => {
+            props.reload({ exposureModels: response, exposureLoading: false });
         });
     };
 
-    setSelectedExposureJSON = (file) => {
-        this.setState({ selectedExposureJSON: file[0] });
+    const handleFiles = (e) => {
+        const { name, files } = e.target;
+        setValues({
+            ...values,
+            [name]: files,
+        });
     };
 
-    setSelectedExposureCSV = (file) => {
-        this.setState({ selectedExposureCSV: file[0] });
-    };
-
-    render() {
-        return (
-            <Paper className="paper">
-                <Typography gutterBottom variant="h5" component="h2">
-                    Exposure Model
-                </Typography>
-                <Grid container spacing={3} className="grid">
-                    <Grid item xs={2}>
-                        <FileUpload
-                            currentFile={this.state.selectedExposureJSON}
-                            setFile={this.setSelectedExposureJSON}
-                            name="exposureJSON"
-                        >
-                            Exposure JSON
-                        </FileUpload>
-                    </Grid>
-                    <Grid item xs={2}>
-                        <FileUpload
-                            currentFile={this.state.selectedExposureCSV}
-                            setFile={this.setSelectedExposureCSV}
-                            name="exposureCSV"
-                        >
-                            Exposure CSV
-                        </FileUpload>
-                    </Grid>
-                    <Grid item xs={2}>
-                        <Button variant="contained" color="secondary" onClick={this.handleSubmission}>
-                            Submit
-                        </Button>
-                    </Grid>
+    return (
+        <Paper className="paper">
+            <Typography gutterBottom variant="h5" component="h2">
+                Exposure Model
+            </Typography>
+            <Grid container spacing={3} className="grid">
+                <Grid item xs={2}>
+                    <FileUpload currentFile={values.exposureJSON} setFile={handleFiles} name="exposureJSON">
+                        Exposure JSON
+                    </FileUpload>
                 </Grid>
-            </Paper>
-        );
-    }
+                <Grid item xs={2}>
+                    <FileUpload currentFile={values.exposureCSV} setFile={handleFiles} name="exposureCSV">
+                        Exposure CSV
+                    </FileUpload>
+                </Grid>
+                <Grid item xs={2}>
+                    <Button variant="contained" color="secondary" onClick={handleSubmission}>
+                        Submit
+                    </Button>
+                </Grid>
+            </Grid>
+        </Paper>
+    );
 }
-
-export default ExposureUpload;
