@@ -1,5 +1,5 @@
 from datamodel.lossmodel import LossConfig
-from flask import Blueprint, jsonify, make_response, request
+from flask import Blueprint, jsonify, make_response, request, current_app
 from app.extensions import csrf
 from datamodel import (AssetCollection, Asset, Site,
                        VulnerabilityFunction, VulnerabilityModel,
@@ -7,10 +7,12 @@ from datamodel import (AssetCollection, Asset, Site,
 from datamodel.base import session, engine
 from sqlalchemy import func, distinct
 
-
 import xml.etree.ElementTree as ET
 import pandas as pd
 import json
+import io
+import requests
+import time
 
 api = Blueprint('api', __name__, template_folder='templates')
 
@@ -265,3 +267,109 @@ def post_loss_config():
     session.add(loss_config)
     session.commit()
     return get_loss_config()
+
+
+@api.post('/calculation/run')
+@csrf.exempt
+def post_calculation_run():
+    # curl -X post http://localhost:5000/calculation/run --header "Content-Type: application/json" --data '{"shakemap":"model/shapefiles.zip"}'
+
+    # get data from database
+    lossConfig = session.query(LossConfig).first()
+
+    lossModel = session.query(LossModel).get(lossConfig._lossModel_oid)
+    exposureModel = session.query(AssetCollection).get(
+        lossModel._assetCollection_oid)
+
+    vulnerabilityModel = session.query(VulnerabilityModel) \
+        .join(LossModel, VulnerabilityModel.lossModels). \
+        filter(VulnerabilityModel.lossCategory == lossConfig.lossCategory)\
+        .first()
+
+    # create in memory files
+    # exposure.xml
+    exposure_xml = createFP('api/exposure.xml', data=exposureModel.to_dict())
+
+    # exposure_assets.csv
+    assets = pd.DataFrame([x.to_dict()
+                           for x in exposureModel.assets]).set_index('id')
+    exposure_assets_csv = io.StringIO()
+    assets.to_csv(exposure_assets_csv)
+    exposure_assets_csv.seek(0)
+    exposure_assets_csv.name = 'exposure_assets.csv'
+
+    # vulnerability.xml
+    vulnerability_xml = createFP(
+        'api/vulnerability.xml', data=vulnerabilityModel.to_dict())
+
+    loss_config_dict = lossConfig.to_dict()
+
+    # pre-calculation.ini
+    prepare_risk_ini = createFP('api/prepare_risk.ini', data=loss_config_dict)
+
+    # risk.ini
+    risk_ini = createFP('api/risk.ini', data=loss_config_dict)
+
+    # TODO: get shakemap
+    shaemap_address = request.get_json()['shakemap']
+    shakemap_zip = open(shaemap_address, 'rb')
+
+    # send files to calculation endpoint
+    files = {'job_config': prepare_risk_ini,
+             'input_model_1': exposure_xml,
+             'input_model_2': exposure_assets_csv,
+             'input_model_3': vulnerability_xml}
+
+    response = requests.post(
+        'http://localhost:8800/v1/calc/run', files=files)
+
+    if response.ok:
+        print("Upload completed successfully!")
+        pre_job_id = response.json()['job_id']
+    else:
+        print("Something went wrong!")
+        print(response.text)
+        return make_response(jsonify({}), 200)
+
+    # wait for pre-calculation to finish
+    while requests.get(f'http://localhost:8800/v1/calc/{pre_job_id}/status')\
+            .json()['status'] not in ['complete', 'failed']:
+        time.sleep(1)
+    response = requests.get(
+        f'http://localhost:8800/v1/calc/{pre_job_id}/status')
+
+    if response.json()['status'] != 'complete':
+        return make_response(response.json(), 200)
+
+    # send files to calculation endpoint
+    files2 = {
+        'job_config': risk_ini,
+        'input_model_1': shakemap_zip
+    }
+
+    response = requests.post(
+        'http://localhost:8800/v1/calc/run', files=files2,
+        data={'hazard_job_id': pre_job_id})
+
+    if response.ok:
+        print("Upload completed successfully!")
+    else:
+        print("Something went wrong!")
+        print(response.text)
+
+    # TODO: wait for calculation to finish
+
+    # TODO: fetch results
+
+    # TODO: save results to database
+
+    return make_response(response.json(), 200)
+
+
+def createFP(template_name, **kwargs):
+    sio = io.StringIO()
+    template = current_app.jinja_env.get_template(template_name)
+    template.stream(**kwargs).dump(sio)
+    sio.seek(0)
+    sio.name = template_name.rsplit('/', 1)[-1]
+    return sio
