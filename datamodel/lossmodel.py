@@ -74,3 +74,20 @@ class LossConfig(ORMBase):
     lossModel = relationship(
         'LossModel',
         lazy='joined')
+
+    def to_dict(self):
+        d = {
+            'preparationCalculationMode':
+            self.lossModel.preparationCalculationMode,
+            'mainCalculationMode': self.lossModel.mainCalculationMode,
+            'numberOfGroundMotionFields':
+            self.lossModel.numberOfGroundMotionFields,
+            'description': self.lossModel.description,
+            'maximumDistance': self.lossModel.maximumDistance,
+            'masterSeed': self.lossModel.masterSeed,
+            'randomSeed': self.lossModel.randomSeed,
+            'truncationLevel': self.lossModel.truncationLevel,
+            'lossCategory': self.lossCategory,
+            'aggregateBy': self.aggregateBy,
+        }
+        return d

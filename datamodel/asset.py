@@ -29,6 +29,17 @@ class AssetCollection(ORMBase, PublicIdMixin, CreationInfoMixin):
         single_parent=True,
         cascade='all, delete, delete-orphan')
 
+    def to_dict(self):
+        d = {
+            'id': self._oid,
+            'name': self.name,
+            'category': self.category,
+            'taxonomySource': self.taxonomySource,
+            'tagNames': self.tagNames,
+            'costTypes': self.costTypes
+        }
+        return d
+
 
 class Asset(PublicIdMixin,
             RealQuantityMixin('contentValue'),
@@ -42,8 +53,7 @@ class Asset(PublicIdMixin,
         ForeignKey('loss_assetcollection._oid'))
     assetCollection = relationship(
         'AssetCollection',
-        back_populates='assets',
-        lazy='joined')
+        back_populates='assets')
 
     buildingCount = Column(Integer, nullable=False)
 
@@ -62,6 +72,19 @@ class Asset(PublicIdMixin,
         'PostalCode',
         back_populates='assets',
         lazy='joined')
+
+    def to_dict(self):
+        d = {
+            'id': self._oid,
+            'lon': self.site.longitude_value,
+            'lat': self.site.latitude_value,
+            'taxonomy': self.taxonomy_concept,
+            'number': self.buildingCount,
+            'structural': self.structuralvalue_value,
+            'contents': self.contentvalue_value,
+            'day': self.occupancydaytime_value,
+        }
+        return d
 
 
 class Site(PublicIdMixin,
