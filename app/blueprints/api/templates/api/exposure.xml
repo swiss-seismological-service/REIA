@@ -9,7 +9,7 @@
             {% endfor %}
          </costTypes>
       </conversions>
-      <tagNames>{% for tag in data.tags -%} {{tag}} {%- endfor %}</tagNames>
+      <tagNames>{#% for tag in data.tagNames -%} {{tag+" "}} {%- endfor %#}</tagNames>
       <occupancyPeriods>day</occupancyPeriods>
       <assets>exposure_assets.csv</assets>
    </exposureModel>
