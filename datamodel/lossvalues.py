@@ -64,21 +64,38 @@ class SiteLoss(LossValue):
     }
 
 
-class PostalCodeLoss(LossValue):
-    """Loss in a postal code area"""
-    __tablename__ = 'loss_postalcodeloss'
+# class PostalCodeLoss(LossValue):
+#     """Loss in a postal code area"""
+#     __tablename__ = 'loss_postalcodeloss'
+#     _oid = Column(BigInteger, ForeignKey(
+#         'loss_lossvalue._oid'), primary_key=True)
+#     realizationId = Column(Integer, nullable=False)
+#     _postalCode_oid = Column(
+#         BigInteger,
+#         ForeignKey('loss_postalcode._oid'),
+#         nullable=False
+#     )
+#     postalCode = relationship('PostalCode')
+
+#     __mapper_args__ = {
+#         'polymorphic_identity': 'postalcodeloss'
+#     }
+
+class MunicipalityLoss(LossValue):
+    """Loss in a Municipality"""
+    __tablename__ = 'loss_municipalityloss'
     _oid = Column(BigInteger, ForeignKey(
         'loss_lossvalue._oid'), primary_key=True)
     realizationId = Column(Integer, nullable=False)
-    _postalCode_oid = Column(
+    _municipality_oid = Column(
         BigInteger,
-        ForeignKey('loss_postalcode._oid'),
+        ForeignKey('loss_municipality._oid'),
         nullable=False
     )
-    postalCode = relationship('PostalCode')
+    municipality = relationship('Municipality')
 
     __mapper_args__ = {
-        'polymorphic_identity': 'postalcodeloss'
+        'polymorphic_identity': 'municipalityloss'
     }
 
 

@@ -65,11 +65,18 @@ class Asset(PublicIdMixin,
         'Site',
         back_populates='assets',
         lazy='joined')
-    _postalCode_oid = Column(
+    # _postalCode_oid = Column(
+    #     BigInteger,
+    #     ForeignKey('loss_postalcode._oid'))
+    # postalCode = relationship(
+    #     'PostalCode',
+    #     back_populates='assets',
+    #     lazy='joined')
+    _municipality_oid = Column(
         BigInteger,
-        ForeignKey('loss_postalcode._oid'))
-    postalCode = relationship(
-        'PostalCode',
+        ForeignKey('loss_municipality._oid'))
+    municipality = relationship(
+        'Municipality',
         back_populates='assets',
         lazy='joined')
 
@@ -103,10 +110,9 @@ class Site(PublicIdMixin,
         'Asset',
         back_populates='site')
 
-
-class PostalCode(ORMBase):
-    """PC model"""
-    plz = Column(Integer, nullable=False)
+# class PostalCode(ORMBase):
+#     """PC model"""
+#     plz = Column(Integer, nullable=False)
 #     _municipality_oid = Column(
 #         BigInteger,
 #         ForeignKey('loss_municipality._oid'),
@@ -115,28 +121,31 @@ class PostalCode(ORMBase):
 #         'Municipality',
 #         back_populates='postalCodes',
 #         lazy='joined')
+#     assets = relationship(
+#         'Asset',
+#         back_populates='postalCode')
+
+
+class Municipality(ORMBase):
+    """Municipality Model"""
+    name = Column(String(50), nullable=False)
+    municipalityId = Column(Integer, nullable=False)
     assets = relationship(
         'Asset',
-        back_populates='postalCode')
-
-
-# class Municipality(ORMBase):
-#     """Municipality Model"""
-#     name = Column(String(50), nullable=False)
-#     municipalityId = Column(Integer, nullable=False)
-#     _canton_oid = Column(
-#         BigInteger,
-#         ForeignKey('loss_canton._oid'),
-#         nullable=False)
-#     canton = relationship(
-#         'Canton',
-#         back_populates='municipalities',
-#         lazy='joined')
-#     postalCodes = relationship(
-#         'PostalCode',
-#         back_populates='municipality',
-#         single_parent=True,
-#         cascade='all, delete, delete-orphan')
+        back_populates='municipality')
+    # _canton_oid = Column(
+    #     BigInteger,
+    #     ForeignKey('loss_canton._oid'),
+    #     nullable=False)
+    # canton = relationship(
+    #     'Canton',
+    #     back_populates='municipalities',
+    #     lazy='joined')
+    # postalCodes = relationship(
+    #     'PostalCode',
+    #     back_populates='municipality',
+    #     single_parent=True,
+    #     cascade='all, delete, delete-orphan')
 
 
 # class Canton(ORMBase):
