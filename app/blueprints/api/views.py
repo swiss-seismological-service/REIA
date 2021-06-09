@@ -13,6 +13,7 @@ import json
 import io
 import requests
 import time
+from datetime import datetime
 
 api = Blueprint('api', __name__, template_folder='templates')
 
@@ -275,7 +276,7 @@ def post_calculation_run():
     # curl -X post http://localhost:5000/calculation/run --header "Content-Type: application/json" --data '{"shakemap":"model/shapefiles.zip"}'
 
     # get data from database
-    lossConfig = session.query(LossConfig).first()
+    lossConfig = session.query(LossConfig).get(3)
 
     lossModel = session.query(LossModel).get(lossConfig._lossModel_oid)
     exposureModel = session.query(AssetCollection).get(
@@ -311,8 +312,8 @@ def post_calculation_run():
     risk_ini = createFP('api/risk.ini', data=loss_config_dict)
 
     # TODO: get shakemap
-    shaemap_address = request.get_json()['shakemap']
-    shakemap_zip = open(shaemap_address, 'rb')
+    shakemap_address = request.get_json()['shakemap']
+    shakemap_zip = open(shakemap_address, 'rb')
 
     # send files to calculation endpoint
     files = {'job_config': prepare_risk_ini,
@@ -357,6 +358,16 @@ def post_calculation_run():
         print("Something went wrong!")
         print(response.text)
 
+    lossCalculation = LossCalculation(
+        shakemapid_resourceid='shakemap_address',
+        _lossModel_oid=lossModel._oid,
+        lossCategory=lossConfig.lossCategory,
+        aggregateBy=lossConfig.aggregateBy,
+        timestamp_startTime=datetime.now()
+    )
+    session.add(lossCalculation)
+    session.commit()
+
     # TODO: wait for calculation to finish
 
     # TODO: fetch results
@@ -367,6 +378,7 @@ def post_calculation_run():
 
 
 def createFP(template_name, **kwargs):
+    """ create file pointer """
     sio = io.StringIO()
     template = current_app.jinja_env.get_template(template_name)
     template.stream(**kwargs).dump(sio)
