@@ -3,7 +3,7 @@ from flask import Blueprint, jsonify, make_response, request, current_app
 from app.extensions import csrf
 from datamodel import (AssetCollection, Asset, Site,
                        VulnerabilityFunction, VulnerabilityModel,
-                       LossModel, LossCalculation)
+                       LossModel, LossCalculation, MeanAssetLoss)
 from datamodel.base import session, engine
 from sqlalchemy import func, distinct
 
@@ -14,6 +14,9 @@ import io
 import requests
 import time
 from datetime import datetime
+import threading
+
+from openquake.calculators.extract import Extractor
 
 api = Blueprint('api', __name__, template_folder='templates')
 
@@ -368,13 +371,37 @@ def post_calculation_run():
     session.add(lossCalculation)
     session.commit()
 
-    # TODO: wait for calculation to finish
-
-    # TODO: fetch results
-
-    # TODO: save results to database
-
+    # wait, fetch and save results
+    thread = threading.Thread(target=waitAndFetchResults(
+        response.json()['job_id'], lossCalculation._oid))
+    thread.daemon = True
+    thread.start()
     return make_response(response.json(), 200)
+
+
+def waitAndFetchResults(oqJobId, calcId):
+    # wait for calculation to finish
+    while requests.get(f'http://localhost:8800/v1/calc/{oqJobId}/status')\
+            .json()['status'] not in ['complete', 'failed']:
+        time.sleep(1)
+    response = requests.get(
+        f'http://localhost:8800/v1/calc/{oqJobId}/status')
+
+    if response.json()['status'] != 'complete':
+        return None
+    # fetch results
+    extractor = Extractor(oqJobId)
+    data = extractor.get('avg_losses-rlzs').to_dframe()
+
+    data = data[['asset_id', 'value']].rename(
+        columns={'asset_id': '_asset_oid', 'value': 'loss_value'})
+
+    # save results to database
+    data = data.apply(lambda x: MeanAssetLoss(
+        _lossCalculation_oid=calcId, **x), axis=1)
+    session.add_all(data)
+    session.commit()
+    print('Done saving results')
 
 
 def createFP(template_name, **kwargs):
