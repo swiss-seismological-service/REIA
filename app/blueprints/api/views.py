@@ -3,7 +3,7 @@ from flask import Blueprint, jsonify, make_response, request, current_app
 from app.extensions import csrf
 from datamodel import (AssetCollection, Asset, Site,
                        VulnerabilityFunction, VulnerabilityModel,
-                       LossModel, LossCalculation, MeanAssetLoss)
+                       LossModel, LossCalculation, MeanAssetLoss, Municipality)
 from datamodel.base import session, engine
 from sqlalchemy import func, distinct
 
@@ -44,8 +44,21 @@ def post_exposure():
                             'number': 'buildingCount',
                             'contents': 'contentvalue_value',
                             'day': 'occupancydaytime_value',
-                            'structural': 'structuralvalue_value'})
+                            'structural': 'structuralvalue_value',
+                            'CantonGemeinde': '_municipality_oid'})
     df['_assetCollection_oid'] = assetCollection._oid
+    df['_municipality_oid'] = df['_municipality_oid'].apply(lambda x: x[2:])
+
+    # create municipalities
+    # TODO: no need for a dataframe since _oid is set to bfs number
+    sf = pd.DataFrame(df['_municipality_oid'].unique(), columns=['bfsn'])
+    sf['municipality'] = sf.apply(
+        lambda x: Municipality(
+            _oid=x.bfsn, name=x.bfsn, municipalityId=x.bfsn), axis=1)
+    sf = sf.set_index('bfsn')
+
+    for el in sf['municipality']:
+        session.merge(el)
 
     # group by sites
     dg = df.groupby(['lon', 'lat'])
@@ -76,7 +89,8 @@ def post_exposure():
                'occupancydaytime_value',
                'structuralvalue_value',
                '_assetCollection_oid',
-               '_site_oid']] \
+               '_site_oid',
+               '_municipality_oid']] \
         .to_sql('loss_asset', engine, if_exists='append', index=False)
 
     return get_exposure()
@@ -279,7 +293,7 @@ def post_calculation_run():
     # curl -X post http://localhost:5000/calculation/run --header "Content-Type: application/json" --data '{"shakemap":"model/shapefiles.zip"}'
 
     # get data from database
-    lossConfig = session.query(LossConfig).get(3)
+    lossConfig = session.query(LossConfig).get(1)
 
     lossModel = session.query(LossModel).get(lossConfig._lossModel_oid)
     exposureModel = session.query(AssetCollection).get(
