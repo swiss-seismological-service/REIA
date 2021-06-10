@@ -426,3 +426,20 @@ def createFP(template_name, **kwargs):
     sio.seek(0)
     sio.name = template_name.rsplit('/', 1)[-1]
     return sio
+
+
+@api.get('/losscalculation')
+@csrf.exempt
+def get_loss_calculation():
+    response = []
+    loss_calculation = session.query(LossCalculation).all()
+    for l in loss_calculation:
+        d = {
+            'id': l._oid,
+            'lossModelId': l._lossModel_oid,
+            'lossCategory': l.lossCategory,
+            'aggregateBy': l.aggregateBy,
+            'timestamp': l.timestamp_startTime
+        }
+        response.append(d)
+    return make_response(jsonify(response), 200)

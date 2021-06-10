@@ -6,6 +6,7 @@ import ExposureUpload from './ExposureUpload';
 import VulnerabilityUpload from './VulnerabilityUpload';
 import LossModelUpload from './LossModelUpload';
 import LossConfigUpload from './LossConfigUpload';
+import LossCalculation from './LossCalculation';
 import { getData } from '../util/api';
 
 const columnsLossConfig = [
@@ -49,6 +50,14 @@ const columnsExposure = [
     { field: 'nSites', headerName: 'Sites', type: 'number', width: 120 },
 ];
 
+const columnsCalculation = [
+    { field: 'id', headerName: 'ID', width: 50 },
+    { field: 'lossCategory', headerName: 'Category', width: 300 },
+    { field: 'lossModelId', headerName: 'Loss Model', width: 150 },
+    { field: 'aggregateBy', headerName: 'Aggregated By', width: 150 },
+    { field: 'timestamp', headerName: 'Time', width: 300 },
+];
+
 class App extends React.Component {
     state = {
         exposureModels: null,
@@ -59,6 +68,8 @@ class App extends React.Component {
         lossModelLoading: true,
         lossConfigs: null,
         lossConfigLoading: true,
+        lossCalculation: null,
+        lossCalculationLoading: true,
     };
 
     componentDidMount = () => {
@@ -68,6 +79,9 @@ class App extends React.Component {
         );
         getData('/lossmodel').then((res) => this.setState({ lossModels: res, lossModelLoading: false }));
         getData('/lossconfig').then((res) => this.setState({ lossConfigs: res, lossConfigLoading: false }));
+        getData('/losscalculation').then((res) =>
+            this.setState({ lossCalculation: res, lossCalculationLoading: false })
+        );
     };
 
     updateModelState = (newState) => {
@@ -77,7 +91,18 @@ class App extends React.Component {
     render() {
         return (
             <>
-                {' '}
+                <LossCalculation reload={this.updateModelState} />
+                <DataGrid
+                    rows={this.state.lossCalculation || []}
+                    columns={columnsCalculation}
+                    pageSize={5}
+                    loading={this.state.lossCalculationLoading}
+                    disableColumnMenu
+                    autoHeight
+                    onRowClick={(param) => {
+                        window.open(`/plotlymap/${param.row.id}`, '_blank');
+                    }}
+                />
                 <LossConfigUpload reload={this.updateModelState} />
                 <DataGrid
                     rows={this.state.lossConfigs || []}
