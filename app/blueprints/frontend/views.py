@@ -5,8 +5,6 @@ import pandas as pd
 import json
 import plotly
 import plotly.express as px
-from urllib.request import urlopen
-import time
 
 frontend = Blueprint('frontend', __name__, template_folder='templates')
 
@@ -54,9 +52,5 @@ def plotlymap(oid):
                                labels={'loss_value': 'sum loss'}, height=800
                                )
     fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0})
-
-    start = time.time()
     graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-
-    print(time.time() - start)
     return render_template('frontend/plotlymap.html', graphJSON=graphJSON)
