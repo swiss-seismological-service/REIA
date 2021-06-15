@@ -2,7 +2,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql.schema import Column, ForeignKey
 from sqlalchemy.sql.sqltypes import BigInteger, Integer, String
 from datamodel.mixins import RealQuantityMixin, ClassificationMixin
-from datamodel.base import ORMBase
+from datamodel import ORMBase
 
 
 class LossValue(ORMBase, RealQuantityMixin('loss')):

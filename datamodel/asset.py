@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql.schema import ForeignKey
 from sqlalchemy.sql.sqltypes import BigInteger, Integer, String
 from sqlalchemy.dialects.postgresql import ARRAY
-from datamodel.base import ORMBase
+from datamodel import ORMBase
 from datamodel.mixins import (ClassificationMixin, CreationInfoMixin,
                               PublicIdMixin, RealQuantityMixin)
 
