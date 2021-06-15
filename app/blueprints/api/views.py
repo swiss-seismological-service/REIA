@@ -1,13 +1,7 @@
-from datamodel.lossmodel import LossConfig
-from flask import Blueprint, jsonify, make_response, request, current_app
-from app.extensions import csrf
-from datamodel import (AssetCollection, Asset, Site,
-                       VulnerabilityFunction, VulnerabilityModel,
-                       LossModel, LossCalculation, MeanAssetLoss, Municipality)
-from datamodel.base import session, engine
+
+from flask import jsonify, make_response, request, current_app
 from sqlalchemy import func, distinct
 
-import xml.etree.ElementTree as ET
 import pandas as pd
 import json
 import io
@@ -16,13 +10,21 @@ import time
 from datetime import datetime
 import threading
 
+import xml.etree.ElementTree as ET
 from openquake.calculators.extract import Extractor
 
-api = Blueprint('api', __name__, template_folder='templates')
+from . import api
+from app.extensions import csrf
+from app.extensions.celery_tasks import test
+
+from datamodel import (session, engine, AssetCollection, Asset, Site,
+                       VulnerabilityFunction, VulnerabilityModel, LossConfig,
+                       LossModel, LossCalculation, MeanAssetLoss, Municipality)
 
 
 @api.route('/')
 def index():
+    test.apply_async()
     return 'Hello World'
 
 
@@ -433,13 +435,13 @@ def createFP(template_name, **kwargs):
 def get_loss_calculation():
     response = []
     loss_calculation = session.query(LossCalculation).all()
-    for l in loss_calculation:
+    for ls in loss_calculation:
         d = {
-            'id': l._oid,
-            'lossModelId': l._lossModel_oid,
-            'lossCategory': l.lossCategory,
-            'aggregateBy': l.aggregateBy,
-            'timestamp': l.timestamp_startTime
+            'id': ls._oid,
+            'lossModelId': ls._lossModel_oid,
+            'lossCategory': ls.lossCategory,
+            'aggregateBy': ls.aggregateBy,
+            'timestamp': ls.timestamp_startTime
         }
         response.append(d)
     return make_response(jsonify(response), 200)

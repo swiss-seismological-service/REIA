@@ -1,12 +1,11 @@
+from . import frontend
 from datamodel import MeanAssetLoss, Asset
-from datamodel.base import session, engine
-from flask import Blueprint, render_template
+from datamodel import session, engine
+from flask import render_template
 import pandas as pd
 import json
 import plotly
 import plotly.express as px
-
-frontend = Blueprint('frontend', __name__, template_folder='templates')
 
 
 @frontend.route('/frontend')
