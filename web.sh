@@ -2,9 +2,10 @@
 
 source env/bin/activate
 
-export FLASK_APP=wsgi.py
-export FLASK_DEBUG=1
-
+# use flask cli, custom cli commands are not available
 flask run
+
+# use own cli, need to install first with 'pip install -e .'
+# ebr run
 
 deactivate

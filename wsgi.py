@@ -1,2 +1,2 @@
-from app import app
-from app import cli
+from app import create_app, celery_app
+app = create_app()

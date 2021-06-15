@@ -1,15 +1,21 @@
-from app import app
+from app import create_app
 import click
 from datamodel import *
-from datamodel.base import init_db, drop_db, session, engine
+from datamodel import init_db, drop_db, session, engine
 import requests
 from openquake.calculators.extract import Extractor
 from openquake.commonlib.datastore import read
-import pandas
-import time
+
+from flask.cli import FlaskGroup
 
 
-@ app.cli.group()
+@ click.group(cls=FlaskGroup, create_app=create_app)
+def cli():
+    """Management script for the EBR application."""
+    pass
+
+
+@ cli.group()
 def db():
     """Database Commands"""
     pass
@@ -29,7 +35,7 @@ def init():
     return 'Database successfully initiated'
 
 
-@ app.cli.group()
+@ cli.group()
 def oqapi():
     """call OQ API Commands"""
     pass

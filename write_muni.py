@@ -1,5 +1,5 @@
 from datamodel import Municipality
-from datamodel.base import session
+from datamodel import session
 from flask import Blueprint, render_template
 import pandas as pd
 import json
