@@ -1,5 +1,5 @@
 export async function getData(endpoint) {
-    const response = fetch(endpoint)
+    const response = fetch(`/api/v1${endpoint}`)
         .then((resp) => {
             if (!resp.ok) throw Error(resp.statusText);
             return resp.json();
@@ -13,7 +13,7 @@ export async function postExposure(files) {
     formData.append('exposureJSON', files.exposureJSON[0]);
     formData.append('exposureCSV', files.exposureCSV[0]);
 
-    const response = fetch('/exposure', {
+    const response = fetch('/api/v1/exposure', {
         method: 'POST',
         body: formData,
     })
@@ -29,7 +29,7 @@ export async function postVulnerability(files) {
     const formData = new FormData();
     formData.append('vulnerabilityModel', files[0]);
 
-    const response = fetch('/vulnerability', {
+    const response = fetch('/api/v1/vulnerability', {
         method: 'POST',
         body: formData,
     })
@@ -46,7 +46,7 @@ export async function postLossModel(values) {
     formData.append('lossModel', values.modelJson[0]);
     formData.append('assetCollection', values.assetCollectionId);
     formData.append('vulnerabilityModels', values.vulnerabilityModelIds);
-    const response = fetch('/lossmodel', {
+    const response = fetch('/api/v1/lossmodel', {
         method: 'POST',
         body: formData,
     })
@@ -59,7 +59,7 @@ export async function postLossModel(values) {
 }
 
 export async function postLossConfig(data) {
-    const response = fetch('/lossconfig', {
+    const response = fetch('/api/v1/lossconfig', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
