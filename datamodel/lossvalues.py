@@ -64,6 +64,48 @@ class SiteLoss(LossValue):
     }
 
 
+class TaxonomyLoss(LossValue, ClassificationMixin('taxonomy'),):
+    """Loss by asset model"""
+    __tablename__ = 'loss_taxonomyloss'
+    _oid = Column(BigInteger, ForeignKey(
+        'loss_lossvalue._oid'), primary_key=True)
+    realizationId = Column(Integer, nullable=False)
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'taxonomyloss'
+    }
+
+
+class MunicipalityPCLoss(LossValue):
+    """Loss in a Municipality-PostalCode combination"""
+    __tablename__ = 'loss_municipalitypcloss'
+
+    _oid = Column(BigInteger, ForeignKey(
+        'loss_lossvalue._oid'), primary_key=True)
+
+    realizationId = Column(Integer, nullable=False)
+
+    # postal code relationship
+    _postalCode_oid = Column(
+        BigInteger,
+        ForeignKey('loss_postalcode._oid'),
+        nullable=False
+    )
+    postalCode = relationship('PostalCode')
+
+    # municipality relationship
+    _municipality_oid = Column(
+        BigInteger,
+        ForeignKey('loss_municipality._oid'),
+        nullable=False
+    )
+    municipality = relationship('Municipality')
+
+    __mapper_args__ = {
+        'polymorphic_identity': 'postalcodeloss'
+    }
+
+
 # class PostalCodeLoss(LossValue):
 #     """Loss in a postal code area"""
 #     __tablename__ = 'loss_postalcodeloss'
@@ -81,31 +123,19 @@ class SiteLoss(LossValue):
 #         'polymorphic_identity': 'postalcodeloss'
 #     }
 
-class MunicipalityLoss(LossValue):
-    """Loss in a Municipality"""
-    __tablename__ = 'loss_municipalityloss'
-    _oid = Column(BigInteger, ForeignKey(
-        'loss_lossvalue._oid'), primary_key=True)
-    realizationId = Column(Integer, nullable=False)
-    _municipality_oid = Column(
-        BigInteger,
-        ForeignKey('loss_municipality._oid'),
-        nullable=False
-    )
-    municipality = relationship('Municipality')
+# class MunicipalityLoss(LossValue):
+#     """Loss in a Municipality"""
+#     __tablename__ = 'loss_municipalityloss'
+#     _oid = Column(BigInteger, ForeignKey(
+#         'loss_lossvalue._oid'), primary_key=True)
+#     realizationId = Column(Integer, nullable=False)
+#     _municipality_oid = Column(
+#         BigInteger,
+#         ForeignKey('loss_municipality._oid'),
+#         nullable=False
+#     )
+#     municipality = relationship('Municipality')
 
-    __mapper_args__ = {
-        'polymorphic_identity': 'municipalityloss'
-    }
-
-
-class TaxonomyLoss(LossValue, ClassificationMixin('taxonomy'),):
-    """Loss by asset model"""
-    __tablename__ = 'loss_taxonomyloss'
-    _oid = Column(BigInteger, ForeignKey(
-        'loss_lossvalue._oid'), primary_key=True)
-    realizationId = Column(Integer, nullable=False)
-
-    __mapper_args__ = {
-        'polymorphic_identity': 'taxonomyloss'
-    }
+#     __mapper_args__ = {
+#         'polymorphic_identity': 'municipalityloss'
+#     }

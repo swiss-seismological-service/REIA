@@ -44,9 +44,9 @@ def drop_db():
 
 
 from datamodel.asset import (
-    AssetCollection, Asset, Site, Municipality)  # , PostalCode, Canton)
+    AssetCollection, Asset, Site, Municipality, PostalCode, Canton)
 from datamodel.lossmodel import (LossModel, LossCalculation, LossConfig)
 from datamodel.vulnerability import (
     VulnerabilityFunction, VulnerabilityModel)
 from datamodel.lossvalues import (
-    MeanAssetLoss, SiteLoss, MunicipalityLoss, TaxonomyLoss)
+    MeanAssetLoss, SiteLoss, TaxonomyLoss, MunicipalityPCLoss)
