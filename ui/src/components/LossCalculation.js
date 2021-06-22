@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button, Grid, Paper, Typography } from '@material-ui/core';
 
-export default function LossCalculation(props) {
+export default function LossCalculation() {
     const startCalculation = () => {
-        const response = fetch('/calculation/run', {
+        const response = fetch('/api/v1/calculation/run', {
             method: 'POST',
             body: '{"shakemap":"model/shapefiles.zip"}',
             headers: {
