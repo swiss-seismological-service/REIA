@@ -3,11 +3,6 @@
     "name": "Exposure_1km_v03a_CH_modalAmpl_amplAvg",
     "taxonomySource": "SPG (EPFL)",
     "publicId_resourceId": "id123",
-    "tagNames": [
-        "canton",
-        "municipality",
-        "postalcode"
-    ],
     "costTypes": [
         "structural"
     ]

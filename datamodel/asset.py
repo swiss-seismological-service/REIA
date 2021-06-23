@@ -32,6 +32,7 @@ class AssetCollection(ORMBase, PublicIdMixin, CreationInfoMixin):
     def to_dict(self):
         d = {
             'id': self._oid,
+            'publicId_resourceId': self.publicId_resourceId,
             'name': self.name,
             'category': self.category,
             'taxonomySource': self.taxonomySource,
@@ -41,8 +42,7 @@ class AssetCollection(ORMBase, PublicIdMixin, CreationInfoMixin):
         return d
 
 
-class Asset(PublicIdMixin,
-            RealQuantityMixin('contentValue'),
+class Asset(RealQuantityMixin('contentValue'),
             RealQuantityMixin('structuralValue'),
             RealQuantityMixin('occupancyDaytime'),
             ClassificationMixin('taxonomy'),
@@ -98,6 +98,10 @@ class Asset(PublicIdMixin,
         }
         return d
 
+    @classmethod
+    def get_keys(cls):
+        return cls.__table__.c.keys()
+
 
 class Site(PublicIdMixin,
            RealQuantityMixin('latitude'),
@@ -120,8 +124,7 @@ class Site(PublicIdMixin,
 
 class PostalCode(ORMBase):
     """PC model"""
-    name = Column(String(50), nullable=False)
-    plz = Column(Integer, nullable=False)
+    name = Column(String(50))
 
     assets = relationship(
         'Asset',
@@ -130,8 +133,7 @@ class PostalCode(ORMBase):
 
 class Municipality(ORMBase):
     """Municipality Model"""
-    name = Column(String(50), nullable=False)
-    municipalityId = Column(Integer, nullable=False)
+    name = Column(String(50))
 
     assets = relationship(
         'Asset',

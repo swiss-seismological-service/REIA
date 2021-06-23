@@ -1,4 +1,5 @@
 
+from datamodel.asset import PostalCode
 from flask import jsonify, make_response, request, current_app
 from sqlalchemy import func, distinct
 
@@ -21,6 +22,8 @@ from datamodel import (session, engine, AssetCollection, Asset, Site,
                        VulnerabilityFunction, VulnerabilityModel, LossConfig,
                        LossModel, LossCalculation, MeanAssetLoss, Municipality)
 
+from .utils import read_asset_csv, sites_from_asset_dataframe
+
 
 @api.route('/')
 def index():
@@ -35,65 +38,47 @@ def post_exposure():
     file_ac = request.files.get('exposureJSON')
     data = json.load(file_ac)
     assetCollection = AssetCollection(**data)
-    session.add(assetCollection)
-    session.flush()
 
     # read assets into pandas dataframe and rename columns
     file_assets = request.files.get('exposureCSV')
-    df = pd.read_csv(file_assets, index_col='id')
+    assets_df = read_asset_csv(file_assets)
 
-    df = df.rename(columns={'taxonomy': 'taxonomy_concept',
-                            'number': 'buildingCount',
-                            'contents': 'contentvalue_value',
-                            'day': 'occupancydaytime_value',
-                            'structural': 'structuralvalue_value',
-                            'CantonGemeinde': '_municipality_oid'})
-    df['_assetCollection_oid'] = assetCollection._oid
-    df['_municipality_oid'] = df['_municipality_oid'].apply(lambda x: x[2:])
+    # add tags to session and tag names to Asset Collection
+    assetCollection.tagNames = []
+    if '_municipality_oid' in assets_df:
+        assetCollection.tagNames.append('municipality')
+        for el in assets_df['_municipality_oid'].unique():
+            session.merge(Municipality(_oid=el))
+    if '_postalCode_oid' in assets_df:
+        assetCollection.tagNames.append('postalcode')
+        for el in assets_df['_postalCode_oid'].unique():
+            session.merge(PostalCode(_oid=el))
 
-    # create municipalities
-    # TODO: no need for a dataframe since _oid is set to bfs number
-    sf = pd.DataFrame(df['_municipality_oid'].unique(), columns=['bfsn'])
-    sf['municipality'] = sf.apply(
-        lambda x: Municipality(
-            _oid=x.bfsn, name=x.bfsn, municipalityId=x.bfsn), axis=1)
-    sf = sf.set_index('bfsn')
+    # flush assetCollection to get id
+    session.add(assetCollection)
+    session.flush()
 
-    for el in sf['municipality']:
-        session.merge(el)
+    # assign assetCollection
+    assets_df['_assetCollection_oid'] = assetCollection._oid
 
-    # group by sites
-    dg = df.groupby(['lon', 'lat'])
-    all_sites = []
+    # create sites and assign sites list index to assets
+    sites, assets_df['sites_list_index'] = sites_from_asset_dataframe(
+        assets_df)
 
-    # create site models
-    for name, _ in dg:
-        site = Site(longitude_value=name[0],
-                    latitude_value=name[1],
-                    _assetCollection_oid=assetCollection._oid)
-        session.add(site)
-        all_sites.append(site)
-
-    # flush sites to get an ID but keep fast accessible in memory
+    # add and flush sites to get an ID but keep fast accessible in memory
+    session.add_all(sites)
     session.flush()
 
     # assign ID back to dataframe using group index
-    df['GN'] = dg.grouper.group_info[0]
-    df['_site_oid'] = df.apply(lambda x: all_sites[x['GN']]._oid, axis=1)
+    assets_df['_site_oid'] = assets_df.apply(
+        lambda x: sites[x['sites_list_index']]._oid, axis=1)
 
     # commit so that FK exists in databse
     session.commit()
 
     # write selected columns directly to database
-    df.loc[:, ['taxonomy_concept',
-               'buildingCount',
-               'contentvalue_value',
-               'occupancydaytime_value',
-               'structuralvalue_value',
-               '_assetCollection_oid',
-               '_site_oid',
-               '_municipality_oid']] \
-        .to_sql('loss_asset', engine, if_exists='append', index=False)
+    assets_df.filter(Asset.get_keys()).to_sql(
+        'loss_asset', engine, if_exists='append', index=False)
 
     return get_exposure()
 
