@@ -58,7 +58,7 @@ def register_blueprints(app):
 
 def configure_logging(app):
     # Set up logger
-    if not os.path.exists('logs'):
+    if not os.path.exists('logs'):  # pragma: no cover
         os.mkdir('logs')
 
     app.logger.removeHandler(default_handler)

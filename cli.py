@@ -5,7 +5,7 @@ from datamodel import init_db, drop_db, session, engine
 import requests
 from openquake.calculators.extract import Extractor
 from openquake.commonlib.datastore import read
-
+import os
 from flask.cli import FlaskGroup
 
 
@@ -13,6 +13,18 @@ from flask.cli import FlaskGroup
 def cli():
     """Management script for the EBR application."""
     pass
+
+
+@cli.command()
+def pytest():
+    if os.system('pytest -rx'):
+        raise RuntimeError('Running pytest failed')
+
+
+@cli.command()
+def pytest_cov():
+    if os.system('pytest --cov=app --cov=datamodel --cov-report term-missing'):
+        raise RuntimeError('Running pytest coverage failed')
 
 
 @ cli.group()

@@ -16,6 +16,7 @@ class Config(object):
     SECRET_KEY = os.getenv('SECRET_KEY', default='')
     CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', default='')
     RESULT_BACKEND = os.getenv('RESULT_BACKEND', default='')
+    APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 class DevelopmentConfig(Config):
