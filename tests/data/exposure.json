@@ -1,0 +1,14 @@
+{
+    "category": "buildings",
+    "name": "Exposure_name",
+    "taxonomySource": "SPG (EPFL)",
+    "publicId_resourceId": "id123",
+    "tagNames": [
+        "canton",
+        "municipality",
+        "postalcode"
+    ],
+    "costTypes": [
+        "structural"
+    ]
+}
