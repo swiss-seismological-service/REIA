@@ -32,24 +32,18 @@ def set_up_database(mock_settings_env_vars):
 
 
 @pytest.fixture
-def client():
-    """ push app context and yield a testing client """
-    app = create_app()
-    ctx = app.app_context()
-    ctx.push()
-    with app.test_client() as client:
-        yield client
-
-    ctx.pop()
-
-
-@pytest.fixture
 def db_session():
     """ init and drop db tables for each function, yield session and remove it at the end """
     from datamodel import session, drop_db, init_db
     init_db()
-
     yield session
-
-    session.remove()
     drop_db()
+
+
+@pytest.fixture
+def client(db_session):
+    """ create app context and yield a testing client """
+    app = create_app()
+    with app.test_client() as client:
+        with app.app_context():
+            yield client
