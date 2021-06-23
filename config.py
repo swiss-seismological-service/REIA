@@ -28,7 +28,8 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
     """ Testing specific configurations """
     TESTING = True
-    DB_CONNECTION_STRING = ''
+    DB_CONNECTION_STRING = 'postgresql+psycopg2://postgres:' \
+        'postgres@localhost:5432/test'
 
 
 class ProductionConfig(Config):
