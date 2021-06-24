@@ -1,15 +1,17 @@
 from datamodel import Site
+from typing import TextIO, Tuple
 import pandas as pd
 
 
-def read_asset_csv(file):
-    """ Reads an exposure file with assets into a dataframe
+def read_asset_csv(file: TextIO) -> pd.DataFrame:
+    """ 
+    Reads an exposure file with assets into a dataframe
 
-    :args: file: csv file object with the following headers:
-    id,lon,lat,taxonomy,number,structural,contents,day(
-        CantonGemeinde,CantonGemeindePC, ...)
+    :params file:   csv file object with the following headers:
+                    id,lon,lat,taxonomy,number,structural,contents,day(
+                    CantonGemeinde,CantonGemeindePC, ...)
 
-    :returns: dataframe: with columns compatible with the datamodel.Assets object + lat and lon
+    :returns:       df with columns compatible with the datamodel.Assets object + lat and lon
      """
 
     df = pd.read_csv(file, index_col='id')
@@ -32,9 +34,15 @@ def read_asset_csv(file):
     return df
 
 
-def sites_from_asset_dataframe(assets_df):
+def sites_from_assets(assets: pd.DataFrame) -> Tuple[list, list]:
+    """
+    Extract sites from assets dataframe
+
+    :params assets: Dataframe of assets with 'lon' and 'lat' column
+    :returns:       list of Site objects and list of group numbers for dataframe rows
+    """
     # group by sites
-    site_groups = assets_df.groupby(['lon', 'lat'])
+    site_groups = assets.groupby(['lon', 'lat'])
 
     all_sites = []
 
@@ -42,7 +50,7 @@ def sites_from_asset_dataframe(assets_df):
     for name, _ in site_groups:
         site = Site(longitude_value=name[0],
                     latitude_value=name[1],
-                    _assetCollection_oid=int(assets_df.loc[0, '_assetCollection_oid']))
+                    _assetCollection_oid=int(assets.loc[0, '_assetCollection_oid']))
         all_sites.append(site)
 
     # return sites alongside with group index

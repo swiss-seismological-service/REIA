@@ -22,7 +22,7 @@ from datamodel import (session, engine, AssetCollection, Asset, Site,
                        VulnerabilityFunction, VulnerabilityModel, LossConfig,
                        LossModel, LossCalculation, MeanAssetLoss, Municipality)
 
-from .utils import read_asset_csv, sites_from_asset_dataframe
+from .utils import read_asset_csv, sites_from_assets
 
 
 @api.route('/')
@@ -62,7 +62,7 @@ def post_exposure():
     assets_df['_assetCollection_oid'] = assetCollection._oid
 
     # create sites and assign sites list index to assets
-    sites, assets_df['sites_list_index'] = sites_from_asset_dataframe(
+    sites, assets_df['sites_list_index'] = sites_from_assets(
         assets_df)
 
     # add and flush sites to get an ID but keep fast accessible in memory
