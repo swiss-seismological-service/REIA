@@ -25,10 +25,10 @@ from datamodel import (session, engine, AssetCollection, Asset, Site,
 from .utils import read_asset_csv, sites_from_assets
 
 
-@api.route('/')
-def index():
-    test.apply_async()
-    return 'Hello World'
+# @api.route('/')
+# def index():
+#     test.apply_async()
+#     return 'Hello World'
 
 
 @api.post('/exposure')
