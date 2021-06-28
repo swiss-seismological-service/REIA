@@ -69,7 +69,7 @@ def extract(type):
         columns={'asset_id': '_asset_oid', 'value': 'loss_value'})
 
     data = data.apply(lambda x: MeanAssetLoss(
-        _lossCalculation_oid=2, **x), axis=1)
+        _losscalculation_oid=2, **x), axis=1)
     session.add_all(data)
     session.commit()
     pass

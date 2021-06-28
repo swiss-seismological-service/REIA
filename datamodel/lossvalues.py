@@ -14,11 +14,11 @@ class LossValue(ORMBase, RealQuantityMixin('loss')):
         <https://docs.sqlalchemy.org/en/latest/orm/inheritance.html#joined-table-inheritance>`_
         paradigm.
     """
-    _lossCalculation_oid = Column(
+    _losscalculation_oid = Column(
         BigInteger,
         ForeignKey('loss_losscalculation._oid'),
         nullable=False)
-    lossCalculation = relationship(
+    losscalculation = relationship(
         'LossCalculation',
         back_populates='losses')
 
@@ -51,7 +51,7 @@ class SiteLoss(LossValue):
     __tablename__ = 'loss_siteloss'
     _oid = Column(BigInteger, ForeignKey(
         'loss_lossvalue._oid'), primary_key=True)
-    realizationId = Column(Integer, nullable=False)
+    realizationid = Column(Integer, nullable=False)
     _site_oid = Column(
         BigInteger,
         ForeignKey('loss_site._oid'),
@@ -69,7 +69,7 @@ class TaxonomyLoss(LossValue, ClassificationMixin('taxonomy'),):
     __tablename__ = 'loss_taxonomyloss'
     _oid = Column(BigInteger, ForeignKey(
         'loss_lossvalue._oid'), primary_key=True)
-    realizationId = Column(Integer, nullable=False)
+    realizationid = Column(Integer, nullable=False)
 
     __mapper_args__ = {
         'polymorphic_identity': 'taxonomyloss'
@@ -83,15 +83,15 @@ class MunicipalityPCLoss(LossValue):
     _oid = Column(BigInteger, ForeignKey(
         'loss_lossvalue._oid'), primary_key=True)
 
-    realizationId = Column(Integer, nullable=False)
+    realizationid = Column(Integer, nullable=False)
 
     # postal code relationship
-    _postalCode_oid = Column(
+    _postalcode_oid = Column(
         BigInteger,
         ForeignKey('loss_postalcode._oid'),
         nullable=False
     )
-    postalCode = relationship('PostalCode')
+    postalcode = relationship('PostalCode')
 
     # municipality relationship
     _municipality_oid = Column(
@@ -111,13 +111,13 @@ class MunicipalityPCLoss(LossValue):
 #     __tablename__ = 'loss_postalcodeloss'
 #     _oid = Column(BigInteger, ForeignKey(
 #         'loss_lossvalue._oid'), primary_key=True)
-#     realizationId = Column(Integer, nullable=False)
-#     _postalCode_oid = Column(
+#     realizationid = Column(Integer, nullable=False)
+#     _postalcode_oid = Column(
 #         BigInteger,
 #         ForeignKey('loss_postalcode._oid'),
 #         nullable=False
 #     )
-#     postalCode = relationship('PostalCode')
+#     postalcode = relationship('PostalCode')
 
 #     __mapper_args__ = {
 #         'polymorphic_identity': 'postalcodeloss'
@@ -128,7 +128,7 @@ class MunicipalityPCLoss(LossValue):
 #     __tablename__ = 'loss_municipalityloss'
 #     _oid = Column(BigInteger, ForeignKey(
 #         'loss_lossvalue._oid'), primary_key=True)
-#     realizationId = Column(Integer, nullable=False)
+#     realizationid = Column(Integer, nullable=False)
 #     _municipality_oid = Column(
 #         BigInteger,
 #         ForeignKey('loss_municipality._oid'),

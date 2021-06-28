@@ -11,9 +11,9 @@ def test_read_asset_csv():
 
     assert df.loc[1].values.tolist() == result
 
-    columns = ['taxonomy_concept', 'buildingCount', 'contentvalue_value',
-               'occupancydaytime_value', 'structuralvalue_value',
-               '_municipality_oid', '_postalCode_oid']
+    columns = ['taxonomy_concept', 'buildingcount', 'contentvalue_value',
+               'occupancy_daytime_value', 'structuralvalue_value',
+               '_municipality_oid', '_postalcode_oid']
 
     assert all(col in list(df.columns) for col in columns)
 
@@ -21,7 +21,7 @@ def test_read_asset_csv():
 def test_sites_from_assets():
     with open('tests/data/exposure_assets.csv') as csv:
         df = read_asset_csv(csv)
-        df['_assetCollection_oid'] = 1
+        df['_assetcollection_oid'] = 1
 
     all_sites, groups = sites_from_assets(df)
 

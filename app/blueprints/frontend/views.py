@@ -32,11 +32,11 @@ def plotlymap(oid):
         m_json = json.load(file)
 
     asset_query = session.query(MeanAssetLoss, Asset._municipality_oid).filter(
-        MeanAssetLoss._lossCalculation_oid == oid).join(Asset)
+        MeanAssetLoss._losscalculation_oid == oid).join(Asset)
 
     dm = pd.read_sql_query(asset_query.statement, engine)
-    dm = dm.drop(['_oid', '_oid_1', '_lossCalculation_oid',
-                 'loss_Uncertainty', '_asset_oid'], axis=1)
+    dm = dm.drop(['_oid', '_oid_1', '_losscalculation_oid',
+                 'loss_uncertainty', '_asset_oid'], axis=1)
     dm = dm.groupby('_municipality_oid').sum()
     dm['_oid'] = dm.index
 

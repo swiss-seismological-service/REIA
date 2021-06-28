@@ -20,10 +20,10 @@ def test_exposure(client, db_session):
     assert response.status == '200 OK'
 
     db_assetcollection = db_session.query(AssetCollection).first()
-    assert db_assetcollection.taxonomySource == 'SPG (EPFL)'
+    assert db_assetcollection.taxonomysource == 'SPG (EPFL)'
 
     n_assets = db_session.query(Asset).filter(
-        Asset._assetCollection_oid == db_assetcollection._oid).count()
+        Asset._assetcollection_oid == db_assetcollection._oid).count()
     assert n_assets == 10
 
     response_get = client.get('/api/v1/exposure')

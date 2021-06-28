@@ -14,9 +14,9 @@ export default function LossModelUpload(props) {
     const [values, setValues] = useState(initial);
 
     const handleSubmission = () => {
-        props.reload({ lossModels: null, lossModelLoading: true });
+        props.reload({ lossmodels: null, lossModelLoading: true });
         postLossModel(values).then((response) => {
-            props.reload({ lossModels: response, lossModelLoading: false });
+            props.reload({ lossmodels: response, lossModelLoading: false });
         });
     };
 

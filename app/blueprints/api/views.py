@@ -37,29 +37,29 @@ def post_exposure():
     # create asset collection from json file
     file_ac = request.files.get('exposureJSON')
     data = json.load(file_ac)
-    assetCollection = AssetCollection(**data)
+    assetcollection = AssetCollection(**data)
 
     # read assets into pandas dataframe and rename columns
     file_assets = request.files.get('exposureCSV')
     assets_df = read_asset_csv(file_assets)
 
     # add tags to session and tag names to Asset Collection
-    assetCollection.tagNames = []
+    assetcollection.tagnames = []
     if '_municipality_oid' in assets_df:
-        assetCollection.tagNames.append('municipality')
+        assetcollection.tagnames.append('municipality')
         for el in assets_df['_municipality_oid'].unique():
             session.merge(Municipality(_oid=el))
-    if '_postalCode_oid' in assets_df:
-        assetCollection.tagNames.append('postalcode')
-        for el in assets_df['_postalCode_oid'].unique():
+    if '_postalcode_oid' in assets_df:
+        assetcollection.tagnames.append('postalcode')
+        for el in assets_df['_postalcode_oid'].unique():
             session.merge(PostalCode(_oid=el))
 
-    # flush assetCollection to get id
-    session.add(assetCollection)
+    # flush assetcollection to get id
+    session.add(assetcollection)
     session.flush()
 
-    # assign assetCollection
-    assets_df['_assetCollection_oid'] = assetCollection._oid
+    # assign assetcollection
+    assets_df['_assetcollection_oid'] = assetcollection._oid
 
     # create sites and assign sites list index to assets
     sites, assets_df['sites_list_index'] = sites_from_assets(
@@ -101,9 +101,9 @@ def get_exposure():
             'id': coll[0]._oid,
             'name': coll[0].name,
             'category': coll[0].category,
-            'taxonomySource': coll[0].taxonomySource,
-            'costTypes': coll[0].costTypes,
-            'tagNames': coll[0].tagNames,
+            'taxonomysource': coll[0].taxonomysource,
+            'costtypes': coll[0].costtypes,
+            'tagnames': coll[0].tagnames,
             'nAssets': coll[1],
             'nSites': coll[2]
         }
@@ -126,8 +126,8 @@ def get_vulnerability():
     for coll in vm:
         c = {
             'id': coll[0]._oid,
-            'lossCategory': coll[0].lossCategory,
-            'assetCategory': coll[0].assetCategory,
+            'losscategory': coll[0].losscategory,
+            'assetcategory': coll[0].assetcategory,
             'description': coll[0].description,
             'nFunctions': coll[1]
         }
@@ -144,7 +144,7 @@ def post_vulnerability():
     functions = []
 
     # read xml file with ElementTree
-    file = request.files.get('vulnerabilityModel')
+    file = request.files.get('vulnerabilitymodel')
     tree = ET.iterparse(file)
 
     # strip namespace for easier querying
@@ -155,30 +155,30 @@ def post_vulnerability():
 
     # read values for VulnerabilityModel
     for child in root.getchildren():
-        model['assetCategory'] = child.attrib['assetCategory']
-        model['lossCategory'] = child.attrib['lossCategory']
-    model['description'] = root.find('vulnerabilityModel/description').text
+        model['assetcategory'] = child.attrib['assetcategory']
+        model['losscategory'] = child.attrib['losscategory']
+    model['description'] = root.find('vulnerabilitymodel/description').text
 
     # read values for VulnerabilityFunctions
-    for vF in root.findall('vulnerabilityModel/vulnerabilityFunction'):
+    for vF in root.findall('vulnerabilitymodel/vulnerabilityFunction'):
         fun = {}
         fun['taxonomy_concept'] = vF.attrib['id']
         fun['distribution'] = vF.attrib['dist']
-        fun['intensityMeasureType'] = vF.find('imls').attrib['imt']
-        fun['intensityMeasureLevels'] = vF.find('imls').text.split(' ')
-        fun['meanLossRatios'] = vF.find('meanLRs').text.split(' ')
-        fun['covarianceLossRatios'] = vF.find('covLRs').text.split(' ')
+        fun['intensitymeasuretype'] = vF.find('imls').attrib['imt']
+        fun['intensitymeasurelevels'] = vF.find('imls').text.split(' ')
+        fun['meanlossratios'] = vF.find('meanLRs').text.split(' ')
+        fun['covariancelossratios'] = vF.find('covLRs').text.split(' ')
         functions.append(fun)
 
     # assemble vulnerability Model
-    vulnerabilityModel = VulnerabilityModel(**model)
-    session.add(vulnerabilityModel)
+    vulnerabilitymodel = VulnerabilityModel(**model)
+    session.add(vulnerabilitymodel)
     session.flush()
 
     # assemble vulnerability Functions
     for vF in functions:
         f = VulnerabilityFunction(**vF)
-        f._vulnerabilityModel_oid = vulnerabilityModel._oid
+        f._vulnerabilitymodel_oid = vulnerabilitymodel._oid
         session.add(f)
 
     session.commit()
@@ -201,16 +201,16 @@ def get_loss_model():
         new_model = {
             'id': loss[0]._oid,
             'description': loss[0].description,
-            'preparationCalculationMode': loss[0].preparationCalculationMode,
-            'mainCalculationMode': loss[0].mainCalculationMode,
-            'numberOfGroundMotionFields': loss[0].numberOfGroundMotionFields,
-            'maximumDistance': loss[0].maximumDistance,
-            'masterSeed': loss[0].masterSeed,
-            'randomSeed': loss[0].randomSeed,
-            'truncationLevel': loss[0].truncationLevel,
-            'vulnerabilityModels':
-            ','.join([str(v._oid) for v in loss[0].vulnerabilityModels]),
-            'assetCollection': loss[0]._assetCollection_oid,
+            'preparationcalculationmode': loss[0].preparationcalculationmode,
+            'maincalculationmode': loss[0].maincalculationmode,
+            'numberofgroundmotionfields': loss[0].numberofgroundmotionfields,
+            'maximumdistance': loss[0].maximumdistance,
+            'masterseed': loss[0].masterseed,
+            'randomseed': loss[0].randomseed,
+            'truncationlevel': loss[0].truncationlevel,
+            'vulnerabilitymodels':
+            ','.join([str(v._oid) for v in loss[0].vulnerabilitymodels]),
+            'assetcollection': loss[0]._assetcollection_oid,
             'nCalculations': loss[1]
         }
         response.append(new_model)
@@ -222,18 +222,18 @@ def get_loss_model():
 def post_loss_model():
     # read form data and uploaded file
     form_data = request.form
-    file = request.files.get('lossModel')
+    file = request.files.get('lossmodel')
     data = json.load(file)
 
     # append asset collection id
-    data['_assetCollection_oid'] = int(form_data['assetCollection'])
+    data['_assetcollection_oid'] = int(form_data['assetcollection'])
 
     # get related vulnerability models and append
     vmIDs = [
-        int(x) for x in form_data['vulnerabilityModels'].split(',')]
-    vulnerabilityModels = session.query(VulnerabilityModel).filter(
+        int(x) for x in form_data['vulnerabilitymodels'].split(',')]
+    vulnerabilitymodels = session.query(VulnerabilityModel).filter(
         VulnerabilityModel._oid.in_(vmIDs)).all()
-    data['vulnerabilityModels'] = vulnerabilityModels
+    data['vulnerabilitymodels'] = vulnerabilitymodels
 
     # assemble LossModel object
     loss_model = LossModel(**data)
@@ -252,9 +252,9 @@ def get_loss_config():
     for config in loss_config:
         new_config = {
             'id': config._oid,
-            'lossCategory': config.lossCategory,
+            'losscategory': config.losscategory,
             'aggregateBy': config.aggregateBy,
-            'lossModel': config._lossModel_oid
+            'lossmodel': config._lossmodel_oid
         }
         response.append(new_config)
 
@@ -266,9 +266,9 @@ def get_loss_config():
 def post_loss_config():
     data = request.get_json()
     loss_config = LossConfig(
-        lossCategory=data['lossCategory'],
+        losscategory=data['losscategory'],
         aggregateBy=data['aggregateBy'],
-        _lossModel_oid=data['lossModelId'])
+        _lossmodel_oid=data['lossmodelId'])
     session.add(loss_config)
     session.commit()
     return get_loss_config()
@@ -282,13 +282,13 @@ def post_calculation_run():
     # get data from database
     lossConfig = session.query(LossConfig).get(1)
 
-    lossModel = session.query(LossModel).get(lossConfig._lossModel_oid)
+    lossmodel = session.query(LossModel).get(lossConfig._lossmodel_oid)
     exposureModel = session.query(AssetCollection).get(
-        lossModel._assetCollection_oid)
+        lossmodel._assetcollection_oid)
 
-    vulnerabilityModel = session.query(VulnerabilityModel) \
-        .join(LossModel, VulnerabilityModel.lossModels). \
-        filter(VulnerabilityModel.lossCategory == lossConfig.lossCategory)\
+    vulnerabilitymodel = session.query(VulnerabilityModel) \
+        .join(LossModel, VulnerabilityModel.lossmodels). \
+        filter(VulnerabilityModel.losscategory == lossConfig.losscategory)\
         .first()
 
     # create in memory files
@@ -305,7 +305,7 @@ def post_calculation_run():
 
     # vulnerability.xml
     vulnerability_xml = createFP(
-        'api/vulnerability.xml', data=vulnerabilityModel.to_dict())
+        'api/vulnerability.xml', data=vulnerabilitymodel.to_dict())
 
     loss_config_dict = lossConfig.to_dict()
 
@@ -362,19 +362,19 @@ def post_calculation_run():
         print("Something went wrong!")
         print(response.text)
 
-    lossCalculation = LossCalculation(
+    losscalculation = LossCalculation(
         shakemapid_resourceid='shakemap_address',
-        _lossModel_oid=lossModel._oid,
-        lossCategory=lossConfig.lossCategory,
+        _lossmodel_oid=lossmodel._oid,
+        losscategory=lossConfig.losscategory,
         aggregateBy=lossConfig.aggregateBy,
-        timestamp_startTime=datetime.now()
+        timestamp_starttime=datetime.now()
     )
-    session.add(lossCalculation)
+    session.add(losscalculation)
     session.commit()
 
     # wait, fetch and save results
     thread = threading.Thread(target=waitAndFetchResults(
-        response.json()['job_id'], lossCalculation._oid))
+        response.json()['job_id'], losscalculation._oid))
     thread.daemon = True
     thread.start()
     return make_response(response.json(), 200)
@@ -399,7 +399,7 @@ def waitAndFetchResults(oqJobId, calcId):
 
     # save results to database
     data = data.apply(lambda x: MeanAssetLoss(
-        _lossCalculation_oid=calcId, **x), axis=1)
+        _losscalculation_oid=calcId, **x), axis=1)
     session.add_all(data)
     session.commit()
     print('Done saving results')
@@ -423,10 +423,10 @@ def get_loss_calculation():
     for ls in loss_calculation:
         d = {
             'id': ls._oid,
-            'lossModelId': ls._lossModel_oid,
-            'lossCategory': ls.lossCategory,
+            'lossmodelId': ls._lossmodel_oid,
+            'losscategory': ls.losscategory,
             'aggregateBy': ls.aggregateBy,
-            'timestamp': ls.timestamp_startTime
+            'timestamp': ls.timestamp_starttime
         }
         response.append(d)
     return make_response(jsonify(response), 200)

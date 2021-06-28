@@ -17,9 +17,9 @@ def read_asset_csv(file: TextIO) -> pd.DataFrame:
     df = pd.read_csv(file, index_col='id')
 
     df = df.rename(columns={'taxonomy': 'taxonomy_concept',
-                            'number': 'buildingCount',
+                            'number': 'buildingcount',
                             'contents': 'contentvalue_value',
-                            'day': 'occupancydaytime_value',
+                            'day': 'occupancy_daytime_value',
                             'structural': 'structuralvalue_value'
                             })
     if 'CantonGemeinde' in df:
@@ -28,8 +28,8 @@ def read_asset_csv(file: TextIO) -> pd.DataFrame:
             lambda x: x[2:])
 
     if 'CantonGemeindePC' in df:
-        df = df.rename(columns={'CantonGemeindePC': '_postalCode_oid'})
-        df['_postalCode_oid'] = df['_postalCode_oid'].apply(lambda x: x[-4:])
+        df = df.rename(columns={'CantonGemeindePC': '_postalcode_oid'})
+        df['_postalcode_oid'] = df['_postalcode_oid'].apply(lambda x: x[-4:])
 
     return df
 
@@ -50,7 +50,7 @@ def sites_from_assets(assets: pd.DataFrame) -> Tuple[list, list]:
     for name, _ in site_groups:
         site = Site(longitude_value=name[0],
                     latitude_value=name[1],
-                    _assetCollection_oid=int(assets.loc[0, '_assetCollection_oid']))
+                    _assetcollection_oid=int(assets.loc[0, '_assetcollection_oid']))
         all_sites.append(site)
 
     # return sites alongside with group index

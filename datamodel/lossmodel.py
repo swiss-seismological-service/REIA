@@ -14,29 +14,29 @@ loss_vulnerability_association = Table(
 
 class LossModel(PublicIdMixin, ORMBase):
     """Calculation model"""
-    preparationCalculationMode = Column(String(20), nullable=False)
-    mainCalculationMode = Column(String(20), nullable=False)
-    numberOfGroundMotionFields = Column(Integer, nullable=False)
+    preparationcalculationmode = Column(String(20), nullable=False)
+    maincalculationmode = Column(String(20), nullable=False)
+    numberofgroundmotionfields = Column(Integer, nullable=False)
     description = Column(String(100))
-    maximumDistance = Column(Integer)
-    masterSeed = Column(Integer)
-    randomSeed = Column(Integer)
-    truncationLevel = Column(Float)
+    maximumdistance = Column(Integer)
+    masterseed = Column(Integer)
+    randomseed = Column(Integer)
+    truncationlevel = Column(Float)
 
-    _assetCollection_oid = Column(
+    _assetcollection_oid = Column(
         BigInteger,
         ForeignKey('loss_assetcollection._oid'),
         nullable=False)
-    assetCollection = relationship(
+    assetcollection = relationship(
         'AssetCollection',
-        back_populates='lossModels')
-    vulnerabilityModels = relationship(
+        back_populates='lossmodels')
+    vulnerabilitymodels = relationship(
         'VulnerabilityModel',
         secondary=loss_vulnerability_association,
-        back_populates='lossModels')
-    lossCalculations = relationship(
+        back_populates='lossmodels')
+    losscalculations = relationship(
         'LossCalculation',
-        back_populates='lossModel',
+        back_populates='lossmodel',
         single_parent=True,
         lazy='joined',
         cascade='all, delete, delete-orphan')
@@ -46,48 +46,31 @@ class LossCalculation(ORMBase, CreationInfoMixin, EpochMixin('timestamp')):
     """Calculation Parameters model"""
     shakemapid_resourceid = Column(String(100), nullable=False)
 
-    _lossModel_oid = Column(
+    _lossmodel_oid = Column(
         BigInteger,
         ForeignKey('loss_lossmodel._oid'),
         nullable=False)
-    lossModel = relationship(
+    lossmodel = relationship(
         'LossModel',
-        back_populates='lossCalculations',
+        back_populates='losscalculations',
         lazy='joined')
     losses = relationship(
         'LossValue',
-        back_populates='lossCalculation',
+        back_populates='losscalculation',
         single_parent=True,
         cascade='all, delete, delete-orphan')
 
-    lossCategory = Column(String(20), nullable=False)
+    losscategory = Column(String(20), nullable=False)
     aggregateBy = Column(String(20))
 
 
 class LossConfig(ORMBase):
-    lossCategory = Column(String(20), nullable=False)
+    losscategory = Column(String(20), nullable=False)
     aggregateBy = Column(String(20))
-    _lossModel_oid = Column(
+    _lossmodel_oid = Column(
         BigInteger,
         ForeignKey('loss_lossmodel._oid'),
         nullable=False)
-    lossModel = relationship(
+    lossmodel = relationship(
         'LossModel',
         lazy='joined')
-
-    def to_dict(self):
-        d = {
-            'preparationCalculationMode':
-            self.lossModel.preparationCalculationMode,
-            'mainCalculationMode': self.lossModel.mainCalculationMode,
-            'numberOfGroundMotionFields':
-            self.lossModel.numberOfGroundMotionFields,
-            'description': self.lossModel.description,
-            'maximumDistance': self.lossModel.maximumDistance,
-            'masterSeed': self.lossModel.masterSeed,
-            'randomSeed': self.lossModel.randomSeed,
-            'truncationLevel': self.lossModel.truncationLevel,
-            'lossCategory': self.lossCategory,
-            'aggregateBy': self.aggregateBy,
-        }
-        return d

@@ -12,50 +12,38 @@ class AssetCollection(ORMBase, PublicIdMixin, CreationInfoMixin):
     """Asset Collection model"""
     name = Column(String, nullable=False)
     category = Column(String)
-    taxonomySource = Column(String)
-    costTypes = Column(ARRAY(String))
-    tagNames = Column(ARRAY(String))
-    lossModels = relationship(
+    taxonomysource = Column(String)
+    costtypes = Column(ARRAY(String))
+    tagnames = Column(ARRAY(String))
+    lossmodels = relationship(
         'LossModel',
-        back_populates='assetCollection')
+        back_populates='assetcollection')
     assets = relationship(
         'Asset',
-        back_populates='assetCollection',
+        back_populates='assetcollection',
         single_parent=True,
         cascade='all, delete, delete-orphan')
     sites = relationship(
         'Site',
-        back_populates='assetCollection',
+        back_populates='assetcollection',
         single_parent=True,
         cascade='all, delete, delete-orphan')
 
-    def to_dict(self):
-        d = {
-            'id': self._oid,
-            'publicId_resourceId': self.publicId_resourceId,
-            'name': self.name,
-            'category': self.category,
-            'taxonomySource': self.taxonomySource,
-            'tagNames': self.tagNames,
-            'costTypes': self.costTypes
-        }
-        return d
 
-
-class Asset(RealQuantityMixin('contentValue'),
-            RealQuantityMixin('structuralValue'),
-            RealQuantityMixin('occupancyDaytime'),
+class Asset(RealQuantityMixin('contentvalue'),
+            RealQuantityMixin('structuralvalue'),
+            RealQuantityMixin('occupancy_daytime'),
             ClassificationMixin('taxonomy'),
             ORMBase):
     """Asset model"""
-    _assetCollection_oid = Column(
+    _assetcollection_oid = Column(
         BigInteger,
         ForeignKey('loss_assetcollection._oid'))
-    assetCollection = relationship(
+    assetcollection = relationship(
         'AssetCollection',
         back_populates='assets')
 
-    buildingCount = Column(Integer, nullable=False)
+    buildingcount = Column(Integer, nullable=False)
 
     # site relationship
     _site_oid = Column(
@@ -68,10 +56,10 @@ class Asset(RealQuantityMixin('contentValue'),
         lazy='joined')
 
     # postal code relationship
-    _postalCode_oid = Column(
+    _postalcode_oid = Column(
         BigInteger,
         ForeignKey('loss_postalcode._oid'))
-    postalCode = relationship(
+    postalcode = relationship(
         'PostalCode',
         back_populates='assets',
         lazy='joined')
@@ -85,19 +73,6 @@ class Asset(RealQuantityMixin('contentValue'),
         back_populates='assets',
         lazy='joined')
 
-    def to_dict(self):
-        d = {
-            'id': self._oid,
-            'lon': self.site.longitude_value,
-            'lat': self.site.latitude_value,
-            'taxonomy': self.taxonomy_concept,
-            'number': self.buildingCount,
-            'structural': self.structuralvalue_value,
-            'contents': self.contentvalue_value,
-            'day': self.occupancydaytime_value,
-        }
-        return d
-
     @classmethod
     def get_keys(cls):
         return cls.__table__.c.keys()
@@ -109,10 +84,10 @@ class Site(PublicIdMixin,
            ORMBase):
     """Site model"""
     # asset collection relationship
-    _assetCollection_oid = Column(
+    _assetcollection_oid = Column(
         BigInteger,
         ForeignKey('loss_assetcollection._oid'))
-    assetCollection = relationship(
+    assetcollection = relationship(
         'AssetCollection',
         back_populates='sites',
         lazy='joined')
@@ -128,7 +103,7 @@ class PostalCode(ORMBase):
 
     assets = relationship(
         'Asset',
-        back_populates='postalCode')
+        back_populates='postalcode')
 
 
 class Municipality(ORMBase):

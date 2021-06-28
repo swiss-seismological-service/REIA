@@ -6,6 +6,7 @@ from sqlalchemy.ext.declarative import declarative_base, declared_attr
 
 from config import get_config
 
+
 config = get_config()
 engine = create_engine(config.DB_CONNECTION_STRING, echo=False, future=False)
 
@@ -21,6 +22,12 @@ class Base(object):
         return f'loss_{cls.__name__.lower()}'
 
     _oid = Column(BigInteger, primary_key=True)
+
+    def _asdict(self):
+        dict_ = {}
+        for key in self.__mapper__.c.keys():
+            dict_[key] = getattr(self, key)
+        return dict_
 
 
 ORMBase = declarative_base(cls=Base)

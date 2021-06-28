@@ -1,5 +1,6 @@
 amqp==5.0.6
 astroid==2.5.6
+attrs==21.2.0
 autopep8==1.5.7
 billiard==3.6.4.0
 celery==5.1.0
@@ -9,12 +10,12 @@ click==7.1.2
 click-didyoumean==0.0.3
 click-plugins==1.1.1
 click-repl==0.2.0
+coverage==5.5
 cssmin==0.2.0
 cycler==0.10.0
 decorator==5.0.9
 Django==2.2.23
 docutils==0.17.1
--e git+git@github.com:swiss-seismological-service/ebr.git@4dcd1700ad6e73d34fc514f8191c65dc0ee41ca3#egg=ebr
 flake8==3.9.2
 Flask==2.0.1
 Flask-Assets==2.0
@@ -22,6 +23,7 @@ Flask-WTF==0.15.1
 greenlet==1.0.0
 h5py==2.10.0
 idna==2.10
+iniconfig==1.1.1
 isort==5.8.0
 itsdangerous==2.0.1
 Jinja2==3.0.1
@@ -33,20 +35,25 @@ MarkupSafe==2.0.1
 matplotlib==3.4.2
 mccabe==0.6.1
 numpy==1.19.5
--e git+git@github.com:swiss-seismological-service/sed-oq-engine.git@2c0eaf05f73cc586cca96472ac37aa58c901af3b#egg=openquake.engine
+packaging==20.9
 pandas==1.2.4
 Pillow==8.2.0
 pkg-resources==0.0.0
 plotly==4.14.3
+pluggy==0.13.1
 prompt-toolkit==3.0.18
 psutil==5.6.7
 psycopg2==2.8.6
+py==1.10.0
 pycodestyle==2.7.0
 pyflakes==2.3.0
 pylint==2.8.2
 pyparsing==2.4.7
 pyproj==3.0.1
 pyshp==1.2.3
+pytest==6.2.4
+pytest-cov==2.12.1
+pytest-env==0.6.2
 python-dateutil==2.8.1
 python-dotenv==0.17.1
 pytz==2021.1
@@ -58,6 +65,7 @@ scipy==1.6.3
 Shapely==1.7.1
 six==1.16.0
 SQLAlchemy==1.4.15
+SQLAlchemy-Utils==0.37.7
 sqlparse==0.4.1
 toml==0.10.2
 urllib3==1.26.4
