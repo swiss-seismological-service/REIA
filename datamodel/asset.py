@@ -32,7 +32,7 @@ class AssetCollection(ORMBase, PublicIdMixin, CreationInfoMixin):
 
 class Asset(RealQuantityMixin('contentvalue'),
             RealQuantityMixin('structuralvalue'),
-            RealQuantityMixin('occupancy_daytime'),
+            RealQuantityMixin('occupancydaytime'),
             ClassificationMixin('taxonomy'),
             ORMBase):
     """Asset model"""

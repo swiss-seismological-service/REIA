@@ -7,7 +7,7 @@ def read_asset_csv(file: TextIO) -> pd.DataFrame:
     """ 
     Reads an exposure file with assets into a dataframe
 
-    :params file:   csv file object with the following headers:
+    :params file:   csv file object with the following headers (Input for OpenQuake):
                     id,lon,lat,taxonomy,number,structural,contents,day(
                     CantonGemeinde,CantonGemeindePC, ...)
 
@@ -19,7 +19,7 @@ def read_asset_csv(file: TextIO) -> pd.DataFrame:
     df = df.rename(columns={'taxonomy': 'taxonomy_concept',
                             'number': 'buildingcount',
                             'contents': 'contentvalue_value',
-                            'day': 'occupancy_daytime_value',
+                            'day': 'occupancydaytime_value',
                             'structural': 'structuralvalue_value'
                             })
     if 'CantonGemeinde' in df:

@@ -87,7 +87,7 @@ def post_exposure():
 @csrf.exempt
 def get_exposure():
     # query exposure models and number of Assets and Sites
-    ac = session \
+    asset_collection = session \
         .query(AssetCollection, func.count(distinct(Asset._oid)),
                func.count(distinct(Site._oid))) \
         .select_from(AssetCollection) \
@@ -96,18 +96,12 @@ def get_exposure():
 
     # assemble response object
     response = []
-    for coll in ac:
-        c = {
-            'id': coll[0]._oid,
-            'name': coll[0].name,
-            'category': coll[0].category,
-            'taxonomysource': coll[0].taxonomysource,
-            'costtypes': coll[0].costtypes,
-            'tagnames': coll[0].tagnames,
-            'nAssets': coll[1],
-            'nSites': coll[2]
-        }
-        response.append(c)
+    for collection in asset_collection:
+        collection_dict = collection[0]._asdict()
+        collection_dict['assets_count'] = collection[1]
+        collection_dict['sites_count'] = collection[2]
+
+        response.append(collection_dict)
 
     return make_response(jsonify(response), 200)
 
@@ -116,22 +110,18 @@ def get_exposure():
 @csrf.exempt
 def get_vulnerability():
     # query vulnerability Models and number of functions
-    vm = session.query(VulnerabilityModel,
-                       func.count(VulnerabilityFunction._oid)) \
+    vulnerability_model = session.query(VulnerabilityModel,
+                                        func.count(VulnerabilityFunction._oid)) \
         .outerjoin(VulnerabilityFunction) \
         .group_by(VulnerabilityModel._oid).all()
 
     # assemble response object
     response = []
-    for coll in vm:
-        c = {
-            'id': coll[0]._oid,
-            'losscategory': coll[0].losscategory,
-            'assetcategory': coll[0].assetcategory,
-            'description': coll[0].description,
-            'nFunctions': coll[1]
-        }
-        response.append(c)
+    for model in vulnerability_model:
+        model_dict = model[0]._asdict()
+        model_dict['functions_count'] = model[1]
+
+        response.append(model_dict)
 
     return make_response(jsonify(response), 200)
 
@@ -197,23 +187,14 @@ def get_loss_model():
 
     # assemble response object
     response = []
-    for loss in loss_models:
-        new_model = {
-            'id': loss[0]._oid,
-            'description': loss[0].description,
-            'preparationcalculationmode': loss[0].preparationcalculationmode,
-            'maincalculationmode': loss[0].maincalculationmode,
-            'numberofgroundmotionfields': loss[0].numberofgroundmotionfields,
-            'maximumdistance': loss[0].maximumdistance,
-            'masterseed': loss[0].masterseed,
-            'randomseed': loss[0].randomseed,
-            'truncationlevel': loss[0].truncationlevel,
-            'vulnerabilitymodels':
-            ','.join([str(v._oid) for v in loss[0].vulnerabilitymodels]),
-            'assetcollection': loss[0]._assetcollection_oid,
-            'nCalculations': loss[1]
-        }
-        response.append(new_model)
+    for model in loss_models:
+        model_dict = model[0]._asdict()
+        model_dict['calculations_count'] = model[1]
+        model_dict['_vulnerabilitymodels_oids'] = ','.join(
+            [str(v._oid) for v in model[0].vulnerabilitymodels])
+
+        response.append(model_dict)
+
     return make_response(jsonify(response), 200)
 
 
@@ -250,13 +231,9 @@ def get_loss_config():
 
     response = []
     for config in loss_config:
-        new_config = {
-            'id': config._oid,
-            'losscategory': config.losscategory,
-            'aggregateBy': config.aggregateBy,
-            'lossmodel': config._lossmodel_oid
-        }
-        response.append(new_config)
+        config_dict = config._asdict()
+
+        response.append(config_dict)
 
     return make_response(jsonify(response), 200)
 
@@ -265,10 +242,7 @@ def get_loss_config():
 @csrf.exempt
 def post_loss_config():
     data = request.get_json()
-    loss_config = LossConfig(
-        losscategory=data['losscategory'],
-        aggregateBy=data['aggregateBy'],
-        _lossmodel_oid=data['lossmodelId'])
+    loss_config = LossConfig(**data)
     session.add(loss_config)
     session.commit()
     return get_loss_config()
@@ -380,6 +354,20 @@ def post_calculation_run():
     return make_response(response.json(), 200)
 
 
+@api.get('/losscalculation')
+@csrf.exempt
+def get_loss_calculation():
+    response = []
+    loss_calculation = session.query(LossCalculation).all()
+
+    for calculation in loss_calculation:
+        calculation_dict = calculation._asdict()
+
+        response.append(calculation_dict)
+
+    return make_response(jsonify(response), 200)
+
+
 def waitAndFetchResults(oqJobId, calcId):
     # wait for calculation to finish
     while requests.get(f'http://localhost:8800/v1/calc/{oqJobId}/status')\
@@ -413,20 +401,3 @@ def createFP(template_name, **kwargs):
     sio.seek(0)
     sio.name = template_name.rsplit('/', 1)[-1]
     return sio
-
-
-@api.get('/losscalculation')
-@csrf.exempt
-def get_loss_calculation():
-    response = []
-    loss_calculation = session.query(LossCalculation).all()
-    for ls in loss_calculation:
-        d = {
-            'id': ls._oid,
-            'lossmodelId': ls._lossmodel_oid,
-            'losscategory': ls.losscategory,
-            'aggregateBy': ls.aggregateBy,
-            'timestamp': ls.timestamp_starttime
-        }
-        response.append(d)
-    return make_response(jsonify(response), 200)

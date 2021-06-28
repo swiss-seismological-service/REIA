@@ -27,7 +27,7 @@ export async function postExposure(files) {
 
 export async function postVulnerability(files) {
     const formData = new FormData();
-    formData.append('vulnerabilityModel', files[0]);
+    formData.append('vulnerabilitymodel', files[0]);
 
     const response = fetch('/api/v1/vulnerability', {
         method: 'POST',
@@ -43,9 +43,9 @@ export async function postVulnerability(files) {
 
 export async function postLossModel(values) {
     const formData = new FormData();
-    formData.append('lossModel', values.modelJson[0]);
-    formData.append('assetCollection', values.assetCollectionId);
-    formData.append('vulnerabilityModels', values.vulnerabilityModelIds);
+    formData.append('lossmodel', values.modelJson[0]);
+    formData.append('assetcollection', values.assetCollectionId);
+    formData.append('vulnerabilitymodels', values.vulnerabilityModelIds);
     const response = fetch('/api/v1/lossmodel', {
         method: 'POST',
         body: formData,

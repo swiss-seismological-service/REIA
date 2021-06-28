@@ -4,9 +4,9 @@ import { Button, Grid, Paper, Typography, TextField } from '@material-ui/core';
 import { postLossConfig } from '../util/api';
 
 const initial = {
-    lossCategory: '',
-    aggregateBy: '',
-    lossModelId: '',
+    losscategory: '',
+    aggregateby: '',
+    _lossmodel_oid: '',
 };
 
 export default function LossConfigUpload(props) {
@@ -37,7 +37,7 @@ export default function LossConfigUpload(props) {
                     <TextField
                         id="lossCategory-input"
                         label="Loss Category"
-                        name="lossCategory"
+                        name="losscategory"
                         value={values.lossCategory}
                         onChange={handleChange}
                     />
@@ -46,7 +46,7 @@ export default function LossConfigUpload(props) {
                     <TextField
                         id="aggregateBy-input"
                         label="aggregate by"
-                        name="aggregateBy"
+                        name="aggregateby"
                         value={values.aggregateBy}
                         onChange={handleChange}
                     />
@@ -55,7 +55,7 @@ export default function LossConfigUpload(props) {
                     <TextField
                         id="lossModel-input"
                         label="Loss Model ID"
-                        name="lossModelId"
+                        name="_lossmodel_oid"
                         value={values.lossModelId}
                         onChange={handleChange}
                     />

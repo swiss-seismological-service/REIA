@@ -66,7 +66,7 @@ class LossCalculation(ORMBase, CreationInfoMixin, EpochMixin('timestamp')):
 
 class LossConfig(ORMBase):
     losscategory = Column(String(20), nullable=False)
-    aggregateBy = Column(String(20))
+    aggregateby = Column(String(20))
     _lossmodel_oid = Column(
         BigInteger,
         ForeignKey('loss_lossmodel._oid'),

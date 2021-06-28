@@ -31,4 +31,4 @@ def test_exposure(client, db_session):
     res_json = response_get.json[0]
 
     assert res_json['name'] == 'Exposure_name'
-    assert res_json['nSites'] == 7
+    assert res_json['sites_count'] == 7

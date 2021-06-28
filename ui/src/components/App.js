@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 import React from 'react';
 import 'whatwg-fetch';
 import { DataGrid } from '@material-ui/data-grid';
@@ -10,14 +11,14 @@ import LossCalculation from './LossCalculation';
 import { getData } from '../util/api';
 
 const columnsLossConfig = [
-    { field: 'id', headerName: 'ID', width: 50 },
-    { field: 'lossCategory', headerName: 'Loss Category', width: 200 },
-    { field: 'aggregateBy', headerName: 'Aggregate By', width: 300 },
-    { field: 'lossModel', headerName: 'Loss Model', width: 200 },
+    { field: '_oid', headerName: 'ID', width: 50 },
+    { field: 'losscategory', headerName: 'Loss Category', width: 200 },
+    { field: 'aggregateby', headerName: 'Aggregate By', width: 300 },
+    { field: '_lossmodel_oid', headerName: 'Loss Model', width: 200 },
 ];
 
 const columnsLossModel = [
-    { field: 'id', headerName: 'ID', width: 50 },
+    { field: '_oid', headerName: 'ID', width: 50 },
     { field: 'description', headerName: 'Description', width: 300 },
     { field: 'preparationcalculationmode', headerName: 'Prep CM', width: 150 },
     { field: 'maincalculationmode', headerName: 'Main CM', width: 150 },
@@ -26,36 +27,36 @@ const columnsLossModel = [
     { field: 'randomseed', headerName: 'Random Seed', type: 'number', width: 150 },
     { field: 'masterseed', headerName: 'Master Seed', type: 'number', width: 150 },
     { field: 'truncationlevel', headerName: 'Truncation Lvl', type: 'number', width: 150 },
-    { field: 'vulnerabilityModels', headerName: 'Vulnerability Models', width: 190 },
-    { field: 'assetCollection', headerName: 'Asset Collection', type: 'number', width: 165 },
-    { field: 'nCalculations', headerName: 'Loss Calculations', type: 'number', width: 165 },
+    { field: '_vulnerabilitymodels_oids', headerName: 'Vulnerability Models', width: 190 },
+    { field: '_assetcollection_oid', headerName: 'Asset Collection', type: 'number', width: 165 },
+    { field: 'calculations_count', headerName: 'Loss Calculations', type: 'number', width: 165 },
 ];
 
 const columnsVulnerability = [
-    { field: 'id', headerName: 'ID', width: 50 },
-    { field: 'lossCategory', headerName: 'Loss Category', width: 300 },
-    { field: 'assetCategory', headerName: 'Asset Category', width: 150 },
+    { field: '_oid', headerName: 'ID', width: 50 },
+    { field: 'losscategory', headerName: 'Loss Category', width: 300 },
+    { field: 'assetcategory', headerName: 'Asset Category', width: 150 },
     { field: 'description', headerName: 'description', width: 150 },
-    { field: 'nFunctions', headerName: 'Functions', type: 'number', width: 120 },
+    { field: 'functions_count', headerName: 'Functions', type: 'number', width: 120 },
 ];
 
 const columnsExposure = [
-    { field: 'id', headerName: 'ID', width: 50 },
+    { field: '_oid', headerName: 'ID', width: 50 },
     { field: 'name', headerName: 'Name', width: 300 },
     { field: 'category', headerName: 'Category', width: 150 },
     { field: 'taxonomysource', headerName: 'Taxonomy Source', width: 150 },
     { field: 'costtypes', headerName: 'Cost Types', width: 300 },
     { field: 'tagnames', headerName: 'Tag Names', width: 300 },
-    { field: 'nAssets', headerName: 'Assets', type: 'number', width: 120 },
-    { field: 'nSites', headerName: 'Sites', type: 'number', width: 120 },
+    { field: 'assets_count', headerName: 'Assets', type: 'number', width: 120 },
+    { field: 'sites_count', headerName: 'Sites', type: 'number', width: 120 },
 ];
 
 const columnsCalculation = [
-    { field: 'id', headerName: 'ID', width: 50 },
-    { field: 'lossCategory', headerName: 'Category', width: 300 },
-    { field: 'lossModelId', headerName: 'Loss Model', width: 150 },
-    { field: 'aggregateBy', headerName: 'Aggregated By', width: 150 },
-    { field: 'timestamp', headerName: 'Time', width: 300 },
+    { field: '_oid', headerName: 'ID', width: 50 },
+    { field: 'losscategory', headerName: 'Category', width: 300 },
+    { field: '_lossmodel_oid', headerName: 'Loss Model', width: 150 },
+    { field: 'aggregateby', headerName: 'Aggregated By', width: 150 },
+    { field: 'timestamp_starttime', headerName: 'Time', width: 300 },
 ];
 
 class App extends React.Component {
@@ -95,6 +96,7 @@ class App extends React.Component {
                 <DataGrid
                     rows={this.state.lossCalculation || []}
                     columns={columnsCalculation}
+                    getRowId={(row) => row._oid}
                     pageSize={5}
                     loading={this.state.lossCalculationLoading}
                     disableColumnMenu
@@ -107,6 +109,7 @@ class App extends React.Component {
                 <DataGrid
                     rows={this.state.lossConfigs || []}
                     columns={columnsLossConfig}
+                    getRowId={(row) => row._oid}
                     pageSize={5}
                     loading={this.state.lossConfigLoading}
                     disableColumnMenu
@@ -116,6 +119,7 @@ class App extends React.Component {
                 <DataGrid
                     rows={this.state.lossmodels || []}
                     columns={columnsLossModel}
+                    getRowId={(row) => row._oid}
                     pageSize={5}
                     loading={this.state.lossModelLoading}
                     disableColumnMenu
@@ -126,6 +130,7 @@ class App extends React.Component {
                     <DataGrid
                         rows={this.state.exposureModels || []}
                         columns={columnsExposure}
+                        getRowId={(row) => row._oid}
                         pageSize={5}
                         loading={this.state.exposureLoading}
                         disableColumnMenu
@@ -137,6 +142,7 @@ class App extends React.Component {
                     <DataGrid
                         rows={this.state.vulnerabilityModels || []}
                         columns={columnsVulnerability}
+                        getRowId={(row) => row._oid}
                         pageSize={5}
                         loading={this.state.vulnerabilityLoading}
                         disableColumnMenu

@@ -12,7 +12,7 @@ def test_read_asset_csv():
     assert df.loc[1].values.tolist() == result
 
     columns = ['taxonomy_concept', 'buildingcount', 'contentvalue_value',
-               'occupancy_daytime_value', 'structuralvalue_value',
+               'occupancydaytime_value', 'structuralvalue_value',
                '_municipality_oid', '_postalcode_oid']
 
     assert all(col in list(df.columns) for col in columns)
