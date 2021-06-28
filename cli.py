@@ -15,14 +15,26 @@ def cli():
     pass
 
 
-@cli.command()
+@ cli.group()
 def pytest():
-    if os.system('pytest -rx'):
+    """Pytest Commands"""
+    pass
+
+
+@ pytest.command()
+def run():
+    if os.system('pytest'):
         raise RuntimeError('Running pytest failed')
 
 
-@cli.command()
-def pytest_cov():
+@ pytest.command()
+def print():
+    if os.system('pytest -rPx'):
+        raise RuntimeError('Running pytest failed')
+
+
+@ pytest.command()
+def cov():
     if os.system('pytest --cov=app --cov=datamodel --cov-report term-missing'):
         raise RuntimeError('Running pytest coverage failed')
 

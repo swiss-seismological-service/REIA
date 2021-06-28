@@ -31,6 +31,29 @@ from .utils import read_asset_csv, sites_from_assets
 #     return 'Hello World'
 
 
+@api.get('/exposure')
+@csrf.exempt
+def get_exposure():
+    # query exposure models and number of Assets and Sites
+    asset_collection = session \
+        .query(AssetCollection, func.count(distinct(Asset._oid)),
+               func.count(distinct(Site._oid))) \
+        .select_from(AssetCollection) \
+        .outerjoin(Asset) \
+        .outerjoin(Site).group_by(AssetCollection._oid).all()
+
+    # assemble response object
+    response = []
+    for collection in asset_collection:
+        collection_dict = collection[0]._asdict()
+        collection_dict['assets_count'] = collection[1]
+        collection_dict['sites_count'] = collection[2]
+
+        response.append(collection_dict)
+
+    return make_response(jsonify(response), 200)
+
+
 @api.post('/exposure')
 @csrf.exempt
 def post_exposure():
@@ -81,29 +104,6 @@ def post_exposure():
         'loss_asset', engine, if_exists='append', index=False)
 
     return get_exposure()
-
-
-@api.get('/exposure')
-@csrf.exempt
-def get_exposure():
-    # query exposure models and number of Assets and Sites
-    asset_collection = session \
-        .query(AssetCollection, func.count(distinct(Asset._oid)),
-               func.count(distinct(Site._oid))) \
-        .select_from(AssetCollection) \
-        .outerjoin(Asset) \
-        .outerjoin(Site).group_by(AssetCollection._oid).all()
-
-    # assemble response object
-    response = []
-    for collection in asset_collection:
-        collection_dict = collection[0]._asdict()
-        collection_dict['assets_count'] = collection[1]
-        collection_dict['sites_count'] = collection[2]
-
-        response.append(collection_dict)
-
-    return make_response(jsonify(response), 200)
 
 
 @api.get('/vulnerability')
@@ -190,8 +190,8 @@ def get_loss_model():
     for model in loss_models:
         model_dict = model[0]._asdict()
         model_dict['calculations_count'] = model[1]
-        model_dict['_vulnerabilitymodels_oids'] = ','.join(
-            [str(v._oid) for v in model[0].vulnerabilitymodels])
+        model_dict['_vulnerabilitymodels_oids'] = [
+            v._oid for v in model[0].vulnerabilitymodels]
 
         response.append(model_dict)
 
