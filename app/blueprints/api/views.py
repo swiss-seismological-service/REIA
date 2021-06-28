@@ -191,7 +191,7 @@ def get_loss_model():
         model_dict = model[0]._asdict()
         model_dict['calculations_count'] = model[1]
         model_dict['_vulnerabilitymodels_oids'] = [
-            v._oid for v in model[0].vulnerabilitymodels]
+            v._oid for v in model[0].vulnerabilitymodels].sort()
 
         response.append(model_dict)
 
