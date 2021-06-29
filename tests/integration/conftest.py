@@ -41,11 +41,6 @@ def test_data(db_class):
 
     asset_collection = AssetCollection(name='test_collection')
 
-    loss_model = LossModel(preparationcalculationmode='scenario',
-                           maincalculationmode='scenario',
-                           numberofgroundmotionfields=200,
-                           assetcollection=asset_collection)
-
     loss_calculation = LossCalculation(shakemapid_resourceid='some_id',
                                        lossmodel=loss_model,
                                        losscategory='structural',

@@ -1,6 +1,12 @@
 from datamodel import Site
+
+from flask import current_app
+
+import configparser
+import io
 from typing import TextIO, Tuple
 import pandas as pd
+import ast
 
 
 def read_asset_csv(file: TextIO) -> pd.DataFrame:
@@ -55,3 +61,53 @@ def sites_from_assets(assets: pd.DataFrame) -> Tuple[list, list]:
 
     # return sites alongside with group index
     return all_sites, site_groups.grouper.group_info[0]
+
+
+def ini_to_dict(filepointer: io.BytesIO) -> dict:
+    # make sure ini has at least one section
+    byte_str = filepointer.read()
+
+    file_content = '[dummy_section]\n' + byte_str.decode('UTF-8')
+
+    # read ini
+    config = configparser.RawConfigParser()
+    config.read_string(file_content)
+
+    # parse to dict
+    mydict = {}
+    for k, v in {s: dict(config.items(s)) for s in config.sections()}.items():
+        mydict.update({key: value for key, value in v.items()})
+
+    # try and parse values to appropriate types
+    for k, v in mydict.items():
+        try:
+            mydict[k] = ast.literal_eval(v)
+        except:
+            pass
+
+    return mydict
+
+
+def risk_dict_to_lossmodel_dict(risk: dict) -> dict:
+    loss_dict = {
+        'maincalculationmode': risk.get('calculation_mode', 'scenario_risk'),
+        'numberofgroundmotionfields': risk.get('number_of_ground_motion_fields', 100),
+        'maximumdistance': risk.get('maximum_distance', None),
+        'truncationlevel': risk.get('truncation_level', None),
+        'randomseed': risk.get('random_seed', None),
+        'masterseed': risk.get('master_seed', None),
+        'crosscorrelation': True if risk.get('cross_correlation', 'no') == 'yes' else False,
+        'spatialcorrelation': True if risk.get('spatial_correlation', 'no') == 'yes' else False,
+        'description': risk.get('description', ''),
+    }
+    return loss_dict
+
+
+def createFP(template_name, **kwargs):
+    """ create file pointer """
+    sio = io.StringIO()
+    template = current_app.jinja_env.get_template(template_name)
+    template.stream(**kwargs).dump(sio)
+    sio.seek(0)
+    sio.name = template_name.rsplit('/', 1)[-1]
+    return sio

@@ -44,7 +44,7 @@ export default function LossModelUpload(props) {
             <Grid container spacing={3} className="grid">
                 <Grid item xs={2}>
                     <FileUpload currentFile={values.modelJson} setFile={handleFiles} name="modelJson">
-                        Loss json
+                        risk.ini
                     </FileUpload>
                 </Grid>
                 <Grid item xs={2}>

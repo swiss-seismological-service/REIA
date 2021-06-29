@@ -1,4 +1,4 @@
-from app.blueprints.api.utils import read_asset_csv, sites_from_assets
+from app.blueprints.api.utils import ini_to_dict, read_asset_csv, sites_from_assets
 
 
 def test_read_asset_csv():
@@ -28,3 +28,11 @@ def test_sites_from_assets():
     assert float(df.iloc[[8]]['lon']) == all_sites[groups[8]].longitude_value
     assert float(df.iloc[[3]]['lat']) == all_sites[groups[3]].latitude_value
     assert len(all_sites) == 7
+
+
+def test_ini_to_dict():
+    with open('tests/data/risk.ini', 'rb') as file:
+        new_dict = ini_to_dict(file)
+    assert isinstance(new_dict['shakemap_uri'], dict)
+    assert 'calculation_mode' in new_dict
+    assert new_dict['number_of_ground_motion_fields'] == 500

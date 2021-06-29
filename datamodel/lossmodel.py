@@ -1,6 +1,6 @@
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.schema import Column, ForeignKey, Table
-from sqlalchemy.sql.sqltypes import BigInteger, Float, Integer, String
+from sqlalchemy.sql.sqltypes import BigInteger, Boolean, Float, Integer, String
 from datamodel.mixins import EpochMixin, PublicIdMixin, CreationInfoMixin
 from datamodel import ORMBase
 
@@ -22,6 +22,8 @@ class LossModel(PublicIdMixin, ORMBase):
     masterseed = Column(Integer)
     randomseed = Column(Integer)
     truncationlevel = Column(Float)
+    spatialcorrelation = Column(Boolean)
+    crosscorrelation = Column(Boolean)
 
     _assetcollection_oid = Column(
         BigInteger,

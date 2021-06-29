@@ -1,6 +1,6 @@
 
 from datamodel.asset import PostalCode
-from flask import jsonify, make_response, request, current_app
+from flask import jsonify, make_response, request
 from sqlalchemy import func, distinct
 
 import pandas as pd
@@ -22,7 +22,7 @@ from datamodel import (session, engine, AssetCollection, Asset, Site,
                        VulnerabilityFunction, VulnerabilityModel, LossConfig,
                        LossModel, LossCalculation, MeanAssetLoss, Municipality)
 
-from .utils import read_asset_csv, sites_from_assets
+from .utils import createFP, ini_to_dict, read_asset_csv, risk_dict_to_lossmodel_dict, sites_from_assets
 
 
 # @api.route('/')
@@ -144,7 +144,7 @@ def post_vulnerability():
     root = tree.root
 
     # read values for VulnerabilityModel
-    for child in root.getchildren():
+    for child in root:
         model['assetcategory'] = child.attrib['assetcategory']
         model['losscategory'] = child.attrib['losscategory']
     model['description'] = root.find('vulnerabilitymodel/description').text
@@ -190,8 +190,8 @@ def get_loss_model():
     for model in loss_models:
         model_dict = model[0]._asdict()
         model_dict['calculations_count'] = model[1]
-        model_dict['_vulnerabilitymodels_oids'] = [
-            v._oid for v in model[0].vulnerabilitymodels].sort()
+        model_dict['_vulnerabilitymodels_oids'] = sorted([
+            v._oid for v in model[0].vulnerabilitymodels])
 
         response.append(model_dict)
 
@@ -203,15 +203,19 @@ def get_loss_model():
 def post_loss_model():
     # read form data and uploaded file
     form_data = request.form
-    file = request.files.get('lossmodel')
-    data = json.load(file)
+    file = request.files.get('riskini')
 
-    # append asset collection id
-    data['_assetcollection_oid'] = int(form_data['assetcollection'])
+    # parse ini file to dict and read relevant fields
+    file_data = ini_to_dict(file)
+    data = risk_dict_to_lossmodel_dict(file_data)
 
-    # get related vulnerability models and append
+    # add asset collection id
+    data['_assetcollection_oid'] = int(form_data['_assetcollection_oid'])
+    data['preparationcalculationmode'] = 'scenario'
+
+    # get vulnerability models
     vmIDs = [
-        int(x) for x in form_data['vulnerabilitymodels'].split(',')]
+        int(x) for x in form_data['_vulnerabilitymodels_oids'].split(',')]
     vulnerabilitymodels = session.query(VulnerabilityModel).filter(
         VulnerabilityModel._oid.in_(vmIDs)).all()
     data['vulnerabilitymodels'] = vulnerabilitymodels
@@ -391,13 +395,3 @@ def waitAndFetchResults(oqJobId, calcId):
     session.add_all(data)
     session.commit()
     print('Done saving results')
-
-
-def createFP(template_name, **kwargs):
-    """ create file pointer """
-    sio = io.StringIO()
-    template = current_app.jinja_env.get_template(template_name)
-    template.stream(**kwargs).dump(sio)
-    sio.seek(0)
-    sio.name = template_name.rsplit('/', 1)[-1]
-    return sio
