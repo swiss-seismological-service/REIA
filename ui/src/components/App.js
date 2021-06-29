@@ -74,8 +74,8 @@ class App extends React.Component {
     };
 
     componentDidMount = () => {
-        getData('/exposure').then((res) => this.setState({ exposureModels: res, exposureLoading: false }));
-        getData('/vulnerability').then((res) =>
+        getData('/assetcollection').then((res) => this.setState({ exposureModels: res, exposureLoading: false }));
+        getData('/vulnerabilitymodel').then((res) =>
             this.setState({ vulnerabilityModels: res, vulnerabilityLoading: false })
         );
         getData('/lossmodel').then((res) => this.setState({ lossmodels: res, lossModelLoading: false }));

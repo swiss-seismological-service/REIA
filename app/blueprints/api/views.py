@@ -4,26 +4,23 @@ from flask import jsonify, make_response, request
 from sqlalchemy import func, distinct
 
 import pandas as pd
-import json
 import io
 import requests
 import time
 from datetime import datetime
 import threading
 
-import xml.etree.ElementTree as ET
 from openquake.calculators.extract import Extractor
 
 from . import api
 from app.extensions import csrf
-from app.extensions.celery_tasks import test
 
 from datamodel import (session, engine, AssetCollection, Asset, Site,
                        VulnerabilityFunction, VulnerabilityModel, LossConfig,
                        LossModel, LossCalculation, MeanAssetLoss, Municipality)
 
-from .utils import createFP, ini_to_dict, read_asset_csv, risk_dict_to_lossmodel_dict, sites_from_assets
-
+from .utils import create_exposure_csv, create_exposure_xml, create_file_pointer, create_risk_ini, create_hazard_ini, create_vulnerability_xml, ini_to_dict, sites_from_assets
+from .parsers import parse_oq_exposure_file, parse_oq_vulnerability_file, parse_asset_csv, risk_dict_to_lossmodel_dict
 
 # @api.route('/')
 # def index():
@@ -31,9 +28,25 @@ from .utils import createFP, ini_to_dict, read_asset_csv, risk_dict_to_lossmodel
 #     return 'Hello World'
 
 
-@api.get('/exposure')
+@api.get('/assetcollection')
 @csrf.exempt
 def get_exposure():
+    """ /api/v1/assetcollection 
+    get:
+        summary: Endpoint for AssetCollection
+        description: Get all AssetCollections including Asset and Site counts
+        parameters: 
+            - None
+        responses:
+            200:
+                type: application/json
+                schema: AssetCollection
+                extra fields:
+                    - name: assets_count
+                    - type: integer
+                    - name: sites_count
+                    - type: integer
+    """
     # query exposure models and number of Assets and Sites
     asset_collection = session \
         .query(AssetCollection, func.count(distinct(Asset._oid)),
@@ -54,17 +67,44 @@ def get_exposure():
     return make_response(jsonify(response), 200)
 
 
-@api.post('/exposure')
+@api.post('/assetcollection')
 @csrf.exempt
 def post_exposure():
-    # create asset collection from json file
-    file_ac = request.files.get('exposureJSON')
-    data = json.load(file_ac)
-    assetcollection = AssetCollection(**data)
+    """ /api/v1/assetcollection 
+    post:
+        summary: Endpoint for AssetCollection
+        description: Post an AssetCollection and corresponding Sites and Assets
+        consumes: multipart/form-data
+        parameters: 
+            - name: exposureXML
+              in: body
+              type: file
+              description: OpenQuake exposure_file XML
+            - name: exposureCSV
+              in: body
+              type: file
+              description: OpenQuake assets csv
+        responses:
+            400: 
+                description: bad request
+            200:
+                description: OK, returns object
+                type: application/json
+                schema: AssetCollection
+                extra fields:
+                    - name: assets_count
+                      type: integer
+                    - name: sites_count
+                      type: integer
+    """
+    # read xml file
+    file = request.files.get('exposureXML')
+    model = parse_oq_exposure_file(file)
+    assetcollection = AssetCollection(**model)
 
     # read assets into pandas dataframe and rename columns
     file_assets = request.files.get('exposureCSV')
-    assets_df = read_asset_csv(file_assets)
+    assets_df = parse_asset_csv(file_assets)
 
     # add tags to session and tag names to Asset Collection
     assetcollection.tagnames = []
@@ -106,9 +146,22 @@ def post_exposure():
     return get_exposure()
 
 
-@api.get('/vulnerability')
+@api.get('/vulnerabilitymodel')
 @csrf.exempt
 def get_vulnerability():
+    """ /api/v1/vulnerabilitymodel
+    get:
+        summary: Endpoint for VulnerabilityModel
+        description: Get all VulnerabilityModels including VulnerabilityFunctions count
+        responses:
+            200:
+                description: OK, returns object
+                type: application/json
+                schema: VulnerabilityModel
+                extra fields:
+                    - name: functions_count
+                      type: integer 
+    """
     # query vulnerability Models and number of functions
     vulnerability_model = session.query(VulnerabilityModel,
                                         func.count(VulnerabilityFunction._oid)) \
@@ -126,39 +179,34 @@ def get_vulnerability():
     return make_response(jsonify(response), 200)
 
 
-@api.post('/vulnerability')
+@api.post('/vulnerabilitymodel')
 @csrf.exempt
 def post_vulnerability():
+    """ /api/v1/vulnerabilitymodel 
+    post:
+        summary: Endpoint for VulnerabilityModel
+        description: Post a VulnerabilityModel
+        consumes: multipart/form-data
+        parameters: 
+            - name: vulnerabilitymodel
+              in: body
+              type: file
+              description: OpenQuake vulnerability_file xml
+        responses:
+            400: 
+                description: bad request
+            200:
+                description: OK, returns object
+                type: application/json
+                schema: VulnerabilityModel
+                extra fields:
+                    - name: functions_count
+                      type: integer 
+    """
 
-    model = {}
-    functions = []
-
-    # read xml file with ElementTree
+    # read xml file
     file = request.files.get('vulnerabilitymodel')
-    tree = ET.iterparse(file)
-
-    # strip namespace for easier querying
-    for _, el in tree:
-        _, _, el.tag = el.tag.rpartition('}')
-
-    root = tree.root
-
-    # read values for VulnerabilityModel
-    for child in root:
-        model['assetcategory'] = child.attrib['assetcategory']
-        model['losscategory'] = child.attrib['losscategory']
-    model['description'] = root.find('vulnerabilitymodel/description').text
-
-    # read values for VulnerabilityFunctions
-    for vF in root.findall('vulnerabilitymodel/vulnerabilityFunction'):
-        fun = {}
-        fun['taxonomy_concept'] = vF.attrib['id']
-        fun['distribution'] = vF.attrib['dist']
-        fun['intensitymeasuretype'] = vF.find('imls').attrib['imt']
-        fun['intensitymeasurelevels'] = vF.find('imls').text.split(' ')
-        fun['meanlossratios'] = vF.find('meanLRs').text.split(' ')
-        fun['covariancelossratios'] = vF.find('covLRs').text.split(' ')
-        functions.append(fun)
+    model, functions = parse_oq_vulnerability_file(file)
 
     # assemble vulnerability Model
     vulnerabilitymodel = VulnerabilityModel(**model)
@@ -179,6 +227,21 @@ def post_vulnerability():
 @api.get('/lossmodel')
 @csrf.exempt
 def get_loss_model():
+    """ /api/v1/lossmodel
+    get:
+        summary: Endpoint for LossModel
+        description: Get all available LossModels 
+        responses:
+            200:
+                description: OK, returns object
+                type: application/json
+                schema: LossModel
+                extra fields:
+                    - name: calculations_count
+                      type: integer 
+                    - name: _vulnerabilitymodels_oids
+                      type: array(integer)
+    """
     # query loss models and count related loss calculations
     loss_models = session.query(LossModel,
                                 func.count(LossCalculation._oid)) \
@@ -201,6 +264,37 @@ def get_loss_model():
 @api.post('/lossmodel')
 @csrf.exempt
 def post_loss_model():
+    """ /api/v1/lossmodel 
+    post:
+        summary: Endpoint for LossModel
+        description: Post a LossModel
+        consumes: multipart/form-data
+        parameters: 
+            - name: riskini
+              in: body
+              type: file
+              description: OpenQuake (risk.ini) job config file
+            - name: _assetcollection_oid
+              in: body
+              type: integer
+              description: AssetCollection (Exposure Model) _oid
+            - name: _vulnerabilitymodels_oids
+              in: body
+              type: string
+              description: csv string with VulnerabilityModel _oids
+        responses:
+            400: 
+                description: bad request
+            200:
+                description: OK, returns object
+                type: application/json
+                schema: LossModel
+                extra fields:
+                    - name: calculations_count
+                      type: integer 
+                    - name: _vulnerabilitymodels_oids
+                      type: array(integer)
+    """
     # read form data and uploaded file
     form_data = request.form
     file = request.files.get('riskini')
@@ -231,6 +325,16 @@ def post_loss_model():
 @api.get('/lossconfig')
 @csrf.exempt
 def get_loss_config():
+    """ /api/v1/lossconfig
+    get:
+        summary: Endpoint for LossConfig
+        description: Get all available LossConfigs 
+        responses:
+            200:
+                description: OK, returns object
+                type: application/json
+                schema: LossConfig
+    """
     loss_config = session.query(LossConfig).all()
 
     response = []
@@ -245,6 +349,33 @@ def get_loss_config():
 @api.post('/lossconfig')
 @csrf.exempt
 def post_loss_config():
+    """ /api/v1/lossconfig 
+    post:
+        summary: Endpoint for LossConfig
+        description: Post a LossConfig
+        consumes: application/json
+        parameters: 
+            - name: losscategory
+              in: body
+              type: string
+              description: loss category name
+            - name: aggregateby
+              in: body
+              type: string
+              required: false
+              description: aggregation key name
+            - name: _lossmodel_oid
+              in: body
+              type: integer
+              description: LossModel _oid
+        responses:
+            400: 
+                description: bad request
+            200:
+                description: OK, returns object
+                type: application/json
+                schema: LossConfig
+    """
     data = request.get_json()
     loss_config = LossConfig(**data)
     session.add(loss_config)
@@ -258,49 +389,37 @@ def post_calculation_run():
     # curl -X post http://localhost:5000/calculation/run --header "Content-Type: application/json" --data '{"shakemap":"model/shapefiles.zip"}'
 
     # get data from database
-    lossConfig = session.query(LossConfig).get(1)
+    loss_config = session.query(LossConfig).get(1)
 
-    lossmodel = session.query(LossModel).get(lossConfig._lossmodel_oid)
-    exposureModel = session.query(AssetCollection).get(
-        lossmodel._assetcollection_oid)
+    loss_model = session.query(LossModel).get(loss_config._lossmodel_oid)
+    asset_collection = session.query(AssetCollection).get(
+        loss_model._assetcollection_oid)
 
-    vulnerabilitymodel = session.query(VulnerabilityModel) \
+    vulnerability_model = session.query(VulnerabilityModel) \
         .join(LossModel, VulnerabilityModel.lossmodels). \
-        filter(VulnerabilityModel.losscategory == lossConfig.losscategory)\
+        filter(VulnerabilityModel.losscategory == loss_config.losscategory)\
         .first()
 
     # create in memory files
     # exposure.xml
-    exposure_xml = createFP('api/exposure.xml', data=exposureModel.to_dict())
-
+    exposure_xml = create_exposure_xml(asset_collection)
     # exposure_assets.csv
-    assets = pd.DataFrame([x.to_dict()
-                           for x in exposureModel.assets]).set_index('id')
-    exposure_assets_csv = io.StringIO()
-    assets.to_csv(exposure_assets_csv)
-    exposure_assets_csv.seek(0)
-    exposure_assets_csv.name = 'exposure_assets.csv'
-
+    assets_csv = create_exposure_csv(asset_collection.assets)
     # vulnerability.xml
-    vulnerability_xml = createFP(
-        'api/vulnerability.xml', data=vulnerabilitymodel.to_dict())
-
-    loss_config_dict = lossConfig.to_dict()
-
+    vulnerability_xml = create_vulnerability_xml(vulnerability_model)
     # pre-calculation.ini
-    prepare_risk_ini = createFP('api/prepare_risk.ini', data=loss_config_dict)
-
+    hazard_ini = create_hazard_ini(loss_config)
     # risk.ini
-    risk_ini = createFP('api/risk.ini', data=loss_config_dict)
+    risk_ini = create_risk_ini(loss_config)
 
     # TODO: get shakemap
     shakemap_address = request.get_json()['shakemap']
     shakemap_zip = open(shakemap_address, 'rb')
 
     # send files to calculation endpoint
-    files = {'job_config': prepare_risk_ini,
+    files = {'job_config': hazard_ini,
              'input_model_1': exposure_xml,
-             'input_model_2': exposure_assets_csv,
+             'input_model_2': assets_csv,
              'input_model_3': vulnerability_xml}
 
     response = requests.post(
@@ -342,9 +461,9 @@ def post_calculation_run():
 
     losscalculation = LossCalculation(
         shakemapid_resourceid='shakemap_address',
-        _lossmodel_oid=lossmodel._oid,
-        losscategory=lossConfig.losscategory,
-        aggregateBy=lossConfig.aggregateBy,
+        _lossmodel_oid=loss_model._oid,
+        losscategory=loss_config.losscategory,
+        aggregateBy=loss_config.aggregateBy,
         timestamp_starttime=datetime.now()
     )
     session.add(losscalculation)

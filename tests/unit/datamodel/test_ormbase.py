@@ -24,6 +24,7 @@ def test_asdict(db_session):
                    'category': 'buildings',
                    'taxonomysource': 'SPG (EPFL)',
                    'costtypes': ['structural'],
-                   'tagnames': ['canton', 'municipality', 'postalcode']}
+                   'tagnames': ['canton', 'municipality', 'postalcode'],
+                   'occupancyperiods': None}
 
     assert ac._asdict() == target_dict

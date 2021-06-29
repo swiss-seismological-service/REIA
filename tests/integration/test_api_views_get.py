@@ -18,7 +18,7 @@ class TestAPIGet:
         response_db['sites_count'] = db_class.query(Site).filter(
             Site._assetcollection_oid == response_db['_oid']).count()
 
-        response_get = client_class.get('/api/v1/exposure')
+        response_get = client_class.get('/api/v1/assetcollection')
         assert response_get.status == '200 OK'
 
         response_json = response_get.json[0]
@@ -32,7 +32,7 @@ class TestAPIGet:
         response_db['functions_count'] = db_class.query(VulnerabilityFunction).filter(
             VulnerabilityFunction._vulnerabilitymodel_oid == response_db['_oid']).count()
 
-        response_get = client_class.get('/api/v1/vulnerability')
+        response_get = client_class.get('/api/v1/vulnerabilitymodel')
         assert response_get.status == '200 OK'
 
         response_json = response_get.json[0]

@@ -5,7 +5,7 @@ import { postExposure } from '../util/api';
 import FileUpload from '../util/fileUpload';
 
 const initial = {
-    exposureJSON: null,
+    exposureXML: null,
     exposureCSV: null,
 };
 
@@ -34,8 +34,8 @@ export default function ExposureUpload(props) {
             </Typography>
             <Grid container spacing={3} className="grid">
                 <Grid item xs={2}>
-                    <FileUpload currentFile={values.exposureJSON} setFile={handleFiles} name="exposureJSON">
-                        Exposure JSON
+                    <FileUpload currentFile={values.exposureJSON} setFile={handleFiles} name="exposureXML">
+                        Exposure XML
                     </FileUpload>
                 </Grid>
                 <Grid item xs={2}>

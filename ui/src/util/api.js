@@ -10,10 +10,10 @@ export async function getData(endpoint) {
 
 export async function postExposure(files) {
     const formData = new FormData();
-    formData.append('exposureJSON', files.exposureJSON[0]);
+    formData.append('exposureXML', files.exposureXML[0]);
     formData.append('exposureCSV', files.exposureCSV[0]);
 
-    const response = fetch('/api/v1/exposure', {
+    const response = fetch('/api/v1/assetcollection', {
         method: 'POST',
         body: formData,
     })
@@ -29,7 +29,7 @@ export async function postVulnerability(files) {
     const formData = new FormData();
     formData.append('vulnerabilitymodel', files[0]);
 
-    const response = fetch('/api/v1/vulnerability', {
+    const response = fetch('/api/v1/vulnerabilitymodel', {
         method: 'POST',
         body: formData,
     })

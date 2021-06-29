@@ -1,9 +1,10 @@
-from app.blueprints.api.utils import ini_to_dict, read_asset_csv, sites_from_assets
+from app.blueprints.api.utils import ini_to_dict, sites_from_assets
+from app.blueprints.api.parsers import parse_asset_csv
 
 
-def test_read_asset_csv():
+def test_parse_asset_csv():
     with open('tests/data/exposure_assets.csv') as csv:
-        df = read_asset_csv(csv)
+        df = parse_asset_csv(csv)
 
     result = [5.966213835966539, 46.15234227634242, 'M3_L',
               32.0, 24607529.576893, 8612635, 91.61953186558736,
@@ -20,7 +21,7 @@ def test_read_asset_csv():
 
 def test_sites_from_assets():
     with open('tests/data/exposure_assets.csv') as csv:
-        df = read_asset_csv(csv)
+        df = parse_asset_csv(csv)
         df['_assetcollection_oid'] = 1
 
     all_sites, groups = sites_from_assets(df)

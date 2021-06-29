@@ -4,40 +4,9 @@ from flask import current_app
 
 import configparser
 import io
-from typing import TextIO, Tuple
+from typing import Tuple
 import pandas as pd
 import ast
-
-
-def read_asset_csv(file: TextIO) -> pd.DataFrame:
-    """ 
-    Reads an exposure file with assets into a dataframe
-
-    :params file:   csv file object with the following headers (Input for OpenQuake):
-                    id,lon,lat,taxonomy,number,structural,contents,day(
-                    CantonGemeinde,CantonGemeindePC, ...)
-
-    :returns:       df with columns compatible with the datamodel.Assets object + lat and lon
-     """
-
-    df = pd.read_csv(file, index_col='id')
-
-    df = df.rename(columns={'taxonomy': 'taxonomy_concept',
-                            'number': 'buildingcount',
-                            'contents': 'contentvalue_value',
-                            'day': 'occupancydaytime_value',
-                            'structural': 'structuralvalue_value'
-                            })
-    if 'CantonGemeinde' in df:
-        df = df.rename(columns={'CantonGemeinde': '_municipality_oid'})
-        df['_municipality_oid'] = df['_municipality_oid'].apply(
-            lambda x: x[2:])
-
-    if 'CantonGemeindePC' in df:
-        df = df.rename(columns={'CantonGemeindePC': '_postalcode_oid'})
-        df['_postalcode_oid'] = df['_postalcode_oid'].apply(lambda x: x[-4:])
-
-    return df
 
 
 def sites_from_assets(assets: pd.DataFrame) -> Tuple[list, list]:
@@ -88,22 +57,7 @@ def ini_to_dict(filepointer: io.BytesIO) -> dict:
     return mydict
 
 
-def risk_dict_to_lossmodel_dict(risk: dict) -> dict:
-    loss_dict = {
-        'maincalculationmode': risk.get('calculation_mode', 'scenario_risk'),
-        'numberofgroundmotionfields': risk.get('number_of_ground_motion_fields', 100),
-        'maximumdistance': risk.get('maximum_distance', None),
-        'truncationlevel': risk.get('truncation_level', None),
-        'randomseed': risk.get('random_seed', None),
-        'masterseed': risk.get('master_seed', None),
-        'crosscorrelation': True if risk.get('cross_correlation', 'no') == 'yes' else False,
-        'spatialcorrelation': True if risk.get('spatial_correlation', 'no') == 'yes' else False,
-        'description': risk.get('description', ''),
-    }
-    return loss_dict
-
-
-def createFP(template_name, **kwargs):
+def create_file_pointer(template_name, **kwargs):
     """ create file pointer """
     sio = io.StringIO()
     template = current_app.jinja_env.get_template(template_name)
@@ -111,3 +65,36 @@ def createFP(template_name, **kwargs):
     sio.seek(0)
     sio.name = template_name.rsplit('/', 1)[-1]
     return sio
+
+
+def create_exposure_xml(exposure_model, template_name='api/exposure.xml'):
+    """ create an in memory exposure xml file for OpenQuake"""
+    data = exposure_model._asdict()
+    return create_file_pointer(template_name, data=data)
+
+
+def create_vulnerability_xml(vulnerability_model, template_name='api/vulnerability.xml'):
+    """ create an in memory vulnerability xml file for OpenQuake"""
+    data = vulnerability_model._asdict()
+    return create_file_pointer(template_name, data=data)
+
+
+def create_hazard_ini(loss_model, template_name='api/prepare_risk.ini'):
+    """ create an in memory vulnerability xml file for OpenQuake"""
+    data = loss_model._asdict()
+    return create_file_pointer(template_name, data=data)
+
+
+def create_risk_ini(loss_model, template_name='api/risk.ini'):
+    """ create an in memory vulnerability xml file for OpenQuake"""
+    data = loss_model._asdict()
+    return create_file_pointer(template_name, data=data)
+
+
+def create_exposure_csv(assets):
+    """ create an in-memory assets csv file for OpenQuake """
+    assets = pd.DataFrame([x._asdict() for x in assets]).set_index('_oid')
+    exposure_assets_csv = io.StringIO()
+    assets.to_csv(exposure_assets_csv)
+    exposure_assets_csv.seek(0)
+    exposure_assets_csv.name = 'exposure_assets.csv'

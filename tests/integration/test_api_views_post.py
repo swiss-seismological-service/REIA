@@ -1,5 +1,6 @@
-from flask.json import jsonify
+from flask import request
 
+import xml.etree.ElementTree as ET
 from datamodel.lossmodel import LossConfig, LossModel
 from datamodel.vulnerability import VulnerabilityModel
 from datamodel.asset import Asset, AssetCollection, Site
@@ -7,15 +8,15 @@ from io import BytesIO
 
 
 def test_post_exposure(client, db_session):
-    with open('tests/data/exposure.json', 'rb') as file:
+    with open('tests/data/exposure.xml', 'rb') as file:
         exposure_fp = BytesIO(file.read())
 
     with open('tests/data/exposure_assets.csv', 'rb') as file:
         assets_fp = BytesIO(file.read())
 
-    response = client.post('/api/v1/exposure', content_type='multipart/form-data',
+    response = client.post('/api/v1/assetcollection', content_type='multipart/form-data',
                            data={'exposureCSV': (assets_fp, 'exposure_assets.csv'),
-                                 'exposureJSON': (exposure_fp, 'exposure.json')})
+                                 'exposureXML': (exposure_fp, 'exposure.xml')})
 
     assert response.status == '200 OK'
 
@@ -34,7 +35,7 @@ def test_post_vulnerability(client, db_session):
     with open('tests/data/structural_vulnerability.xml', 'rb') as file:
         vulnerability_fp = BytesIO(file.read())
 
-    response = client.post('/api/v1/vulnerability', content_type='multipart/form-data',
+    response = client.post('/api/v1/vulnerabilitymodel', content_type='multipart/form-data',
                            data={'vulnerabilitymodel': (vulnerability_fp,
                                                         'structural_vulnerability.xml')})
 

@@ -15,6 +15,8 @@ class AssetCollection(ORMBase, PublicIdMixin, CreationInfoMixin):
     taxonomysource = Column(String)
     costtypes = Column(ARRAY(String))
     tagnames = Column(ARRAY(String))
+    occupancyperiods = Column(ARRAY(String))
+
     lossmodels = relationship(
         'LossModel',
         back_populates='assetcollection')
