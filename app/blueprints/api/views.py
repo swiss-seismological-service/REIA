@@ -3,8 +3,6 @@ from datamodel.asset import PostalCode
 from flask import jsonify, make_response, request
 from sqlalchemy import func, distinct
 
-import pandas as pd
-import io
 import requests
 import time
 from datetime import datetime
@@ -19,8 +17,10 @@ from datamodel import (session, engine, AssetCollection, Asset, Site,
                        VulnerabilityFunction, VulnerabilityModel, LossConfig,
                        LossModel, LossCalculation, MeanAssetLoss, Municipality)
 
-from .utils import create_exposure_csv, create_exposure_xml, create_file_pointer, create_risk_ini, create_hazard_ini, create_vulnerability_xml, ini_to_dict, sites_from_assets
-from .parsers import parse_oq_exposure_file, parse_oq_vulnerability_file, parse_asset_csv, risk_dict_to_lossmodel_dict
+from .utils import (create_exposure_csv, create_exposure_xml, create_risk_ini,
+                    create_hazard_ini, create_vulnerability_xml, ini_to_dict, sites_from_assets)
+from .parsers import (parse_oq_exposure_file, parse_oq_vulnerability_file,
+                      parse_asset_csv, risk_dict_to_lossmodel_dict)
 
 # @api.route('/')
 # def index():
@@ -383,6 +383,30 @@ def post_loss_config():
     return get_loss_config()
 
 
+@api.get('/losscalculation')
+@csrf.exempt
+def get_loss_calculation():
+    """ /api/v1/losscalculation
+    get:
+        summary: Endpoint for LossCalculation
+        description: Get all available LossCalculations 
+        responses:
+            200:
+                description: OK, returns object
+                type: application/json
+                schema: LossCalculations
+    """
+    response = []
+    loss_calculation = session.query(LossCalculation).all()
+
+    for calculation in loss_calculation:
+        calculation_dict = calculation._asdict()
+
+        response.append(calculation_dict)
+
+    return make_response(jsonify(response), 200)
+
+
 @api.post('/calculation/run')
 @csrf.exempt
 def post_calculation_run():
@@ -475,20 +499,6 @@ def post_calculation_run():
     thread.daemon = True
     thread.start()
     return make_response(response.json(), 200)
-
-
-@api.get('/losscalculation')
-@csrf.exempt
-def get_loss_calculation():
-    response = []
-    loss_calculation = session.query(LossCalculation).all()
-
-    for calculation in loss_calculation:
-        calculation_dict = calculation._asdict()
-
-        response.append(calculation_dict)
-
-    return make_response(jsonify(response), 200)
 
 
 def waitAndFetchResults(oqJobId, calcId):

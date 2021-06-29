@@ -1,5 +1,8 @@
+from io import BytesIO
 from app.blueprints.api.utils import ini_to_dict, sites_from_assets
 from app.blueprints.api.parsers import parse_asset_csv
+
+import pytest
 
 
 def test_parse_asset_csv():
