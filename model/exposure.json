@@ -1,9 +1,0 @@
-{
-    "category": "buildings",
-    "name": "Exposure_1km_v03a_CH_modalAmpl_amplAvg",
-    "taxonomysource": "SPG (EPFL)",
-    "publicid_resourceid": "id123",
-    "costtypes": [
-        "structural"
-    ]
-}

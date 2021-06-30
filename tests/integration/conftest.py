@@ -13,12 +13,8 @@ def test_query(db_class):
     obj = {}
     # get data from database
     obj['loss_config'] = db_class.query(LossConfig).get(1)
-
-    obj['loss_model'] = db_class.query(LossModel).get(
-        obj['loss_config']._lossmodel_oid)
-    obj['asset_collection'] = db_class.query(AssetCollection).get(
-        obj['loss_model']._assetcollection_oid)
-
+    obj['loss_model'] = obj['loss_config'].lossmodel
+    obj['asset_collection'] = obj['loss_model'].assetcollection
     obj['vulnerability_model'] = db_class.query(VulnerabilityModel) \
         .join(LossModel, VulnerabilityModel.lossmodels). \
         filter(VulnerabilityModel.losscategory == obj['loss_config'].losscategory)\

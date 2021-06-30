@@ -7,7 +7,7 @@ import logging
 
 from app.blueprints import frontend, api
 from app.extensions import csrf, assets, celery_app
-from app.extensions.celery_tasks import init_celery
+from app.extensions.celery import init_celery
 from app.bundles import bundles
 
 from datamodel import session

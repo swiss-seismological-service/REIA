@@ -65,13 +65,13 @@ def parse_oq_vulnerability_file(file) -> dict:
 
     # read values for VulnerabilityModel
     for child in root:
-        model['assetcategory'] = child.attrib['assetcategory']
-        model['losscategory'] = child.attrib['losscategory']
+        model['assetcategory'] = child.attrib['assetCategory']
+        model['losscategory'] = child.attrib['lossCategory']
         model['publicid_resourceid'] = child.attrib['id']
-    model['description'] = root.find('vulnerabilitymodel/description').text
+    model['description'] = root.find('vulnerabilityModel/description').text
 
     # read values for VulnerabilityFunctions
-    for vF in root.findall('vulnerabilitymodel/vulnerabilityFunction'):
+    for vF in root.findall('vulnerabilityModel/vulnerabilityFunction'):
         fun = {}
         fun['taxonomy_concept'] = vF.attrib['id']
         fun['distribution'] = vF.attrib['dist']

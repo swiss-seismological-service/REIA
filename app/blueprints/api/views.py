@@ -1,31 +1,23 @@
 
+from app.extensions.celery import fetch_oq_results
 from datamodel.asset import PostalCode
 from flask import jsonify, make_response, request
 from sqlalchemy import func, distinct
 
-import requests
-import time
 from datetime import datetime
 import threading
-
-from openquake.calculators.extract import Extractor
 
 from . import api
 from app.extensions import csrf
 
 from datamodel import (session, engine, AssetCollection, Asset, Site,
                        VulnerabilityFunction, VulnerabilityModel, LossConfig,
-                       LossModel, LossCalculation, MeanAssetLoss, Municipality)
+                       LossModel, LossCalculation, Municipality)
 
 from .utils import (create_exposure_csv, create_exposure_xml, create_risk_ini,
-                    create_hazard_ini, create_vulnerability_xml, ini_to_dict, sites_from_assets)
+                    create_hazard_ini, create_vulnerability_xml, ini_to_dict, oqapi_get_job_status, oqapi_send_main_calculation, oqapi_send_pre_calculation, oqapi_wait_for_job, sites_from_assets)
 from .parsers import (parse_oq_exposure_file, parse_oq_vulnerability_file,
                       parse_asset_csv, risk_dict_to_lossmodel_dict)
-
-# @api.route('/')
-# def index():
-#     test.apply_async()
-#     return 'Hello World'
 
 
 @api.get('/assetcollection')
@@ -410,117 +402,69 @@ def get_loss_calculation():
 @api.post('/calculation/run')
 @csrf.exempt
 def post_calculation_run():
-    # curl -X post http://localhost:5000/calculation/run --header "Content-Type: application/json" --data '{"shakemap":"model/shapefiles.zip"}'
+    # curl -X post http://localhost:5000/api/v1/calculation/run --header "Content-Type: application/json" --data '{"shakemap":"model/shapefiles.zip"}'
 
     # get data from database
     loss_config = session.query(LossConfig).get(1)
-
-    loss_model = session.query(LossModel).get(loss_config._lossmodel_oid)
-    asset_collection = session.query(AssetCollection).get(
-        loss_model._assetcollection_oid)
-
+    loss_model = loss_config.lossmodel
     vulnerability_model = session.query(VulnerabilityModel) \
         .join(LossModel, VulnerabilityModel.lossmodels). \
         filter(VulnerabilityModel.losscategory == loss_config.losscategory)\
         .first()
 
-    # create in memory files
     # exposure.xml
-    exposure_xml = create_exposure_xml(asset_collection)
+    exposure_xml = create_exposure_xml(loss_model.assetcollection)
     # exposure_assets.csv
-    assets_csv = create_exposure_csv(asset_collection.assets)
+    assets_csv = create_exposure_csv(loss_model.assetcollection.assets)
     # vulnerability.xml
     vulnerability_xml = create_vulnerability_xml(vulnerability_model)
     # pre-calculation.ini
-    hazard_ini = create_hazard_ini(loss_config)
+    hazard_ini = create_hazard_ini(loss_model)
     # risk.ini
-    risk_ini = create_risk_ini(loss_config)
+    risk_ini = create_risk_ini(loss_model)
 
-    # TODO: get shakemap
-    shakemap_address = request.get_json()['shakemap']
-    shakemap_zip = open(shakemap_address, 'rb')
+    # parse request
+    request_data = request.get_json()
+    shakemap_zip = open(request_data['shakemap'], 'rb')
+    # ...
 
     # send files to calculation endpoint
-    files = {'job_config': hazard_ini,
-             'input_model_1': exposure_xml,
-             'input_model_2': assets_csv,
-             'input_model_3': vulnerability_xml}
+    response = oqapi_send_pre_calculation(hazard_ini,
+                                          exposure_xml,
+                                          assets_csv,
+                                          vulnerability_xml)
 
-    response = requests.post(
-        'http://localhost:8800/v1/calc/run', files=files)
-
-    if response.ok:
-        print("Upload completed successfully!")
-        pre_job_id = response.json()['job_id']
-    else:
-        print("Something went wrong!")
-        print(response.text)
-        return make_response(jsonify({}), 200)
+    if response.status_code >= 400:
+        return response
 
     # wait for pre-calculation to finish
-    while requests.get(f'http://localhost:8800/v1/calc/{pre_job_id}/status')\
-            .json()['status'] not in ['complete', 'failed']:
-        time.sleep(1)
-    response = requests.get(
-        f'http://localhost:8800/v1/calc/{pre_job_id}/status')
+    pre_job_id = response.json()['job_id']
+    oqapi_wait_for_job(pre_job_id)
 
-    if response.json()['status'] != 'complete':
-        return make_response(response.json(), 200)
+    # send main calculation
+    response_main = oqapi_send_main_calculation(
+        pre_job_id, risk_ini, shakemap_zip)
 
-    # send files to calculation endpoint
-    files2 = {
-        'job_config': risk_ini,
-        'input_model_1': shakemap_zip
-    }
+    if response_main.status_code >= 400:
+        return response
 
-    response = requests.post(
-        'http://localhost:8800/v1/calc/run', files=files2,
-        data={'hazard_job_id': pre_job_id})
-
-    if response.ok:
-        print("Upload completed successfully!")
-    else:
-        print("Something went wrong!")
-        print(response.text)
-
-    losscalculation = LossCalculation(
+    loss_calculation = LossCalculation(
         shakemapid_resourceid='shakemap_address',
-        _lossmodel_oid=loss_model._oid,
+        _lossmodel_oid=loss_config._lossmodel_oid,
         losscategory=loss_config.losscategory,
-        aggregateBy=loss_config.aggregateBy,
+        aggregateBy=loss_config.aggregateby,
         timestamp_starttime=datetime.now()
     )
-    session.add(losscalculation)
+    session.add(loss_calculation)
     session.commit()
 
     # wait, fetch and save results
-    thread = threading.Thread(target=waitAndFetchResults(
-        response.json()['job_id'], losscalculation._oid))
-    thread.daemon = True
-    thread.start()
-    return make_response(response.json(), 200)
+    fetch_oq_results.apply_async(
+        [response_main.json()['job_id'], loss_calculation._oid])
 
+    return make_response(response_main.json(), 200)
 
-def waitAndFetchResults(oqJobId, calcId):
-    # wait for calculation to finish
-    while requests.get(f'http://localhost:8800/v1/calc/{oqJobId}/status')\
-            .json()['status'] not in ['complete', 'failed']:
-        time.sleep(1)
-    response = requests.get(
-        f'http://localhost:8800/v1/calc/{oqJobId}/status')
-
-    if response.json()['status'] != 'complete':
-        return None
-    # fetch results
-    extractor = Extractor(oqJobId)
-    data = extractor.get('avg_losses-rlzs').to_dframe()
-
-    data = data[['asset_id', 'value']].rename(
-        columns={'asset_id': '_asset_oid', 'value': 'loss_value'})
-
-    # save results to database
-    data = data.apply(lambda x: MeanAssetLoss(
-        _losscalculation_oid=calcId, **x), axis=1)
-    session.add_all(data)
-    session.commit()
-    print('Done saving results')
+# @api.route('/')
+# def index():
+#     test.apply_async()
+#     return 'Hello World'

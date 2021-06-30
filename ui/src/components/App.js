@@ -102,7 +102,7 @@ class App extends React.Component {
                     disableColumnMenu
                     autoHeight
                     onRowClick={(param) => {
-                        window.open(`/plotlymap/${param.row.id}`, '_blank');
+                        window.open(`/plotlymap/${param.row._oid}`, '_blank');
                     }}
                 />
                 <LossConfigUpload reload={this.updateModelState} />
