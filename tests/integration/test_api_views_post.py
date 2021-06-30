@@ -32,7 +32,6 @@ def test_post_exposure(client, db_session):
     assert n_sites == 7
 
 
-@pytest.mark.dependency()
 def test_post_vulnerability(client, db_session):
     with open('tests/data/structural_vulnerability.xml', 'rb') as file:
         vulnerability_fp = BytesIO(file.read())
@@ -54,7 +53,6 @@ def test_post_vulnerability(client, db_session):
     assert vulnerability_functions[1].meanlossratios[3] == 0.001593
 
 
-@pytest.mark.dependency()
 def test_post_lossmodel(client, db_session):
 
     vulnerability_model_1 = VulnerabilityModel(losscategory='structural')
@@ -83,7 +81,6 @@ def test_post_lossmodel(client, db_session):
         loss_model.vulnerabilitymodels[0] == vulnerability_model_2
 
 
-@pytest.mark.dependency()
 def test_post_lossconfig(client, db_session):
     asset_collection = AssetCollection(name='test_collection')
     loss_model = LossModel(preparationcalculationmode='scenario', maincalculationmode='scenario_risk',

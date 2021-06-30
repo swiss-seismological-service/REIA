@@ -25,7 +25,7 @@ def sites_from_assets(assets: pd.DataFrame) -> Tuple[list, list]:
     for name, _ in site_groups:
         site = Site(longitude_value=name[0],
                     latitude_value=name[1],
-                    _assetcollection_oid=int(assets.loc[0, '_assetcollection_oid']))
+                    _assetcollection_oid=int(assets.iloc[0]['_assetcollection_oid']))
         all_sites.append(site)
 
     # return sites alongside with group index
@@ -96,9 +96,27 @@ def create_risk_ini(loss_model, template_name='api/risk.ini'):
 
 def create_exposure_csv(assets):
     """ create an in-memory assets csv file for OpenQuake """
-    assets = pd.DataFrame([x._asdict() for x in assets]).set_index('_oid')
+    assets_df = pd.DataFrame([x._asdict() for x in assets]).set_index('_oid')
+    sites_df = pd.DataFrame([x.site._asdict() for x in assets])[
+        ['longitude_value', 'latitude_value']]
+    result_df = pd.concat(
+        [assets_df, sites_df.set_index(assets_df.index)], axis=1)
+
+    selector = {
+        'longitude_value': 'lon',
+        'latitude_value': 'lat',
+        'taxonomy_concept': 'taxonomy',
+        'buildingcount': 'number',
+        'structuralvalue_value': 'structural',
+        'contentvalue_value': 'contents',
+        'occupancydaytime_value': 'day',
+        '_postalcode_oid': 'postalcode',
+        '_municipality_oid': 'municipality'}
+
+    result_df = result_df.rename(columns=selector)[[*selector.values()]]
+    result_df.index.name = 'id'
     exposure_assets_csv = io.StringIO()
-    assets.to_csv(exposure_assets_csv)
+    result_df.to_csv(exposure_assets_csv)
     exposure_assets_csv.seek(0)
     exposure_assets_csv.name = 'exposure_assets.csv'
     return exposure_assets_csv

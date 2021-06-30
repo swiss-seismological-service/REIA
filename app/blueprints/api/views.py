@@ -111,11 +111,11 @@ def post_exposure():
     if '_municipality_oid' in assets_df:
         assetcollection.tagnames.append('municipality')
         for el in assets_df['_municipality_oid'].unique():
-            session.merge(Municipality(_oid=el))
+            session.merge(Municipality(_oid=int(el)))
     if '_postalcode_oid' in assets_df:
         assetcollection.tagnames.append('postalcode')
         for el in assets_df['_postalcode_oid'].unique():
-            session.merge(PostalCode(_oid=el))
+            session.merge(PostalCode(_oid=int(el)))
 
     # flush assetcollection to get id
     session.add(assetcollection)

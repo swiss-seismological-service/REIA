@@ -20,7 +20,9 @@ def parse_asset_csv(file: TextIO) -> pd.DataFrame:
                             'number': 'buildingcount',
                             'contents': 'contentvalue_value',
                             'day': 'occupancydaytime_value',
-                            'structural': 'structuralvalue_value'
+                            'structural': 'structuralvalue_value',
+                            'municipality': '_municipality_oid',
+                            'postalcode': '_postalcode_oid'
                             })
     if 'CantonGemeinde' in df:
         df = df.rename(columns={'CantonGemeinde': '_municipality_oid'})

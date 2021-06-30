@@ -29,16 +29,16 @@ def test_query(db_class):
 @pytest.fixture(scope='class')
 def test_data_from_files(client_class):
 
-    with open('tests/data/exposure.xml', 'rb') as file:
+    with open('tests/integration/data/exposure.xml', 'rb') as file:
         exposure_fp = BytesIO(file.read())
 
-    with open('tests/data/exposure_assets.csv', 'rb') as file:
+    with open('tests/integration/data/exposure_assets.csv', 'rb') as file:
         assets_fp = BytesIO(file.read())
 
-    with open('tests/data/structural_vulnerability.xml', 'rb') as file:
+    with open('tests/integration/data/structural_vulnerability.xml', 'rb') as file:
         vulnerability_fp = BytesIO(file.read())
 
-    with open('tests/data/risk.ini', 'rb') as file:
+    with open('tests/integration/data/risk.ini', 'rb') as file:
         loss_fp = BytesIO(file.read())
 
     client_class.post('/api/v1/assetcollection', content_type='multipart/form-data',
