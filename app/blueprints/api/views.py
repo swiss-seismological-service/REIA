@@ -1,5 +1,5 @@
 
-from app.extensions.celery import fetch_oq_results
+from .tasks import fetch_oq_results
 from datamodel.asset import PostalCode
 from flask import jsonify, make_response, request
 from sqlalchemy import func, distinct
@@ -463,8 +463,3 @@ def post_calculation_run():
         [response_main.json()['job_id'], loss_calculation._oid])
 
     return make_response(response_main.json(), 200)
-
-# @api.route('/')
-# def index():
-#     test.apply_async()
-#     return 'Hello World'

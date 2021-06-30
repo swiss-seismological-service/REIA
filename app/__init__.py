@@ -1,4 +1,6 @@
 from flask import Flask, render_template
+from celery import Celery
+
 from flask.logging import default_handler
 from logging.handlers import RotatingFileHandler
 
@@ -6,16 +8,50 @@ import os
 import logging
 
 from app.blueprints import frontend, api
-from app.extensions import csrf, assets, celery_app
-from app.extensions.celery import init_celery
+from app.extensions import csrf, assets
 from app.bundles import bundles
 
 from datamodel import session
 from config import get_config
 
 
-def create_app(config=get_config()):
+CELERY_TASK_LIST = [
+    'app.blueprints.api.tasks',
+]
 
+
+def create_celery_app(app=None):
+    """
+    Create a new Celery object and tie together the Celery config to the app's config. 
+    Wrap all tasks in the context of the application.
+
+    :param app: Flask app
+    :return: Celery app
+    """
+    app = app or create_app()
+
+    celery = Celery(app.import_name, include=CELERY_TASK_LIST)
+    celery.conf.update(app.config)
+    TaskBase = celery.Task
+
+    class ContextTask(TaskBase):
+        abstract = True
+
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return TaskBase.__call__(self, *args, **kwargs)
+
+    celery.Task = ContextTask
+
+    return celery
+
+
+def create_app(config=get_config()):
+    """
+    Create a Flask application using the app factory pattern.
+
+    :return: Flask app
+    """
     app = Flask(__name__)
     app.config.from_object(config)
 
@@ -35,28 +71,36 @@ def create_app(config=get_config()):
 
 
 def initialize_extensions(app):
+    """ Register 0 or more extensions (mutates the app passed in).
+
+    :param app: Flask application instance
+    :return: None
+    """
     # init csrf
     csrf.init_app(app)
 
     # init and register static asset bundles
     assets.init_app(app)
-    register_assets()
-
-    # bind celery into app context
-    init_celery(app, celery_app)
-
-
-def register_assets():
     assets.register('js_bundle', bundles['js_bundle'])
     assets.register('css_bundle', bundles['css_bundle'])
 
 
 def register_blueprints(app):
+    """ Register 0 or more blueprints (mutates the app passed in).
+
+    :param app: Flask application instance
+    :return: None
+    """
     app.register_blueprint(frontend)
     app.register_blueprint(api)
 
 
 def configure_logging(app):
+    """ Register and configure logging (mutates the app passed in).
+
+    :param app: Flask application instance
+    :return: None
+    """
     # Set up logger
     if not os.path.exists('logs'):  # pragma: no cover
         os.mkdir('logs')
@@ -74,6 +118,11 @@ def configure_logging(app):
 
 
 def register_error_handlers(app):
+    """ Register error handlers (mutates the app passed in).
+
+    :param app: Flask application instance
+    :return: None
+    """
     # TODO: create templates for errorhandlers
     # @app.errorhandler(400)
     # def bad_request(e):
@@ -97,6 +146,11 @@ def register_error_handlers(app):
 
 
 def app_teardown(app):
+    """ Register actions executed at app teardown
+
+    :param app: Flask application instance
+    :return: None
+    """
     @ app.teardown_appcontext
     def shutdown_session(exception=None):
         session.remove()
