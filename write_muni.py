@@ -1,5 +1,5 @@
-from datamodel import Municipality
-from datamodel import session
+from esloss.datamodel import Municipality
+from app.database import session
 from flask import Blueprint, render_template
 import pandas as pd
 import json

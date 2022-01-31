@@ -1,6 +1,6 @@
 from . import frontend
-from datamodel import MeanAssetLoss, Asset
-from datamodel import session, engine
+from esloss.datamodel import MeanAssetLoss, Asset
+from app.database import session, engine
 from flask import render_template
 import pandas as pd
 import json

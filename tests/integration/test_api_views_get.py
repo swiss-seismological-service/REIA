@@ -1,6 +1,6 @@
-from datamodel.lossmodel import LossCalculation, LossConfig, LossModel
-from datamodel.vulnerability import VulnerabilityFunction, VulnerabilityModel
-from datamodel.asset import Asset, AssetCollection, Site
+from esloss.datamodel.lossmodel import LossCalculation, LossConfig, LossModel
+from esloss.datamodel.vulnerability import VulnerabilityFunction, VulnerabilityModel
+from esloss.datamodel.asset import Asset, AssetCollection, Site
 
 from dateutil.parser import parse
 

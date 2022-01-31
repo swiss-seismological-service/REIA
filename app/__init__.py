@@ -11,7 +11,7 @@ from app.blueprints import frontend, api
 from app.extensions import csrf, assets
 from app.bundles import bundles
 
-from datamodel import session
+from app.database import session
 from config import get_config
 
 

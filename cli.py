@@ -1,8 +1,10 @@
 from app import create_app
 import click
-from datamodel import *
-from datamodel import init_db, drop_db, session, engine
+from esloss.datamodel import MeanAssetLoss
+from app.database import init_db, drop_db, session
+
 import requests
+
 from openquake.calculators.extract import Extractor
 from openquake.commonlib.datastore import read
 import os

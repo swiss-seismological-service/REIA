@@ -1,9 +1,9 @@
 from flask import request
 
 import xml.etree.ElementTree as ET
-from datamodel.lossmodel import LossConfig, LossModel
-from datamodel.vulnerability import VulnerabilityModel
-from datamodel.asset import Asset, AssetCollection, Site
+from esloss.datamodel.lossmodel import LossConfig, LossModel
+from esloss.datamodel.vulnerability import VulnerabilityModel
+from esloss.datamodel.asset import Asset, AssetCollection, Site
 from io import BytesIO
 import pytest
 

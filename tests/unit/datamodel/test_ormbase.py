@@ -1,4 +1,4 @@
-from datamodel import AssetCollection
+from esloss.datamodel import AssetCollection
 
 import json
 

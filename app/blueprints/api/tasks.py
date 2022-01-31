@@ -1,6 +1,7 @@
 from celery import Celery
 from app.blueprints.api.utils import oqapi_wait_for_job
-from datamodel import session, MeanAssetLoss
+from app.database import session
+from esloss.datamodel import MeanAssetLoss
 
 from openquake.calculators.extract import Extractor
 

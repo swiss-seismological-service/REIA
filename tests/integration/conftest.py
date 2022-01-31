@@ -1,8 +1,8 @@
 from io import BytesIO
 from app import create_app
-from datamodel.lossmodel import LossCalculation, LossConfig, LossModel
-from datamodel.vulnerability import VulnerabilityFunction, VulnerabilityModel
-from datamodel.asset import AssetCollection, Site, Asset
+from esloss.datamodel.lossmodel import LossCalculation, LossConfig, LossModel
+from esloss.datamodel.vulnerability import VulnerabilityFunction, VulnerabilityModel
+from esloss.datamodel.asset import AssetCollection, Site, Asset
 
 import pytest
 from datetime import datetime

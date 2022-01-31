@@ -1,21 +1,22 @@
 
 from .tasks import fetch_oq_results
-from datamodel.asset import PostalCode
 from flask import jsonify, make_response, request
 from sqlalchemy import func, distinct
 
 from datetime import datetime
-import threading
 
 from . import api
 from app.extensions import csrf
-
-from datamodel import (session, engine, AssetCollection, Asset, Site,
-                       VulnerabilityFunction, VulnerabilityModel, LossConfig,
-                       LossModel, LossCalculation, Municipality)
+from app.database import session, engine
+from esloss.datamodel import (AssetCollection, Asset, Site,
+                              VulnerabilityFunction, VulnerabilityModel,
+                              LossConfig, LossModel, LossCalculation,
+                              Municipality, PostalCode)
 
 from .utils import (create_exposure_csv, create_exposure_xml, create_risk_ini,
-                    create_hazard_ini, create_vulnerability_xml, ini_to_dict, oqapi_get_job_status, oqapi_send_main_calculation, oqapi_send_pre_calculation, oqapi_wait_for_job, sites_from_assets)
+                    create_hazard_ini, create_vulnerability_xml, ini_to_dict,
+                    oqapi_send_main_calculation, oqapi_send_pre_calculation,
+                    oqapi_wait_for_job, sites_from_assets)
 from .parsers import (parse_oq_exposure_file, parse_oq_vulnerability_file,
                       parse_asset_csv, risk_dict_to_lossmodel_dict)
 

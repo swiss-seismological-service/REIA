@@ -5,7 +5,7 @@ import flask
 from flask.helpers import make_response
 from flask.json import jsonify
 from werkzeug.exceptions import abort
-from datamodel import Site
+from esloss.datamodel import Site
 
 from flask import current_app
 
