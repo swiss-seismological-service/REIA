@@ -1,5 +1,3 @@
-from flask_wtf.csrf import CSRFProtect
-from flask_assets import Environment
+# from flask_wtf.csrf import CSRFProtect
 
-csrf = CSRFProtect()
-assets = Environment()
+# csrf = CSRFProtect()

@@ -24,11 +24,11 @@ from .parsers import (parse_oq_exposure_file, parse_oq_vulnerability_file,
 @api.get('/assetcollection')
 @csrf.exempt
 def get_exposure():
-    """ /api/v1/assetcollection 
+    """ /api/v1/assetcollection
     get:
         summary: Endpoint for AssetCollection
         description: Get all AssetCollections including Asset and Site counts
-        parameters: 
+        parameters:
             - None
         responses:
             200:
@@ -63,12 +63,12 @@ def get_exposure():
 @api.post('/assetcollection')
 @csrf.exempt
 def post_exposure():
-    """ /api/v1/assetcollection 
+    """ /api/v1/assetcollection
     post:
         summary: Endpoint for AssetCollection
         description: Post an AssetCollection and corresponding Sites and Assets
         consumes: multipart/form-data
-        parameters: 
+        parameters:
             - name: exposureXML
               in: body
               type: file
@@ -78,7 +78,7 @@ def post_exposure():
               type: file
               description: OpenQuake assets csv
         responses:
-            400: 
+            400:
                 description: bad request
             200:
                 description: OK, returns object
@@ -145,21 +145,22 @@ def get_vulnerability():
     """ /api/v1/vulnerabilitymodel
     get:
         summary: Endpoint for VulnerabilityModel
-        description: Get all VulnerabilityModels including VulnerabilityFunctions count
-        responses:
+        description: Get all VulnerabilityModels including
+        VulnerabilityFunctions count responses:
             200:
                 description: OK, returns object
                 type: application/json
                 schema: VulnerabilityModel
                 extra fields:
                     - name: functions_count
-                      type: integer 
+                      type: integer
     """
     # query vulnerability Models and number of functions
-    vulnerability_model = session.query(VulnerabilityModel,
-                                        func.count(VulnerabilityFunction._oid)) \
-        .outerjoin(VulnerabilityFunction) \
-        .group_by(VulnerabilityModel._oid).all()
+    vulnerability_model = session.query(
+        VulnerabilityModel, func.count(
+            VulnerabilityFunction._oid)).outerjoin(
+                VulnerabilityFunction).group_by(
+        VulnerabilityModel._oid).all()
 
     # assemble response object
     response = []
@@ -175,18 +176,18 @@ def get_vulnerability():
 @api.post('/vulnerabilitymodel')
 @csrf.exempt
 def post_vulnerability():
-    """ /api/v1/vulnerabilitymodel 
+    """ /api/v1/vulnerabilitymodel
     post:
         summary: Endpoint for VulnerabilityModel
         description: Post a VulnerabilityModel
         consumes: multipart/form-data
-        parameters: 
+        parameters:
             - name: vulnerabilitymodel
               in: body
               type: file
               description: OpenQuake vulnerability_file xml
         responses:
-            400: 
+            400:
                 description: bad request
             200:
                 description: OK, returns object
@@ -194,7 +195,7 @@ def post_vulnerability():
                 schema: VulnerabilityModel
                 extra fields:
                     - name: functions_count
-                      type: integer 
+                      type: integer
     """
 
     # read xml file
@@ -223,7 +224,7 @@ def get_loss_model():
     """ /api/v1/lossmodel
     get:
         summary: Endpoint for LossModel
-        description: Get all available LossModels 
+        description: Get all available LossModels
         responses:
             200:
                 description: OK, returns object
@@ -231,7 +232,7 @@ def get_loss_model():
                 schema: LossModel
                 extra fields:
                     - name: calculations_count
-                      type: integer 
+                      type: integer
                     - name: _vulnerabilitymodels_oids
                       type: array(integer)
     """
@@ -257,12 +258,12 @@ def get_loss_model():
 @api.post('/lossmodel')
 @csrf.exempt
 def post_loss_model():
-    """ /api/v1/lossmodel 
+    """ /api/v1/lossmodel
     post:
         summary: Endpoint for LossModel
         description: Post a LossModel
         consumes: multipart/form-data
-        parameters: 
+        parameters:
             - name: riskini
               in: body
               type: file
@@ -276,7 +277,7 @@ def post_loss_model():
               type: string
               description: csv string with VulnerabilityModel _oids
         responses:
-            400: 
+            400:
                 description: bad request
             200:
                 description: OK, returns object
@@ -284,7 +285,7 @@ def post_loss_model():
                 schema: LossModel
                 extra fields:
                     - name: calculations_count
-                      type: integer 
+                      type: integer
                     - name: _vulnerabilitymodels_oids
                       type: array(integer)
     """
@@ -321,7 +322,7 @@ def get_loss_config():
     """ /api/v1/lossconfig
     get:
         summary: Endpoint for LossConfig
-        description: Get all available LossConfigs 
+        description: Get all available LossConfigs
         responses:
             200:
                 description: OK, returns object
@@ -342,12 +343,12 @@ def get_loss_config():
 @api.post('/lossconfig')
 @csrf.exempt
 def post_loss_config():
-    """ /api/v1/lossconfig 
+    """ /api/v1/lossconfig
     post:
         summary: Endpoint for LossConfig
         description: Post a LossConfig
         consumes: application/json
-        parameters: 
+        parameters:
             - name: losscategory
               in: body
               type: string
@@ -362,7 +363,7 @@ def post_loss_config():
               type: integer
               description: LossModel _oid
         responses:
-            400: 
+            400:
                 description: bad request
             200:
                 description: OK, returns object
@@ -382,7 +383,7 @@ def get_loss_calculation():
     """ /api/v1/losscalculation
     get:
         summary: Endpoint for LossCalculation
-        description: Get all available LossCalculations 
+        description: Get all available LossCalculations
         responses:
             200:
                 description: OK, returns object
@@ -403,7 +404,9 @@ def get_loss_calculation():
 @api.post('/calculation/run')
 @csrf.exempt
 def post_calculation_run():
-    # curl -X post http://localhost:5000/api/v1/calculation/run --header "Content-Type: application/json" --data '{"shakemap":"model/shapefiles.zip"}'
+    # curl -X post http://localhost:5000/api/v1/calculation/run --header
+    # "Content-Type: application/json" --data
+    # '{"shakemap":"model/shapefiles.zip"}'
 
     # get data from database
     loss_config = session.query(LossConfig).get(1)

@@ -1,6 +1,4 @@
-from logging import Logger
 import time
-import flask
 
 from flask.helpers import make_response
 from flask.json import jsonify
@@ -22,7 +20,7 @@ def sites_from_assets(assets: pd.DataFrame) -> Tuple[list, list]:
     Extract sites from assets dataframe
 
     :params assets: Dataframe of assets with 'lon' and 'lat' column
-    :returns:       list of Site objects and list of group numbers for dataframe rows
+    :returns:       lists of Site objects and group numbers for dataframe rows
     """
     # group by sites
     site_groups = assets.groupby(['lon', 'lat'])
@@ -31,9 +29,11 @@ def sites_from_assets(assets: pd.DataFrame) -> Tuple[list, list]:
 
     # create site models
     for name, _ in site_groups:
-        site = Site(longitude_value=name[0],
-                    latitude_value=name[1],
-                    _assetcollection_oid=int(assets.iloc[0]['_assetcollection_oid']))
+        site = Site(
+            longitude_value=name[0],
+            latitude_value=name[1],
+            _assetcollection_oid=int(
+                assets.iloc[0]['_assetcollection_oid']))
         all_sites.append(site)
 
     # return sites alongside with group index
@@ -59,7 +59,7 @@ def ini_to_dict(filepointer: io.BytesIO) -> dict:
     for k, v in mydict.items():
         try:
             mydict[k] = ast.literal_eval(v)
-        except:
+        except BaseException:
             pass
 
     return mydict
@@ -81,7 +81,9 @@ def create_exposure_xml(exposure_model, template_name='api/exposure.xml'):
     return _create_file_pointer(template_name, data=data)
 
 
-def create_vulnerability_xml(vulnerability_model, template_name='api/vulnerability.xml'):
+def create_vulnerability_xml(
+        vulnerability_model,
+        template_name='api/vulnerability.xml'):
     """ create an in memory vulnerability xml file for OpenQuake"""
     data = vulnerability_model._asdict()
     data['vulnerabilityfunctions'] = []
@@ -130,7 +132,11 @@ def create_exposure_csv(assets):
     return exposure_assets_csv
 
 
-def oqapi_send_pre_calculation(job_config, input_model_1, input_model_2, input_model_3):
+def oqapi_send_pre_calculation(
+        job_config,
+        input_model_1,
+        input_model_2,
+        input_model_3):
     files = locals()
 
     try:
@@ -147,7 +153,8 @@ def oqapi_send_pre_calculation(job_config, input_model_1, input_model_2, input_m
             return response
     except requests.exceptions.ConnectionError:
         current_app.logger.error('Could not connect to OpenQuake')
-        return abort(make_response(jsonify({'error': 'Could not connect to the OpenQuake API'}), 400))
+        return abort(make_response(
+            jsonify({'error': 'Could not connect to the OpenQuake API'}), 400))
 
 
 def oqapi_send_main_calculation(job_id, job_config, input_model_1):
@@ -168,7 +175,8 @@ def oqapi_send_main_calculation(job_id, job_config, input_model_1):
             return response
     except requests.exceptions.ConnectionError:
         current_app.logger.error('Could not connect to OpenQuake')
-        return abort(make_response(jsonify({'error': 'Could not connect to the OpenQuake API'}), 400))
+        return abort(make_response(
+            jsonify({'error': 'Could not connect to the OpenQuake API'}), 400))
 
 
 def oqapi_get_job_status(job_id):
@@ -177,7 +185,8 @@ def oqapi_get_job_status(job_id):
             .json()['status']
     except requests.exceptions.ConnectionError:
         current_app.logger.error('Could not connect to OpenQuake')
-        return abort(make_response(jsonify({'error': 'Could not connect to the OpenQuake API'}), 400))
+        return abort(make_response(
+            jsonify({'error': 'Could not connect to the OpenQuake API'}), 400))
 
 
 def oqapi_wait_for_job(job_id):

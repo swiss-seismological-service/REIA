@@ -7,9 +7,7 @@ from logging.handlers import RotatingFileHandler
 import os
 import logging
 
-from app.blueprints import frontend, api
-from app.extensions import csrf, assets
-from app.bundles import bundles
+# from app.extensions import csrf
 
 from app.database import session
 from config import get_config
@@ -22,7 +20,8 @@ CELERY_TASK_LIST = [
 
 def create_celery_app(app=None):
     """
-    Create a new Celery object and tie together the Celery config to the app's config. 
+    Create a new Celery object and tie together the Celery config to
+    the app's config.
     Wrap all tasks in the context of the application.
 
     :param app: Flask app
@@ -77,12 +76,7 @@ def initialize_extensions(app):
     :return: None
     """
     # init csrf
-    csrf.init_app(app)
-
-    # init and register static asset bundles
-    assets.init_app(app)
-    assets.register('js_bundle', bundles['js_bundle'])
-    assets.register('css_bundle', bundles['css_bundle'])
+    # csrf.init_app(app)
 
 
 def register_blueprints(app):
@@ -91,7 +85,7 @@ def register_blueprints(app):
     :param app: Flask application instance
     :return: None
     """
-    app.register_blueprint(frontend)
+    from app.blueprints import api
     app.register_blueprint(api)
 
 
