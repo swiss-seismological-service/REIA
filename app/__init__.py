@@ -9,7 +9,7 @@ import logging
 
 # from app.extensions import csrf
 
-from app.database import session
+from core.database import session
 from config import get_config
 
 

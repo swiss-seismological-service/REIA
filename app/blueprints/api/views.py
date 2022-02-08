@@ -7,7 +7,7 @@ from datetime import datetime
 
 from . import api
 from app.extensions import csrf
-from app.database import session, engine
+from core.database import session, engine
 from esloss.datamodel import (AssetCollection, Asset, Site,
                               VulnerabilityFunction, VulnerabilityModel,
                               LossConfig, LossModel, LossCalculation,

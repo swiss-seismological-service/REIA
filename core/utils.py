@@ -40,11 +40,11 @@ def sites_from_assets(assets: pd.DataFrame) -> Tuple[list, list]:
     return all_sites, site_groups.grouper.group_info[0]
 
 
-def ini_to_dict(filepointer: io.BytesIO) -> dict:
+def ini_to_dict(file: io.TextIOWrapper) -> dict:
     # make sure ini has at least one section
-    byte_str = filepointer.read()
+    content = file.read()
 
-    file_content = '[dummy_section]\n' + byte_str.decode('UTF-8')
+    file_content = '[dummy_section]\n' + content
 
     # read ini
     config = configparser.RawConfigParser()

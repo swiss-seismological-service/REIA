@@ -1,7 +1,7 @@
-from app import create_app
+# from app import create_app
 import click
 # from esloss.datamodel import MeanAssetLoss
-from app.database import init_db, drop_db
+from core.database import init_db, drop_db
 # from app.database import session
 
 import requests
@@ -9,10 +9,11 @@ import requests
 # from openquake.calculators.extract import Extractor
 # from openquake.commonlib.datastore import read
 import os
-from flask.cli import FlaskGroup
+# from flask.cli import FlaskGroup
 
 
-@ click.group(cls=FlaskGroup, create_app=create_app)
+# @ click.group(cls=FlaskGroup, create_app=create_app)
+@click.group()
 def cli():
     """Management script for the EBR application."""
     pass
