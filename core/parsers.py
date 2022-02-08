@@ -4,14 +4,14 @@ import xml.etree.ElementTree as ET
 
 
 def parse_asset_csv(file: TextIO) -> pd.DataFrame:
-    """ 
+    """
     Reads an exposure file with assets into a dataframe
 
-    :params file:   csv file object with the following headers (Input for OpenQuake):
+    :params file:   csv file object with headers (Input OpenQuake):
                     id,lon,lat,taxonomy,number,structural,contents,day(
                     CantonGemeinde,CantonGemeindePC, ...)
 
-    :returns:       df with columns compatible with the datamodel.Assets object + lat and lon
+    :returns:       df with columns for datamodel.Assets object + lat and lon
      """
 
     df = pd.read_csv(file, index_col='id')
@@ -38,15 +38,24 @@ def parse_asset_csv(file: TextIO) -> pd.DataFrame:
 
 def risk_dict_to_lossmodel_dict(risk: dict) -> dict:
     loss_dict = {
-        'maincalculationmode': risk.get('calculation_mode', 'scenario_risk'),
-        'numberofgroundmotionfields': risk.get('number_of_ground_motion_fields', 100),
-        'maximumdistance': risk.get('maximum_distance', None),
-        'truncationlevel': risk.get('truncation_level', None),
-        'randomseed': risk.get('random_seed', None),
-        'masterseed': risk.get('master_seed', None),
-        'crosscorrelation': True if risk.get('cross_correlation', 'no') == 'yes' else False,
-        'spatialcorrelation': True if risk.get('spatial_correlation', 'no') == 'yes' else False,
-        'description': risk.get('description', ''),
+        'maincalculationmode':
+        risk.get('calculation_mode', 'scenario_risk'),
+        'numberofgroundmotionfields':
+        risk.get('number_of_ground_motion_fields', 100),
+        'maximumdistance':
+        risk.get('maximum_distance', None),
+        'truncationlevel':
+        risk.get('truncation_level', None),
+        'randomseed':
+        risk.get('random_seed', None),
+        'masterseed':
+        risk.get('master_seed', None),
+        'crosscorrelation':
+        True if risk.get('cross_correlation', 'no') == 'yes' else False,
+        'spatialcorrelation':
+        True if risk.get('spatial_correlation', 'no') == 'yes' else False,
+        'description':
+        risk.get('description', ''),
     }
     return loss_dict
 

@@ -1,8 +1,5 @@
-from io import BytesIO
-from app.blueprints.api.utils import ini_to_dict, sites_from_assets
-from app.blueprints.api.parsers import parse_asset_csv
-
-import pytest
+from esloss.core.utils import ini_to_dict, sites_from_assets
+from esloss.core.parsers import parse_asset_csv
 
 
 def test_parse_asset_csv():

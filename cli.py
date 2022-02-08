@@ -1,12 +1,13 @@
 from app import create_app
 import click
-from esloss.datamodel import MeanAssetLoss
-from app.database import init_db, drop_db, session
+# from esloss.datamodel import MeanAssetLoss
+from app.database import init_db, drop_db
+# from app.database import session
 
 import requests
 
-from openquake.calculators.extract import Extractor
-from openquake.commonlib.datastore import read
+# from openquake.calculators.extract import Extractor
+# from openquake.commonlib.datastore import read
 import os
 from flask.cli import FlaskGroup
 
@@ -73,24 +74,24 @@ def list():
     print(response.text)
 
 
-@oqapi.command()
-@click.argument('type')
-def extract(type):
-    extractor = Extractor(520)
-    data = extractor.get(type).to_dframe()
+# @oqapi.command()
+# @click.argument('type')
+# def extract(type):
+#     extractor = Extractor(520)
+#     data = extractor.get(type).to_dframe()
 
-    data = data[['asset_id', 'value']].rename(
-        columns={'asset_id': '_asset_oid', 'value': 'loss_value'})
+#     data = data[['asset_id', 'value']].rename(
+#         columns={'asset_id': '_asset_oid', 'value': 'loss_value'})
 
-    data = data.apply(lambda x: MeanAssetLoss(
-        _losscalculation_oid=2, **x), axis=1)
-    session.add_all(data)
-    session.commit()
-    pass
+#     data = data.apply(lambda x: MeanAssetLoss(
+#         _losscalculation_oid=2, **x), axis=1)
+#     session.add_all(data)
+#     session.commit()
+#     pass
 
 
-@oqapi.command()
-def readit():
-    dstore = read(520)
-    print([key for key in dstore])
-    pass
+# @oqapi.command()
+# def readit():
+#     dstore = read(520)
+#     print([key for key in dstore])
+#     pass

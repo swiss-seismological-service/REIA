@@ -1,5 +1,5 @@
 from celery import Celery
-from app.blueprints.api.utils import oqapi_wait_for_job
+from core.utils import oqapi_wait_for_job
 from app.database import session
 from esloss.datamodel import MeanAssetLoss
 
