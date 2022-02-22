@@ -1,6 +1,7 @@
 from typing import TextIO
 import pandas as pd
 import xml.etree.ElementTree as ET
+from core.utils import ini_to_dict
 
 
 def parse_asset_csv(file: TextIO) -> pd.DataFrame:
@@ -36,7 +37,9 @@ def parse_asset_csv(file: TextIO) -> pd.DataFrame:
     return df
 
 
-def risk_dict_to_lossmodel_dict(risk: dict) -> dict:
+def parse_oq_risk_file(file: TextIO) -> dict:
+    risk = ini_to_dict(file)
+
     loss_dict = {
         'maincalculationmode':
         risk.get('calculation_mode', 'scenario_risk'),
@@ -60,7 +63,7 @@ def risk_dict_to_lossmodel_dict(risk: dict) -> dict:
     return loss_dict
 
 
-def parse_oq_vulnerability_file(file) -> dict:
+def parse_oq_vulnerability_file(file: TextIO) -> dict:
     model = {}
     functions = []
 
@@ -93,7 +96,7 @@ def parse_oq_vulnerability_file(file) -> dict:
     return model, functions
 
 
-def parse_oq_exposure_file(file) -> dict:
+def parse_oq_exposure_file(file: TextIO) -> dict:
     tree = ET.iterparse(file)
 
     # strip namespace for easier querying

@@ -14,7 +14,7 @@ from config import get_config
 
 
 CELERY_TASK_LIST = [
-    'app.blueprints.api.tasks',
+    # 'app.blueprints.api.tasks',
 ]
 
 

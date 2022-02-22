@@ -9,11 +9,10 @@ from esloss.datamodel import (  # noqa
 from sqlalchemy import select
 
 from core.utils import sites_from_assets
-from core.parsers import risk_dict_to_lossmodel_dict
 from core.database import session, engine
 
 
-def create_asset_collection(exposure: dict, assets: pd.DataFrame):
+def create_asset_collection(exposure: dict, assets: pd.DataFrame) -> int:
 
     asset_collection = AssetCollection(**exposure)
     # add tags to session and tag names to Asset Collection
@@ -56,7 +55,7 @@ def create_asset_collection(exposure: dict, assets: pd.DataFrame):
     return asset_collection._oid
 
 
-def create_vulnerability_model(model: dict, functions: list):
+def create_vulnerability_model(model: dict, functions: list) -> int:
     # assemble vulnerability Model
     vulnerability_model = VulnerabilityModel(**model)
     session.add(vulnerability_model)
@@ -75,22 +74,20 @@ def create_vulnerability_model(model: dict, functions: list):
 def create_loss_model(
         risk: dict,
         asset_collection_oid: int,
-        vulnerability_models_oid: List[int]):
-
-    data = risk_dict_to_lossmodel_dict(risk)
+        vulnerability_models_oid: List[int]) -> int:
 
     # add asset collection id
-    data['_assetcollection_oid'] = asset_collection_oid
-    data['preparationcalculationmode'] = 'scenario'
+    risk['_assetcollection_oid'] = asset_collection_oid
+    risk['preparationcalculationmode'] = 'scenario'
 
     # get vulnerability models
     statement = select(VulnerabilityModel).filter(
         VulnerabilityModel._oid.in_(vulnerability_models_oid))
     vulnerabilitymodels = session.execute(statement).scalars().unique()
-    data['vulnerabilitymodels'] = list(vulnerabilitymodels)
+    risk['vulnerabilitymodels'] = list(vulnerabilitymodels)
 
     # assemble LossModel object
-    loss_model = LossModel(**data)
+    loss_model = LossModel(**risk)
     session.add(loss_model)
     session.commit()
 

@@ -4,9 +4,9 @@
       <description>{{data.name}}</description>
       <conversions>
          <costTypes>
-            {% for type in data.costtypes %}
+            {%- for type in data.costtypes %}
             <costType name="{{type}}" type="aggregated" unit="CHF"/>
-            {% endfor %}
+            {%- endfor %}
          </costTypes>
       </conversions>
       <tagNames>{% for tag in data.tagnames -%} {{tag+" "}} {%- endfor %}</tagNames>

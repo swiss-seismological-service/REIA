@@ -1,18 +1,12 @@
-import time
-
-from flask.helpers import make_response
-from flask.json import jsonify
-from werkzeug.exceptions import abort
-from esloss.datamodel import Site
-
-from flask import current_app
-
-import configparser
 import io
-from typing import Tuple
-import pandas as pd
 import ast
-import requests
+import configparser
+
+import pandas as pd
+from typing import Tuple, TextIO
+from jinja2 import Template, select_autoescape
+
+from esloss.datamodel import Site
 
 
 def sites_from_assets(assets: pd.DataFrame) -> Tuple[list, list]:
@@ -40,7 +34,7 @@ def sites_from_assets(assets: pd.DataFrame) -> Tuple[list, list]:
     return all_sites, site_groups.grouper.group_info[0]
 
 
-def ini_to_dict(file: io.TextIOWrapper) -> dict:
+def ini_to_dict(file: TextIO) -> dict:
     # make sure ini has at least one section
     content = file.read()
 
@@ -65,135 +59,12 @@ def ini_to_dict(file: io.TextIOWrapper) -> dict:
     return mydict
 
 
-def _create_file_pointer(template_name, **kwargs):
+def create_file_pointer(template_name: str, **kwargs) -> io.StringIO:
     """ create file pointer """
     sio = io.StringIO()
-    template = current_app.jinja_env.get_template(template_name)
+    with open(template_name) as t:
+        template = Template(t.read(), autoescape=select_autoescape())
     template.stream(**kwargs).dump(sio)
     sio.seek(0)
     sio.name = template_name.rsplit('/', 1)[-1]
     return sio
-
-
-def create_exposure_xml(exposure_model, template_name='api/exposure.xml'):
-    """ create an in memory exposure xml file for OpenQuake"""
-    data = exposure_model._asdict()
-    return _create_file_pointer(template_name, data=data)
-
-
-def create_vulnerability_xml(
-        vulnerability_model,
-        template_name='api/vulnerability.xml'):
-    """ create an in memory vulnerability xml file for OpenQuake"""
-    data = vulnerability_model._asdict()
-    data['vulnerabilityfunctions'] = []
-    for vulnerability_function in vulnerability_model.vulnerabilityfunctions:
-        data['vulnerabilityfunctions'].append(vulnerability_function._asdict())
-    return _create_file_pointer(template_name, data=data)
-
-
-def create_hazard_ini(loss_model, template_name='api/prepare_risk.ini'):
-    """ create an in memory vulnerability xml file for OpenQuake"""
-    data = loss_model._asdict()
-    return _create_file_pointer(template_name, data=data)
-
-
-def create_risk_ini(loss_model, template_name='api/risk.ini'):
-    """ create an in memory vulnerability xml file for OpenQuake"""
-    data = loss_model._asdict()
-    return _create_file_pointer(template_name, data=data)
-
-
-def create_exposure_csv(assets):
-    """ create an in-memory assets csv file for OpenQuake """
-    assets_df = pd.DataFrame([x._asdict() for x in assets]).set_index('_oid')
-    sites_df = pd.DataFrame([x.site._asdict() for x in assets])[
-        ['longitude_value', 'latitude_value']]
-    result_df = pd.concat(
-        [assets_df, sites_df.set_index(assets_df.index)], axis=1)
-
-    selector = {
-        'longitude_value': 'lon',
-        'latitude_value': 'lat',
-        'taxonomy_concept': 'taxonomy',
-        'buildingcount': 'number',
-        'structuralvalue_value': 'structural',
-        'contentvalue_value': 'contents',
-        'occupancydaytime_value': 'day',
-        '_postalcode_oid': 'postalcode',
-        '_municipality_oid': 'municipality'}
-
-    result_df = result_df.rename(columns=selector)[[*selector.values()]]
-    result_df.index.name = 'id'
-    exposure_assets_csv = io.StringIO()
-    result_df.to_csv(exposure_assets_csv)
-    exposure_assets_csv.seek(0)
-    exposure_assets_csv.name = 'exposure_assets.csv'
-    return exposure_assets_csv
-
-
-def oqapi_send_pre_calculation(
-        job_config,
-        input_model_1,
-        input_model_2,
-        input_model_3):
-    files = locals()
-
-    try:
-        response = requests.post(
-            'http://localhost:8800/v1/calc/run', files=files)
-
-        if response.ok:
-            current_app.logger.info(
-                'Successfully sent calculation job to OpenQuake.')
-            return response
-        else:
-            current_app.logger.error(
-                'Error sending the calculation job to OpenQuake.')
-            return response
-    except requests.exceptions.ConnectionError:
-        current_app.logger.error('Could not connect to OpenQuake')
-        return abort(make_response(
-            jsonify({'error': 'Could not connect to the OpenQuake API'}), 400))
-
-
-def oqapi_send_main_calculation(job_id, job_config, input_model_1):
-    files = locals()
-
-    try:
-        response = requests.post(
-            'http://localhost:8800/v1/calc/run', files=files,
-            data={'hazard_job_id': job_id})
-
-        if response.ok:
-            current_app.logger.info(
-                'Successfully sent calculation job to OpenQuake.')
-            return response
-        else:
-            current_app.logger.error(
-                'Error sending the calculation job to OpenQuake.')
-            return response
-    except requests.exceptions.ConnectionError:
-        current_app.logger.error('Could not connect to OpenQuake')
-        return abort(make_response(
-            jsonify({'error': 'Could not connect to the OpenQuake API'}), 400))
-
-
-def oqapi_get_job_status(job_id):
-    try:
-        return requests.get(f'http://localhost:8800/v1/calc/{job_id}/status')\
-            .json()['status']
-    except requests.exceptions.ConnectionError:
-        current_app.logger.error('Could not connect to OpenQuake')
-        return abort(make_response(
-            jsonify({'error': 'Could not connect to the OpenQuake API'}), 400))
-
-
-def oqapi_wait_for_job(job_id):
-    check_status = oqapi_get_job_status(job_id)
-
-    while check_status != 'complete':
-        time.sleep(1)
-        check_status = oqapi_get_job_status(job_id)
-        if check_status == 'failed':
-            return make_response(check_status.json(), 400)
