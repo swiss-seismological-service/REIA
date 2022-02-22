@@ -1,5 +1,5 @@
 from celery import Celery
-from core.utils import oqapi_wait_for_job
+from core.oqapi import oqapi_wait_for_job
 from core.database import session
 from esloss.datamodel import MeanAssetLoss
 
