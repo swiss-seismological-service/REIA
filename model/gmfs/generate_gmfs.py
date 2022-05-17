@@ -15,7 +15,7 @@ sitecol = SiteCollection.from_points(
 uridict = {"grid_url": "grid.xml",
            "uncertainty_url": "uncertainty.xml"}
 
-sitecol, shkmp, discarded = get_sitecol_shakemap(
+_, shkmp, discarded = get_sitecol_shakemap(
     'usgs_xml', uridict, ['MMI'], sitecol)
 
 gmf_dict = {'kind': 'mmi'}
@@ -24,7 +24,7 @@ gmfs = to_gmfs(shkmp, gmf_dict, False, 99, 100, 42, ['MMI'])
 
 # print(gmfs[1].shape)
 
-with open('sites_gen.csv', 'w') as f:
+with open('../sites_gen.csv', 'w') as f:
     writer = csv.writer(f)
 
     # write the header
@@ -32,11 +32,13 @@ with open('sites_gen.csv', 'w') as f:
 
     for site in sitecol:
         # write the data
+        if site.id == 18084:
+            print(site)
         writer.writerow([site.id,
                          round(site.location.longitude, 5),
                          round(site.location.latitude, 5)])
 
-with open('gmfs_gen.csv', 'w') as f:
+with open('../gmfs_gen.csv', 'w') as f:
     writer = csv.writer(f)
 
     # write the header
