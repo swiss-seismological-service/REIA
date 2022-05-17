@@ -3,11 +3,11 @@
     <description>Exposure model</description>
     <conversions>
       <costTypes>
-        <costType name="structural" type="aggregated" unit="CHF"/>
+        <costType name="structural" type="aggregated" unit="CHF" />
       </costTypes>
     </conversions>
-    <tagNames>postalcode municipality</tagNames>
+    <tagNames>Canton,CantonGemeinde,CantonGemeindePC</tagNames>
     <occupancyPeriods>day</occupancyPeriods>
-    <assets>Exposure_dummy.csv</assets>
+    <assets>exposure_assets_full.csv</assets>
   </exposureModel>
 </nrml>
