@@ -31,9 +31,13 @@ def create_hazard_ini(
     return create_file_pointer(template_name, data=data)
 
 
-def create_risk_ini(loss_model, template_name='core/templates/risk.ini'):
+def create_risk_ini(
+        loss_model,
+        aggregate_by=None,
+        template_name='core/templates/risk.ini'):
     """ create an in memory vulnerability xml file for OpenQuake"""
     data = loss_model._asdict()
+    data['aggregateBy'] = aggregate_by
     return create_file_pointer(template_name, data=data)
 
 

@@ -1,3 +1,4 @@
+import json
 from core.database import session
 from core.input import (  # noqa
     create_exposure_csv,
@@ -75,22 +76,22 @@ def main():
     # # pre-calculation.ini
     # hazard_ini = create_hazard_ini(loss_model)
     # # risk.ini
-    # risk_ini = create_risk_ini(loss_model)
+    # risk_ini = create_risk_ini(loss_model, 'site')
 
-    # # with open('test_output/exposure.xml', 'w') as f:
-    # #     f.write(exposure_xml.getvalue())
+    # with open('test_output/exposure.xml', 'w') as f:
+    #     f.write(exposure_xml.getvalue())
 
-    # # with open('test_output/exposure_assets.csv', 'w') as f:
-    # #     f.write(assets_csv.getvalue())
+    # with open('test_output/exposure_assets.csv', 'w') as f:
+    #     f.write(assets_csv.getvalue())
 
-    # # with open('test_output/vulnerability.xml', 'w') as f:
-    # #     f.write(vulnerability_xml.getvalue())
+    # with open('test_output/vulnerability.xml', 'w') as f:
+    #     f.write(vulnerability_xml.getvalue())
 
-    # # with open('test_output/hazard.ini', 'w') as f:
-    # #     f.write(hazard_ini.getvalue())
+    # with open('test_output/hazard.ini', 'w') as f:
+    #     f.write(hazard_ini.getvalue())
 
-    # # with open('test_output/risk.ini', 'w') as f:
-    # #     f.write(risk_ini.getvalue())
+    # with open('test_output/risk.ini', 'w') as f:
+    #     f.write(risk_ini.getvalue())
 
     # response = oqapi_send_pre_calculation(hazard_ini,
     #                                       exposure_xml,
@@ -111,12 +112,14 @@ def main():
     # main_job_id = response_main.json()['job_id']
     # oqapi_wait_for_job(main_job_id)
 
-    from openquake.calculators.extract import WebExtractor
+    from core.oqapi import WebExtractor
 
     # fetch results
-    extractor = WebExtractor(27, 'http://localhost:8800')
-    data = extractor.get('avg_losses-rlzs').to_dict()
-    pprint(data['json'])
+    extractor = WebExtractor(4, 'http://localhost:8800')
+    arr, attrs = extractor.get('risk_by_event')
+    # json.loads(attrs['json'].tobytes())
+    print(attrs)
+    print(arr)
 
 
 if __name__ == "__main__":
