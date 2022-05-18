@@ -1,10 +1,11 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
-    name='ebr',
+    name='esl',
+    packages=['core'],
     entry_points={
         'console_scripts': [
-            'ebr=core.cli:cli'
+            'esl=core.cli:app'
         ],
     },
 )

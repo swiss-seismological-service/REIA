@@ -26,7 +26,7 @@ class DevelopmentConfig(Config):
     """ Development specific configurations """
     TESTING = False
     DB_CONNECTION_STRING = 'postgresql+psycopg2://postgres:' \
-        'postgres@localhost:5432/esloss_db'
+        'password@localhost:5432/esloss_db'
 
 
 class TestingConfig(Config):

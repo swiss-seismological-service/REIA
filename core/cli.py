@@ -1,98 +1,78 @@
-# from app import create_app
-import click
-# from esloss.datamodel import MeanAssetLoss
-from core.database import init_db, drop_db
-# from app.database import session
+import typer
+from pathlib import Path
+from core.crud import create_asset_collection, create_vulnerability_model
+from core.database import drop_db, init_db
+from core.parsers import (
+    parse_asset_csv,
+    parse_oq_exposure_file,
+    parse_oq_vulnerability_file)
 
-import requests
+app = typer.Typer(add_completion=False)
+db = typer.Typer()
+exposure = typer.Typer()
+vulnerability = typer.Typer()
 
-# from openquake.calculators.extract import Extractor
-# from openquake.commonlib.datastore import read
-import os
-# from flask.cli import FlaskGroup
-
-
-# @ click.group(cls=FlaskGroup, create_app=create_app)
-@click.group()
-def cli():
-    """Management script for the EBR application."""
-    pass
-
-
-@ cli.group()
-def pytest():
-    """Pytest Commands"""
-    pass
+app.add_typer(db, name='db', help='Database Commands')
+app.add_typer(exposure, name='exposure', help='Manage Exposure Models')
+app.add_typer(vulnerability, name='vulnerability',
+              help='Manage Vulnerability Models')
 
 
-@ pytest.command()
-def run():
-    if os.system('pytest'):
-        raise RuntimeError('Running pytest failed')
-
-
-@ pytest.command()
-def print():
-    if os.system('pytest -rPx'):
-        raise RuntimeError('Running pytest failed')
-
-
-@ pytest.command()
-def cov():
-    if os.system('pytest --cov=app --cov=datamodel --cov-report term-missing'):
-        raise RuntimeError('Running pytest coverage failed')
-
-
-@ cli.group()
-def db():
-    """Database Commands"""
-    pass
-
-
-@ db.command()
-def drop():
-    """Drop connected database"""
+@db.command('drop')
+def drop_database():
+    '''Drops all tables.'''
     drop_db()
-    return 'Database dropped'
+    typer.echo('Tables Dropped')
 
 
-@ db.command()
-def init():
-    """Initiate specified database"""
+@db.command('init')
+def initialize_database():
+    '''Creates all tables.'''
     init_db()
-    return 'Database successfully initiated'
+    typer.echo('Tables created')
 
 
-@ cli.group()
-def oqapi():
-    """call OQ API Commands"""
-    pass
+@exposure.command('add')
+def add_exposure(exposure: Path, assets: Path):
+    '''Allows to add an exposure model to the database. '''
+
+    with open(assets, 'r') as f:
+        assetcollection = parse_asset_csv(f)
+    with open(exposure, 'r') as e:
+        exposure_params = parse_oq_exposure_file(e)
+
+    ac_oid = create_asset_collection(exposure_params, assetcollection)
+
+    typer.echo(f'Created asset collection with ID {ac_oid}.')
 
 
-@ oqapi.command()
-def list():
-    response = requests.get('http://localhost:8800/v1/calc/list')
-    print(response.text)
+@exposure.command('delete')
+def delete_exposure(asset_collection: int):
+    typer.echo(f'Deleted asset collection {asset_collection}.')
 
 
-# @oqapi.command()
-# @click.argument('type')
-# def extract(type):
-#     extractor = Extractor(520)
-#     data = extractor.get(type).to_dframe()
-
-#     data = data[['asset_id', 'value']].rename(
-#         columns={'asset_id': '_asset_oid', 'value': 'loss_value'})
-
-#     data = data.apply(lambda x: MeanAssetLoss(
-#         _losscalculation_oid=2, **x), axis=1)
-#     session.add_all(data)
-#     session.commit()
-#     pass
+@exposure.command('list')
+def list_exposure():
+    typer.echo('List of existing asset collections:')
 
 
-# @oqapi.command()
-# def readit():
-#     dstore = read(520)
-#     print([key for key in dstore])
-#     pass
+@vulnerability.command('add')
+def add_vulnerability(vulnerability: Path):
+    '''Allows to add an vulnerability model to the database. '''
+
+    with open(vulnerability, 'r') as f:
+        model, functions = parse_oq_vulnerability_file(f)
+
+    vm_oid = create_vulnerability_model(model, functions)
+
+    typer.echo(f'Created vulnerability model with ID {vm_oid}.')
+
+
+@vulnerability.command('delete')
+def delete_vulnerability(vulnerability_model: int):
+    typer.echo(f'Deleted vulnerability model {vulnerability_model}.')
+
+
+@vulnerability.command('list')
+def list_vulnerability():
+    typer.echo('List of existing vulnerability models:')
