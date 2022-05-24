@@ -2,8 +2,8 @@ autopep8>=1.6.0
 celery>=5.2.6
 # esloss.datamodel @ git+ssh://git@github.com/swiss-seismological-service/esloss.datamodel.git@develop
 flake8>=4.0.1
-flask>=2.1.2
-openquake.engine @ git+https://github.com/gem/oq-engine.git@v3.14.0
+Jinja2>=3.1.2
+openquake.engine @ git+https://github.com/gem/oq-engine.git
 pandas>=1.4.2
 psycopg2>=2.9.3
 pytest>=7.1.2
