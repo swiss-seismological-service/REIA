@@ -3,10 +3,10 @@ from sqlalchemy.schema import MetaData
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from esloss.datamodel import (  # noqa
-    ORMBase, AssetCollection, Asset, Site, Municipality, PostalCode, Canton,
-    LossModel, LossCalculation, LossConfig,
+    ORMBase, AssetCollection, Asset, Site,
+    LossCalculation, RiskCalculation, LossCalculation,
     VulnerabilityFunction, VulnerabilityModel,
-    MeanAssetLoss, SiteLoss, TaxonomyLoss, MunicipalityPCLoss)
+    MeanAssetLoss, SiteLoss)
 
 from config import get_config
 

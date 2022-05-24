@@ -2,10 +2,8 @@ from typing import List
 import pandas as pd
 
 from esloss.datamodel import (  # noqa
-    AssetCollection, Asset, Site,
-    VulnerabilityFunction, VulnerabilityModel,
-    LossConfig, LossModel, LossCalculation,
-    Municipality, PostalCode)
+    AssetCollection, Asset,
+    VulnerabilityFunction, VulnerabilityModel)
 from sqlalchemy import select
 
 from core.utils import sites_from_assets
@@ -71,24 +69,24 @@ def create_vulnerability_model(model: dict, functions: list) -> int:
     return vulnerability_model._oid
 
 
-def create_loss_model(
-        risk: dict,
-        asset_collection_oid: int,
-        vulnerability_models_oid: List[int]) -> int:
+# def create_loss_model(
+#         risk: dict,
+#         asset_collection_oid: int,
+#         vulnerability_models_oid: List[int]) -> int:
 
-    # add asset collection id
-    risk['_assetcollection_oid'] = asset_collection_oid
-    risk['preparationcalculationmode'] = 'scenario'
+#     # add asset collection id
+#     risk['_assetcollection_oid'] = asset_collection_oid
+#     risk['preparationcalculationmode'] = 'scenario'
 
-    # get vulnerability models
-    statement = select(VulnerabilityModel).filter(
-        VulnerabilityModel._oid.in_(vulnerability_models_oid))
-    vulnerabilitymodels = session.execute(statement).scalars().unique()
-    risk['vulnerabilitymodels'] = list(vulnerabilitymodels)
+#     # get vulnerability models
+#     statement = select(VulnerabilityModel).filter(
+#         VulnerabilityModel._oid.in_(vulnerability_models_oid))
+#     vulnerabilitymodels = session.execute(statement).scalars().unique()
+#     risk['vulnerabilitymodels'] = list(vulnerabilitymodels)
 
-    # assemble LossModel object
-    loss_model = LossModel(**risk)
-    session.add(loss_model)
-    session.commit()
+#     # assemble LossModel object
+#     loss_model = LossModel(**risk)
+#     session.add(loss_model)
+#     session.commit()
 
-    return loss_model._oid
+#     return loss_model._oid
