@@ -1,9 +1,8 @@
-
 import pandas as pd
 
-from esloss.datamodel.asset import (  # noqa
+from esloss.datamodel.asset import (
     AssetCollection, Asset)
-from esloss.datamodel.vulnerability import (  # noqa
+from esloss.datamodel.vulnerability import (
     VulnerabilityFunction, VulnerabilityModel)
 
 from core.utils import sites_from_assets
