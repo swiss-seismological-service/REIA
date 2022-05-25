@@ -6,7 +6,7 @@ import pandas as pd
 from typing import Tuple, TextIO
 from jinja2 import Template, select_autoescape
 
-from esloss.datamodel import Site
+from esloss.datamodel.asset import Site
 
 
 def sites_from_assets(assets: pd.DataFrame) -> Tuple[list, list]:

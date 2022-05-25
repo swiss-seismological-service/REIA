@@ -1,10 +1,10 @@
-from typing import List
+
 import pandas as pd
 
-from esloss.datamodel import (  # noqa
-    AssetCollection, Asset,
+from esloss.datamodel.asset import (  # noqa
+    AssetCollection, Asset)
+from esloss.datamodel.vulnerability import (  # noqa
     VulnerabilityFunction, VulnerabilityModel)
-from sqlalchemy import select
 
 from core.utils import sites_from_assets
 from core.database import session, engine
@@ -67,26 +67,3 @@ def create_vulnerability_model(model: dict, functions: list) -> int:
 
     session.commit()
     return vulnerability_model._oid
-
-
-# def create_loss_model(
-#         risk: dict,
-#         asset_collection_oid: int,
-#         vulnerability_models_oid: List[int]) -> int:
-
-#     # add asset collection id
-#     risk['_assetcollection_oid'] = asset_collection_oid
-#     risk['preparationcalculationmode'] = 'scenario'
-
-#     # get vulnerability models
-#     statement = select(VulnerabilityModel).filter(
-#         VulnerabilityModel._oid.in_(vulnerability_models_oid))
-#     vulnerabilitymodels = session.execute(statement).scalars().unique()
-#     risk['vulnerabilitymodels'] = list(vulnerabilitymodels)
-
-#     # assemble LossModel object
-#     loss_model = LossModel(**risk)
-#     session.add(loss_model)
-#     session.commit()
-
-#     return loss_model._oid
