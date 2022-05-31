@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from werkzeug.utils import import_string
+from core.utils import import_string
 
 load_dotenv()  # load environment variables
 
@@ -15,28 +15,15 @@ def get_config():
 
 class Config(object):
     """ Base Configuration """
-    SERVER_NAME = 'localhost:5000'
     SECRET_KEY = os.getenv('SECRET_KEY', default='')
-    CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', default='')
-    RESULT_BACKEND = os.getenv('RESULT_BACKEND', default='')
-    APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 class DevelopmentConfig(Config):
     """ Development specific configurations """
-    TESTING = False
     DB_CONNECTION_STRING = 'postgresql+psycopg2://postgres:' \
         'password@localhost:5432/esloss_db'
 
 
-class TestingConfig(Config):
-    """ Testing specific configurations """
-    TESTING = True
-    DB_CONNECTION_STRING = 'postgresql+psycopg2://postgres:' \
-        'postgres@localhost:5432/test'
-
-
 class ProductionConfig(Config):
     """ Production specific configurations """
-    TESTING = False
-    DB_CONNECTION_STRING = os.getenv('PRODUCTION_DB', default='')
+    DB_CONNECTION_STRING = os.getenv('DB_CONNECTION_STRING', default='')
