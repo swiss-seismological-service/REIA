@@ -1,10 +1,21 @@
-from typing import TextIO
+import os
+from typing import TextIO, Tuple
 import pandas as pd
 import xml.etree.ElementTree as ET
-from core.utils import ini_to_dict
+
+ASSETS_COLS_MAPPING = {'taxonomy': 'taxonomy_concept',
+                       'number': 'buildingcount',
+                       'contents': 'contentsvalue',
+                       'day': 'dayoccupancy',
+                       'night': 'nightoccupancy',
+                       'transit': 'transitoccupancy',
+                       'structural': 'structuralvalue',
+                       'nonstructural': 'nonstructuralvalue',
+                       'business_interruption': 'businessinterruptionvalue'
+                       }
 
 
-def parse_asset_csv(file: TextIO) -> pd.DataFrame:
+def parse_assets(file: TextIO, tagnames: list[str]) -> pd.DataFrame:
     """
     Reads an exposure file with assets into a dataframe
 
@@ -17,50 +28,16 @@ def parse_asset_csv(file: TextIO) -> pd.DataFrame:
 
     df = pd.read_csv(file, index_col='id')
 
-    df = df.rename(columns={'taxonomy': 'taxonomy_concept',
-                            'number': 'buildingcount',
-                            'contents': 'contentvalue_value',
-                            'day': 'occupancydaytime_value',
-                            'structural': 'structuralvalue_value',
-                            'municipality': '_municipality_oid',
-                            'postalcode': '_postalcode_oid'
-                            })
-    if 'CantonGemeinde' in df:
-        df = df.rename(columns={'CantonGemeinde': '_municipality_oid'})
-        df['_municipality_oid'] = df['_municipality_oid'].apply(
-            lambda x: x[2:])
+    df = df.rename(
+        columns={
+            k: v for k,
+            v in ASSETS_COLS_MAPPING.items() if k in df and v not in df})
 
-    if 'CantonGemeindePC' in df:
-        df = df.rename(columns={'CantonGemeindePC': '_postalcode_oid'})
-        df['_postalcode_oid'] = df['_postalcode_oid'].apply(lambda x: x[-4:])
+    valid_cols = list(ASSETS_COLS_MAPPING.values()) + tagnames
+
+    df.drop(columns=df.columns.difference(valid_cols), inplace=True)
 
     return df
-
-
-def parse_oq_risk_file(file: TextIO) -> dict:
-    risk = ini_to_dict(file)
-
-    loss_dict = {
-        'maincalculationmode':
-        risk.get('calculation_mode', 'scenario_risk'),
-        'numberofgroundmotionfields':
-        risk.get('number_of_ground_motion_fields', 100),
-        'maximumdistance':
-        risk.get('maximum_distance', None),
-        'truncationlevel':
-        risk.get('truncation_level', None),
-        'randomseed':
-        risk.get('random_seed', None),
-        'masterseed':
-        risk.get('master_seed', None),
-        'crosscorrelation':
-        True if risk.get('cross_correlation', 'no') == 'yes' else False,
-        'spatialcorrelation':
-        True if risk.get('spatial_correlation', 'no') == 'yes' else False,
-        'description':
-        risk.get('description', ''),
-    }
-    return loss_dict
 
 
 def parse_oq_vulnerability_file(file: TextIO) -> dict:
@@ -96,7 +73,7 @@ def parse_oq_vulnerability_file(file: TextIO) -> dict:
     return model, functions
 
 
-def parse_oq_exposure_file(file: TextIO) -> dict:
+def parse_exposure(file: TextIO) -> Tuple[dict, pd.DataFrame]:
     tree = ET.iterparse(file)
 
     # strip namespace for easier querying
@@ -104,19 +81,33 @@ def parse_oq_exposure_file(file: TextIO) -> dict:
         _, _, el.tag = el.tag.rpartition('}')
 
     root = tree.root
-
-    # read values for AssetCollection
     model = {'costtypes': []}
+
+    # exposureModel attributes
     for child in root:
-        model['publicid_resourceid'] = child.attrib['id']
+        model['publicid'] = child.attrib['id']
         model['category'] = child.attrib['category']
-        model['taxonomysource'] = child.attrib['taxonomySource']
+        model['taxonomy_classificationsource_resourceid'] = \
+            child.attrib['taxonomySource']
+    model['description'] = root.find('exposureModel/description').text
 
-    model['name'] = root.find('exposureModel/description').text
-    model['tagnames'] = root.find('exposureModel/tagNames').text.split()
-    model['occupancyperiods'] = root.find(
+    # occupancy periods
+    occupancyperiods = root.find(
         'exposureModel/occupancyPeriods').text.split()
+    model['dayoccupancy'] = 'day' in occupancyperiods
+    model['nightoccupancy'] = 'night' in occupancyperiods
+    model['transitoccupancy'] = 'transit' in occupancyperiods
 
+    # iterate cost types
     for test in root.findall('exposureModel/conversions/costTypes/costType'):
-        model['costtypes'].append(test.attrib['name'])
-    return model
+        model['costtypes'].append(test.attrib)
+
+    tagnames = root.find('exposureModel/tagNames').text.split(',')
+
+    asset_csv = root.find('exposureModel/assets').text
+    asset_csv = os.path.join(os.path.dirname(file.name), asset_csv)
+
+    with open(asset_csv, 'r') as f:
+        assets = parse_assets(f, tagnames)
+
+    return model, assets

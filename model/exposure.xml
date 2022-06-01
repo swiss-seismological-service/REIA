@@ -7,7 +7,7 @@
         <costType name="contents" type="aggregated" unit="CHF" />
       </costTypes>
     </conversions>
-    <tagNames>Canton,CantonGemeinde,CantonGemeindePC</tagNames>
+    <tagNames>Canton,CantonGemeinde</tagNames>
     <occupancyPeriods>day</occupancyPeriods>
     <assets>exposure_assets.csv</assets>
   </exposureModel>
