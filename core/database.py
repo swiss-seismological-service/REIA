@@ -4,7 +4,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 
 from esloss.datamodel.base import ORMBase
 
-from config import get_config
+from settings import get_config
 
 
 config = get_config()

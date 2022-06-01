@@ -1,5 +1,5 @@
 
-from config import get_config
+from settings import get_config
 from app import create_app
 
 import pytest

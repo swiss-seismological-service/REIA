@@ -25,8 +25,16 @@ from core.crud import (  # noqa
 from esloss.datamodel import LossModel  # noqa
 from pprint import pprint  # noqa
 
+from core.utils import ini_to_dict
+from settings import get_config
+
 
 def main():
+
+    config = get_config()
+
+    with open(config.OQ_SETTINGS, 'r') as f:
+        settings = ini_to_dict(f)  # noqa
 
     # PARSE INPUT
     with open('model/exposure_assets_full.csv', 'r') as f:

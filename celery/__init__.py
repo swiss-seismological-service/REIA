@@ -10,7 +10,7 @@
 # # from app.extensions import csrf
 
 # from core.database import session
-# from config import get_config
+# from settings import get_config
 
 
 # CELERY_TASK_LIST = [
