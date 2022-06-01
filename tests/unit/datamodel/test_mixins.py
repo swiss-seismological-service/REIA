@@ -2,7 +2,11 @@ from sqlalchemy.sql.schema import Column
 from sqlalchemy.sql.sqltypes import String
 from sqlalchemy.exc import IntegrityError
 from esloss.datamodel import ORMBase
-from esloss.datamodel.mixins import EpochMixin, QuantityMixin, RealQuantityMixin, IntegerQuantityMixin
+from esloss.datamodel.mixins import (
+    EpochMixin,
+    QuantityMixin,
+    RealQuantityMixin,
+    IntegerQuantityMixin)
 from datetime import datetime
 import pytest
 

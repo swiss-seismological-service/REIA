@@ -1,5 +1,5 @@
 
-from config import get_config
+from settings import get_config
 from app import create_app
 
 import pytest
@@ -34,7 +34,7 @@ def _client_impl():
 @contextmanager
 def _db_session_impl():
     """ init and drop db tables, yield session and remove it at the end """
-    from app.database import session, drop_db, init_db
+    from core.database import session, drop_db, init_db
     init_db()
     print(f'Database Name: {session.bind.url.database}')
     yield session

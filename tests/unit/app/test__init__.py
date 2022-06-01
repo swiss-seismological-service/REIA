@@ -1,5 +1,5 @@
 from flask import current_app
-from config import Config
+from settings.config import Config
 
 import uuid
 import os
