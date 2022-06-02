@@ -1,6 +1,6 @@
 from celery import Celery
 from core.oqapi import oqapi_wait_for_job
-from core.database import session
+from core.db import session
 from esloss.datamodel import MeanAssetLoss
 
 from openquake.calculators.extract import Extractor
