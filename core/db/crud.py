@@ -6,7 +6,7 @@ from esloss.datamodel.vulnerability import (
     VulnerabilityFunction, VulnerabilityModel)
 
 from core.utils import sites_from_assets
-from core.database import session, engine
+from core.db import session, engine
 
 
 def create_asset_collection(exposure: dict, assets: pd.DataFrame) -> int:

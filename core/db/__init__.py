@@ -11,7 +11,6 @@ config = get_config()
 engine = create_engine(config.DB_CONNECTION_STRING, echo=False, future=True)
 
 session = scoped_session(sessionmaker(autocommit=False,
-                                      autoflush=False,
                                       bind=engine,
                                       future=True))
 

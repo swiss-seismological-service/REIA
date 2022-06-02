@@ -40,39 +40,6 @@ def parse_assets(file: TextIO, tagnames: list[str]) -> pd.DataFrame:
     return df
 
 
-def parse_oq_vulnerability_file(file: TextIO) -> dict:
-    model = {}
-    functions = []
-
-    tree = ET.iterparse(file)
-
-    # strip namespace for easier querying
-    for _, el in tree:
-        _, _, el.tag = el.tag.rpartition('}')
-
-    root = tree.root
-
-    # read values for VulnerabilityModel
-    for child in root:
-        model['assetcategory'] = child.attrib['assetCategory']
-        model['losscategory'] = child.attrib['lossCategory']
-        model['publicid_resourceid'] = child.attrib['id']
-    model['description'] = root.find('vulnerabilityModel/description').text
-
-    # read values for VulnerabilityFunctions
-    for vF in root.findall('vulnerabilityModel/vulnerabilityFunction'):
-        fun = {}
-        fun['taxonomy_concept'] = vF.attrib['id']
-        fun['distribution'] = vF.attrib['dist']
-        fun['intensitymeasuretype'] = vF.find('imls').attrib['imt']
-        fun['intensitymeasurelevels'] = vF.find('imls').text.split(' ')
-        fun['meanlossratios'] = vF.find('meanLRs').text.split(' ')
-        fun['covariancelossratios'] = vF.find('covLRs').text.split(' ')
-        functions.append(fun)
-
-    return model, functions
-
-
 def parse_exposure(file: TextIO) -> Tuple[dict, pd.DataFrame]:
     tree = ET.iterparse(file)
 
@@ -111,3 +78,44 @@ def parse_exposure(file: TextIO) -> Tuple[dict, pd.DataFrame]:
         assets = parse_assets(f, tagnames)
 
     return model, assets
+
+
+def parse_vulnerability(file: TextIO) -> dict:
+    model = {}
+    model['vulnerabilityfunctions'] = []
+
+    tree = ET.iterparse(file)
+
+    # strip namespace for easier querying
+    for _, el in tree:
+        _, _, el.tag = el.tag.rpartition('}')
+
+    root = tree.root
+
+    # read values for VulnerabilityModel
+    for child in root:
+        model['assetcategory'] = child.attrib['assetCategory']
+        model['losscategory'] = child.attrib['lossCategory']
+        model['publicid'] = child.attrib['id']
+    model['description'] = root.find('vulnerabilityModel/description').text
+
+    # read values for VulnerabilityFunctions
+    for vF in root.findall('vulnerabilityModel/vulnerabilityFunction'):
+        fun = {}
+        fun['taxonomy_concept'] = vF.attrib['id']
+        fun['distribution'] = vF.attrib['dist']
+        fun['intensitymeasuretype'] = vF.find('imls').attrib['imt']
+
+        imls = vF.find('imls').text.split(' ')
+        meanLRs = vF.find('meanLRs').text.split(' ')
+        covLRs = vF.find('covLRs').text.split(' ')
+
+        fun['lossratios'] = []
+        for i, m, c in zip(imls, meanLRs, covLRs):
+            fun['lossratios'].append({'intensitymeasurelevel': i,
+                                      'mean': m,
+                                      'coefficientofvariation': c})
+
+        model['vulnerabilityfunctions'].append(fun)
+
+    return model
