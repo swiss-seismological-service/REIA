@@ -1,31 +1,22 @@
+import time
 import pandas as pd
 
 from esloss.datamodel.asset import (
-    AssetCollection, Asset)
+    AssetCollection, Asset, CostType)
 from esloss.datamodel.vulnerability import (
     VulnerabilityFunction, VulnerabilityModel)
 
-from core.utils import sites_from_assets
+from sqlalchemy import insert, select
+from sqlalchemy.orm import Session
+
+from core.utils import aggregationtags_from_assets, sites_from_assets
 from core.db import session, engine
+from core.parsers import ASSETS_COLS_MAPPING
 
 
-def create_asset_collection(exposure: dict, assets: pd.DataFrame) -> int:
-
-    asset_collection = AssetCollection(**exposure)
-    # add tags to session and tag names to Asset Collection
-    asset_collection.tagnames = []
-    if '_municipality_oid' in assets:
-        asset_collection.tagnames.append('municipality')
-        for el in assets['_municipality_oid'].unique():
-            session.merge(Municipality(_oid=int(el)))
-    if '_postalcode_oid' in assets:
-        asset_collection.tagnames.append('postalcode')
-        for el in assets['_postalcode_oid'].unique():
-            session.merge(PostalCode(_oid=int(el)))
-
-    # flush assetcollection to get id
-    session.add(asset_collection)
-    session.flush()
+def create_assets(assets: pd.DataFrame,
+                  asset_collection: AssetCollection,
+                  session: Session):
 
     # assign assetcollection
     assets['_assetcollection_oid'] = asset_collection._oid
@@ -34,22 +25,63 @@ def create_asset_collection(exposure: dict, assets: pd.DataFrame) -> int:
     sites, assets['sites_list_index'] = sites_from_assets(
         assets)
 
-    # add and flush sites to get an ID but keep fast accessible in memory
-    session.add_all(sites)
-    session.flush()
+    aggregation_tags, assets['aggregationtags_list_index'] = \
+        aggregationtags_from_assets(assets, 'Canton')
+
+    # print(aggregation_tags)
+    # print(group_list)
+
+    # add and commit sites to get an ID
+    # session.add_all(sites)
+    # session.commit()
 
     # assign ID back to dataframe using group index
-    assets['_site_oid'] = assets.apply(
-        lambda x: sites[x['sites_list_index']]._oid, axis=1)
+    assets['site'] = assets.apply(
+        lambda x: sites[x['sites_list_index']], axis=1)
 
-    # commit so that FK exists in databse
+    assets['aggregationtags'] = assets.apply(lambda _: [], axis=1)
+    assets.apply(lambda x: x['aggregationtags'].append(
+        aggregation_tags[x['aggregationtags_list_index']]), axis=1)
+
+    # print(assets.head)
+    start = time.perf_counter()
+    asset_objects = map(
+        lambda x: Asset(**x),
+        assets.filter(Asset.get_keys()
+                      + ['site', 'aggregationtags']).to_dict('records'))
+
+    session.add_all(asset_objects)
     session.commit()
+    print(time.perf_counter() - start)
 
     # write selected columns directly to database
-    assets.filter(Asset.get_keys()).to_sql(
-        'loss_asset', engine, if_exists='append', index=False)
+    # assets['_site_oid'] = assets.apply(
+    #     lambda x: sites[x['sites_list_index']]._oid, axis=1)
+    # assets.filter(Asset.get_keys()).to_sql(
+    #     'loss_asset', engine, if_exists='append', index=False)
 
-    return asset_collection._oid
+    statement = select(Asset).where(
+        Asset._assetcollection_oid == asset_collection._oid)
+
+    return session.execute(statement).scalars().all()
+
+
+def create_asset_collection(exposure: dict, session: Session) -> int:
+    """
+    Creates an AssetCollection and the respective CostTypes from a dict and
+    saves it to the Database.
+    """
+
+    cost_types = exposure.pop('costtypes')
+    asset_collection = AssetCollection(**exposure)
+
+    for ct in cost_types:
+        asset_collection.costtypes.append(CostType(**ct))
+
+    session.add(asset_collection)
+    session.commit()
+
+    return asset_collection
 
 
 def create_vulnerability_model(model: dict, functions: list) -> int:

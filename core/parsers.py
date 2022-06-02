@@ -3,7 +3,9 @@ from typing import TextIO, Tuple
 import pandas as pd
 import xml.etree.ElementTree as ET
 
-ASSETS_COLS_MAPPING = {'taxonomy': 'taxonomy_concept',
+ASSETS_COLS_MAPPING = {'lon': 'longitude',
+                       'lat': 'latitude',
+                       'taxonomy': 'taxonomy_concept',
                        'number': 'buildingcount',
                        'contents': 'contentsvalue',
                        'day': 'dayoccupancy',

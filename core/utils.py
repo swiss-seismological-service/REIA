@@ -7,7 +7,7 @@ import pandas as pd
 from typing import Any, Tuple, TextIO
 from jinja2 import Template, select_autoescape
 
-from esloss.datamodel.asset import Site
+from esloss.datamodel.asset import Site, AggregationTag
 
 
 def import_string(import_name: str, silent: bool = False) -> Any:
@@ -49,29 +49,47 @@ def import_string(import_name: str, silent: bool = False) -> Any:
     return None
 
 
-def sites_from_assets(assets: pd.DataFrame) -> Tuple[list, list]:
+def sites_from_assets(assets: pd.DataFrame) -> Tuple[list[Site], list[int]]:
     """
     Extract sites from assets dataframe
 
-    :params assets: Dataframe of assets with 'lon' and 'lat' column
+    :params assets: Dataframe of assets with 'longitude' and 'latitude' column
     :returns:       lists of Site objects and group numbers for dataframe rows
     """
     # group by sites
-    site_groups = assets.groupby(['lon', 'lat'])
+    site_groups = assets.groupby(['longitude', 'latitude'])
 
     all_sites = []
 
     # create site models
     for name, _ in site_groups:
         site = Site(
-            longitude_value=name[0],
-            latitude_value=name[1],
+            longitude=name[0],
+            latitude=name[1],
             _assetcollection_oid=int(
                 assets.iloc[0]['_assetcollection_oid']))
         all_sites.append(site)
 
     # return sites alongside with group index
     return all_sites, site_groups.grouper.group_info[0]
+
+
+def aggregationtags_from_assets(
+    assets: pd.DataFrame, aggregation_type: str) -> \
+        Tuple[list[AggregationTag], list[int]]:
+
+    agg_groups = assets.groupby(aggregation_type)
+
+    all_tags = []
+
+    for name, _ in agg_groups:
+        tag = AggregationTag(
+            type=aggregation_type,
+            name=name,
+            _assetcollection_oid=int(
+                assets.iloc[0]['_assetcollection_oid']))
+        all_tags.append(tag)
+    return all_tags, agg_groups.grouper.group_info[0]
 
 
 def ini_to_dict(file: TextIO) -> dict:

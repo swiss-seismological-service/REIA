@@ -1,6 +1,9 @@
+from sqlalchemy import select
+from core.db.crud import create_asset_collection, create_assets
 from core.parsers import parse_exposure, parse_vulnerability
 
-
+from core.db import session
+from esloss.datamodel.asset import Site
 from core.utils import ini_to_dict
 from settings import get_config
 
@@ -18,13 +21,19 @@ def main():
     # print(settings)
     # print(exposure)
     # print(assets)
+    asset_collection = create_asset_collection(exposure, session)
+    # print(asset_collection)
+    assets = create_assets(assets, asset_collection, session)
+    # print(len(assets))
+    # stmt = select(Site).where(
+    #     Site._assetcollection_oid == asset_collection._oid)
+    # sites = session.execute(stmt).scalars().all()
+    # print(len(sites))
 
-    # asset_collection_oid = create_asset_collection(exposure, assets)
+    # with open('model/structural_vulnerability.xml', 'r') as s:
+    #     model_structural = parse_vulnerability(s)
 
-    with open('model/structural_vulnerability.xml', 'r') as s:
-        model_structural = parse_vulnerability(s)
-
-    print(model_structural)
+    # print(model_structural)
 
     # vulnerability_struc_oid = create_vulnerability_model(
     #     model_struc, functions_struc)
@@ -116,6 +125,8 @@ def main():
 #     # json.loads(attrs['json'].tobytes())
 #     print(attrs)
 #     print(arr)
+
+
 if __name__ == "__main__":
     main()
 #     session.remove()
