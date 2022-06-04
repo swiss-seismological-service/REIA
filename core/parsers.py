@@ -3,9 +3,7 @@ from typing import TextIO, Tuple
 import pandas as pd
 import xml.etree.ElementTree as ET
 
-ASSETS_COLS_MAPPING = {'lon': 'longitude',
-                       'lat': 'latitude',
-                       'taxonomy': 'taxonomy_concept',
+ASSETS_COLS_MAPPING = {'taxonomy': 'taxonomy_concept',
                        'number': 'buildingcount',
                        'contents': 'contentsvalue',
                        'day': 'dayoccupancy',
@@ -30,12 +28,18 @@ def parse_assets(file: TextIO, tagnames: list[str]) -> pd.DataFrame:
 
     df = pd.read_csv(file, index_col='id')
 
+    lonlat = {'lon': 'longitude',
+              'lat': 'latitude'}
+
     df = df.rename(
         columns={
             k: v for k,
-            v in ASSETS_COLS_MAPPING.items() if k in df and v not in df})
+            v in {
+                **ASSETS_COLS_MAPPING,
+                **lonlat}.items() if k in df and v not in df})
 
-    valid_cols = list(ASSETS_COLS_MAPPING.values()) + tagnames
+    valid_cols = list(ASSETS_COLS_MAPPING.values()) + \
+        tagnames + list(lonlat.values())
 
     df.drop(columns=df.columns.difference(valid_cols), inplace=True)
 

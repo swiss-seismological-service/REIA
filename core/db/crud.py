@@ -1,4 +1,3 @@
-import time
 import pandas as pd
 
 from esloss.datamodel.asset import (
@@ -6,11 +5,11 @@ from esloss.datamodel.asset import (
 from esloss.datamodel.vulnerability import (
     VulnerabilityFunction, VulnerabilityModel)
 
-from sqlalchemy import insert, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.utils import aggregationtags_from_assets, sites_from_assets
-from core.db import session, engine
+from core.db import session
 from core.parsers import ASSETS_COLS_MAPPING
 
 
@@ -18,47 +17,40 @@ def create_assets(assets: pd.DataFrame,
                   asset_collection: AssetCollection,
                   session: Session):
 
-    # assign assetcollection
+    # get AggregationTag types
+    aggregation_tags = [
+        x for x in assets.columns if x not in list(
+            ASSETS_COLS_MAPPING.values()) + ['longitude', 'latitude']]
+
+    # assign AssetCollection to assets
     assets['_assetcollection_oid'] = asset_collection._oid
-
-    # create sites and assign sites list index to assets
-    sites, assets['sites_list_index'] = sites_from_assets(
-        assets)
-
-    aggregation_tags, assets['aggregationtags_list_index'] = \
-        aggregationtags_from_assets(assets, 'Canton')
-
-    # print(aggregation_tags)
-    # print(group_list)
-
-    # add and commit sites to get an ID
-    # session.add_all(sites)
-    # session.commit()
-
-    # assign ID back to dataframe using group index
-    assets['site'] = assets.apply(
-        lambda x: sites[x['sites_list_index']], axis=1)
-
     assets['aggregationtags'] = assets.apply(lambda _: [], axis=1)
-    assets.apply(lambda x: x['aggregationtags'].append(
-        aggregation_tags[x['aggregationtags_list_index']]), axis=1)
 
-    # print(assets.head)
-    start = time.perf_counter()
-    asset_objects = map(
-        lambda x: Asset(**x),
-        assets.filter(Asset.get_keys()
-                      + ['site', 'aggregationtags']).to_dict('records'))
+    # create Sites objects and assign them to assets
+    sites, assets['site'] = sites_from_assets(
+        assets)
+    for s in sites:
+        s._assetcollection_oid = asset_collection._oid
+    assets['site'] = assets.apply(
+        lambda x: sites[x['site']], axis=1)
 
-    session.add_all(asset_objects)
+    # create AggregationTag objects and assign them to assets
+    for tag in aggregation_tags:
+        tags_of_type, assets['aggregationtags_list_index'] = \
+            aggregationtags_from_assets(assets, tag)
+        for t in tags_of_type:
+            t._assetcollection_oid = asset_collection._oid
+        assets.apply(lambda x: x['aggregationtags'].append(
+            tags_of_type[x['aggregationtags_list_index']]), axis=1)
+
+    # create Asset objects from
+    valid_cols = list(ASSETS_COLS_MAPPING.values()) + \
+        ['site', 'aggregationtags', '_assetcollection_oid']
+    asset_objects = map(lambda x: Asset(**x),
+                        assets.filter(valid_cols).to_dict('records'))
+
+    session.add_all(list(asset_objects))
     session.commit()
-    print(time.perf_counter() - start)
-
-    # write selected columns directly to database
-    # assets['_site_oid'] = assets.apply(
-    #     lambda x: sites[x['sites_list_index']]._oid, axis=1)
-    # assets.filter(Asset.get_keys()).to_sql(
-    #     'loss_asset', engine, if_exists='append', index=False)
 
     statement = select(Asset).where(
         Asset._assetcollection_oid == asset_collection._oid)

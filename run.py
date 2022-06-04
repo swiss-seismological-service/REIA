@@ -22,9 +22,9 @@ def main():
     # print(exposure)
     # print(assets)
     asset_collection = create_asset_collection(exposure, session)
-    # print(asset_collection)
+    # print(asset_collection._oid)
     assets = create_assets(assets, asset_collection, session)
-    # print(len(assets))
+    print(len(assets))
     # stmt = select(Site).where(
     #     Site._assetcollection_oid == asset_collection._oid)
     # sites = session.execute(stmt).scalars().all()

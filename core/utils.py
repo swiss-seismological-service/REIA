@@ -65,9 +65,7 @@ def sites_from_assets(assets: pd.DataFrame) -> Tuple[list[Site], list[int]]:
     for name, _ in site_groups:
         site = Site(
             longitude=name[0],
-            latitude=name[1],
-            _assetcollection_oid=int(
-                assets.iloc[0]['_assetcollection_oid']))
+            latitude=name[1])
         all_sites.append(site)
 
     # return sites alongside with group index
@@ -77,7 +75,13 @@ def sites_from_assets(assets: pd.DataFrame) -> Tuple[list[Site], list[int]]:
 def aggregationtags_from_assets(
     assets: pd.DataFrame, aggregation_type: str) -> \
         Tuple[list[AggregationTag], list[int]]:
+    """
+    Extract aggregationtags from assets dataframe
 
+    :params assets: Dataframe of assets with 'aggregation_type' column
+    :returns:       lists of AggregationTag objects and group numbers for
+                    dataframe rows
+    """
     agg_groups = assets.groupby(aggregation_type)
 
     all_tags = []
@@ -85,9 +89,7 @@ def aggregationtags_from_assets(
     for name, _ in agg_groups:
         tag = AggregationTag(
             type=aggregation_type,
-            name=name,
-            _assetcollection_oid=int(
-                assets.iloc[0]['_assetcollection_oid']))
+            name=name)
         all_tags.append(tag)
     return all_tags, agg_groups.grouper.group_info[0]
 
