@@ -5,8 +5,8 @@ from esloss.datamodel.asset import (
 from esloss.datamodel.vulnerability import (
     VulnerabilityFunction, LossRatio, NonstructuralVulnerabilityModel,
     OccupantsVulnerabilityModel, ContentsVulnerabilityModel,
-    StructuralVulnerabilityModel, BusinessInterruptionVulnerabilityModel)
-
+    StructuralVulnerabilityModel, BusinessInterruptionVulnerabilityModel,
+    VulnerabilityModel)
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -24,7 +24,7 @@ LOSSCATEGORY_OBJECT_MAPPING = {
 
 def create_assets(assets: pd.DataFrame,
                   asset_collection: AssetCollection,
-                  session: Session):
+                  session: Session) -> list[Asset]:
     """
     Extract Sites and AggregationTags from Assets, saves them in DB
     as children of the AssetCollection.
@@ -70,7 +70,8 @@ def create_assets(assets: pd.DataFrame,
     return session.execute(statement).scalars().all()
 
 
-def create_asset_collection(exposure: dict, session: Session) -> int:
+def create_asset_collection(exposure: dict,
+                            session: Session) -> AssetCollection:
     """
     Creates an AssetCollection and the respective CostTypes from a dict and
     saves it to the Database.
@@ -118,21 +119,37 @@ def create_vulnerability_model(
     return vulnerability_model
 
 
-def read_sites(asset_collection_oid: int, session: Session):
+def read_sites(asset_collection_oid: int, session: Session) -> list[Site]:
     stmt = select(Site).where(
         Site._assetcollection_oid == asset_collection_oid)
     return session.execute(stmt).scalars().all()
 
 
-def read_asset_collections(session: Session):
+def read_asset_collections(session: Session) -> list[AssetCollection]:
     stmt = select(AssetCollection)
     return session.execute(stmt).unique().scalars().all()
 
 
-def delete_asset_collection(asset_collection_oid: int, session: Session):
+def delete_asset_collection(
+        asset_collection_oid: int,
+        session: Session) -> int:
     stmt = delete(AssetCollection).where(
         AssetCollection._oid == asset_collection_oid)
     dlt = session.execute(stmt).rowcount
     session.commit()
-    session.remove()
+    return dlt
+
+
+def read_vulnerability_models(session: Session) -> list[VulnerabilityModel]:
+    stmt = select(VulnerabilityModel)
+    return session.execute(stmt).unique().scalars().all()
+
+
+def delete_vulnerability_model(
+        vulnerability_model_oid: int,
+        session: Session) -> int:
+    stmt = delete(VulnerabilityModel).where(
+        VulnerabilityModel._oid == vulnerability_model_oid)
+    dlt = session.execute(stmt).rowcount
+    session.commit()
     return dlt

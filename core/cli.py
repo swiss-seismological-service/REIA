@@ -8,8 +8,10 @@ from core.db.crud import (
     create_assets,
     create_vulnerability_model,
     delete_asset_collection,
+    delete_vulnerability_model,
     read_asset_collections,
-    read_sites)
+    read_sites,
+    read_vulnerability_models)
 
 
 app = typer.Typer(add_completion=False)
@@ -50,23 +52,23 @@ def add_exposure(exposure: Path, name: str):
 
     asset_objects = create_assets(assets, asset_collection, session)
     sites = read_sites(asset_collection._oid, session)
-    session.remove()
+
     typer.echo(f'Created asset collection with ID {asset_collection._oid} and '
                f'{len(sites)} sites with {len(asset_objects)} assets.')
+    session.remove()
 
 
 @exposure.command('delete')
-def delete_exposure(asset_collection: int):
-    deleted = delete_asset_collection(asset_collection, session)
-    session.remove()
+def delete_exposure(asset_collection_oid: int):
+    deleted = delete_asset_collection(asset_collection_oid, session)
     typer.echo(
-        f'Deleted {deleted} asset collection with ID {asset_collection}.')
+        f'Deleted {deleted} asset collections with ID {asset_collection_oid}.')
+    session.remove()
 
 
 @exposure.command('list')
 def list_exposure():
     asset_collections = read_asset_collections(session)
-    session.remove()
 
     typer.echo('List of existing asset collections:')
     typer.echo('{0:<10} {1:<25} {2}'.format(
@@ -79,25 +81,48 @@ def list_exposure():
             ac._oid,
             ac.name,
             ac.creationinfo_creationtime))
+    session.remove()
 
 
-# @vulnerability.command('add')
-# def add_vulnerability(vulnerability: Path):
-#     '''Allows to add an vulnerability model to the database. '''
+@vulnerability.command('add')
+def add_vulnerability(vulnerability: Path, name: str):
+    '''Allows to add an vulnerability model to the database. '''
 
-#     with open(vulnerability, 'r') as f:
-#         model, functions = parse_oq_vulnerability_file(f)
+    with open(vulnerability, 'r') as f:
+        model = parse_vulnerability(f)
+    model['name'] = name
+    vulnerability_model = create_vulnerability_model(model, session)
 
-#     vm_oid = create_vulnerability_model(model, functions)
-
-#     typer.echo(f'Created vulnerability model with ID {vm_oid}.')
-
-
-# @vulnerability.command('delete')
-# def delete_vulnerability(vulnerability_model: int):
-#     typer.echo(f'Deleted vulnerability model {vulnerability_model}.')
+    typer.echo(
+        f'Created vulnerability model of type "{vulnerability_model._type}"'
+        f' with ID {vulnerability_model._oid}.')
+    session.remove()
 
 
-# @vulnerability.command('list')
-# def list_vulnerability():
-#     typer.echo('List of existing vulnerability models:')
+@vulnerability.command('delete')
+def delete_vulnerability(vulnerability_model_oid: int):
+    deleted = delete_vulnerability_model(vulnerability_model_oid, session)
+    typer.echo(
+        f'Deleted {deleted} vulnerability models with '
+        f'ID {vulnerability_model_oid}.')
+    session.remove()
+
+
+@vulnerability.command('list')
+def list_vulnerability():
+    vulnerability_models = read_vulnerability_models(session)
+
+    typer.echo('List of existing vulnerability models:')
+    typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
+        'ID',
+        'Name',
+        'Type',
+        'Creationtime'))
+
+    for vm in vulnerability_models:
+        typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
+            vm._oid,
+            vm.name,
+            vm._type,
+            vm.creationinfo_creationtime))
+    session.remove()
