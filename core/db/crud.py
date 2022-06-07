@@ -3,20 +3,32 @@ import pandas as pd
 from esloss.datamodel.asset import (
     AssetCollection, Asset, CostType)
 from esloss.datamodel.vulnerability import (
-    VulnerabilityFunction, VulnerabilityModel)
+    VulnerabilityFunction, LossRatio, NonstructuralVulnerabilityModel,
+    OccupantsVulnerabilityModel, ContentsVulnerabilityModel,
+    StructuralVulnerabilityModel, BusinessInterruptionVulnerabilityModel)
+
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.utils import aggregationtags_from_assets, sites_from_assets
-from core.db import session
 from core.parsers import ASSETS_COLS_MAPPING
+
+LOSSCATEGORY_OBJECT_MAPPING = {
+    'structural': StructuralVulnerabilityModel,
+    'nonstructural': NonstructuralVulnerabilityModel,
+    'contents': ContentsVulnerabilityModel,
+    'businesss_interruption': BusinessInterruptionVulnerabilityModel,
+    'occupants': OccupantsVulnerabilityModel}
 
 
 def create_assets(assets: pd.DataFrame,
                   asset_collection: AssetCollection,
                   session: Session):
-
+    """
+    Extract Sites and AggregationTags from Assets, saves them in DB
+    as children of the AssetCollection.
+    """
     # get AggregationTag types
     aggregation_tags = [
         x for x in assets.columns if x not in list(
@@ -43,7 +55,7 @@ def create_assets(assets: pd.DataFrame,
         assets.apply(lambda x: x['aggregationtags'].append(
             tags_of_type[x['aggregationtags_list_index']]), axis=1)
 
-    # create Asset objects from
+    # create Asset objects from DataFrame
     valid_cols = list(ASSETS_COLS_MAPPING.values()) + \
         ['site', 'aggregationtags', '_assetcollection_oid']
     asset_objects = map(lambda x: Asset(**x),
@@ -76,17 +88,31 @@ def create_asset_collection(exposure: dict, session: Session) -> int:
     return asset_collection
 
 
-def create_vulnerability_model(model: dict, functions: list) -> int:
-    # assemble vulnerability Model
-    vulnerability_model = VulnerabilityModel(**model)
+def create_vulnerability_model(
+    model: dict,
+    session: Session) \
+    -> StructuralVulnerabilityModel | \
+        OccupantsVulnerabilityModel | NonstructuralVulnerabilityModel | \
+        BusinessInterruptionVulnerabilityModel | ContentsVulnerabilityModel:
+    """
+    Creates a vulnerabilitymodel of the right subtype from a dict
+    containing all the data.
+    """
+    vulnerability_functions = model.pop('vulnerabilityfunctions')
+
+    loss_category = model.pop('losscategory')
+
+    vulnerability_model = LOSSCATEGORY_OBJECT_MAPPING[loss_category](
+        **{**model, **{'vulnerabilityfunctions': []}})
+
+    for func in vulnerability_functions:
+        loss = func.pop('lossratios')
+        function_obj = VulnerabilityFunction(**func)
+        function_obj.lossratios = list(map(lambda x: LossRatio(**x),
+                                           loss))
+        vulnerability_model.vulnerabilityfunctions.append(function_obj)
+
     session.add(vulnerability_model)
-    session.flush()
-
-    # assemble vulnerability Functions
-    for vF in functions:
-        f = VulnerabilityFunction(**vF)
-        f._vulnerabilitymodel_oid = vulnerability_model._oid
-        session.add(f)
-
     session.commit()
-    return vulnerability_model._oid
+
+    return vulnerability_model

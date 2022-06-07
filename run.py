@@ -1,5 +1,5 @@
 from sqlalchemy import select
-from core.db.crud import create_asset_collection, create_assets
+from core.db.crud import create_asset_collection, create_assets, create_vulnerability_model
 from core.parsers import parse_exposure, parse_vulnerability
 
 from core.db import session
@@ -21,23 +21,24 @@ def main():
     # print(settings)
     # print(exposure)
     # print(assets)
-    asset_collection = create_asset_collection(exposure, session)
+    # asset_collection = create_asset_collection(exposure, session)
     # print(asset_collection._oid)
-    assets = create_assets(assets, asset_collection, session)
-    print(len(assets))
+    # assets = create_assets(assets, asset_collection, session)
+    # print(len(assets))
     # stmt = select(Site).where(
     #     Site._assetcollection_oid == asset_collection._oid)
     # sites = session.execute(stmt).scalars().all()
     # print(len(sites))
 
-    # with open('model/structural_vulnerability.xml', 'r') as s:
-    #     model_structural = parse_vulnerability(s)
+    with open('model/structural_vulnerability.xml', 'r') as s:
+        model_structural = parse_vulnerability(s)
 
     # print(model_structural)
 
-    # vulnerability_struc_oid = create_vulnerability_model(
-    #     model_struc, functions_struc)
+    vulnerability_struc = create_vulnerability_model(
+        model_structural, session)
 
+    print(vulnerability_struc)
     ############################################################
     # with open('model/contents_vulnerability.xml', 'r') as s:
     #     model_cont, functions_cont = parse_oq_vulnerability_file(s)
