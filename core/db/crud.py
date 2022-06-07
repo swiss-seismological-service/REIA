@@ -1,14 +1,14 @@
 import pandas as pd
 
 from esloss.datamodel.asset import (
-    AssetCollection, Asset, CostType)
+    AssetCollection, Asset, CostType, Site)
 from esloss.datamodel.vulnerability import (
     VulnerabilityFunction, LossRatio, NonstructuralVulnerabilityModel,
     OccupantsVulnerabilityModel, ContentsVulnerabilityModel,
     StructuralVulnerabilityModel, BusinessInterruptionVulnerabilityModel)
 
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from core.utils import aggregationtags_from_assets, sites_from_assets
@@ -116,3 +116,23 @@ def create_vulnerability_model(
     session.commit()
 
     return vulnerability_model
+
+
+def read_sites(asset_collection_oid: int, session: Session):
+    stmt = select(Site).where(
+        Site._assetcollection_oid == asset_collection_oid)
+    return session.execute(stmt).scalars().all()
+
+
+def read_asset_collections(session: Session):
+    stmt = select(AssetCollection)
+    return session.execute(stmt).unique().scalars().all()
+
+
+def delete_asset_collection(asset_collection_oid: int, session: Session):
+    stmt = delete(AssetCollection).where(
+        AssetCollection._oid == asset_collection_oid)
+    dlt = session.execute(stmt).rowcount
+    session.commit()
+    session.remove()
+    return dlt

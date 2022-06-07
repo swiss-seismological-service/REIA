@@ -3,9 +3,9 @@ from sqlalchemy.schema import MetaData
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from esloss.datamodel.base import ORMBase
-from esloss.datamodel.vulnerability import VulnerabilityModel
-from esloss.datamodel.calculations import LossCalculation
-from esloss.datamodel.asset import AssetCollection
+from esloss.datamodel.vulnerability import VulnerabilityModel  # noqa
+from esloss.datamodel.calculations import LossCalculation  # noqa
+from esloss.datamodel.asset import AssetCollection  # noqa
 from settings import get_config
 
 
@@ -25,7 +25,6 @@ def init_db():
     Initializes the Database.
     All DB modules need to be imported when calling this function.
     """
-
     ORMBase.metadata.create_all(engine)
 
 
