@@ -1,5 +1,6 @@
 import typer
 from pathlib import Path
+from core.input import create_vulnerability_input
 
 from core.parsers import parse_exposure, parse_vulnerability
 from core.db import drop_db, init_db, session
@@ -122,7 +123,22 @@ def list_vulnerability():
     for vm in vulnerability_models:
         typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
             vm._oid,
-            vm.name,
+            vm.name or "",
             vm._type,
             vm.creationinfo_creationtime))
     session.remove()
+
+
+@vulnerability.command('create')
+def create_vulnerability(id: int, filename: Path):
+    file_pointer = create_vulnerability_input(id, session)
+    session.remove()
+
+    p = Path(filename)
+    p.parent.mkdir(exist_ok=True)
+
+    p.open('w').write(file_pointer.getvalue())
+    if p.exists():
+        typer.echo(f'Successfully created file "{str(p)}".')
+    else:
+        typer.echo('Error occurred, file was not created.')
