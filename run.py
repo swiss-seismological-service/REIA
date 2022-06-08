@@ -1,9 +1,11 @@
 from sqlalchemy import select
 from core.db.crud import create_asset_collection, create_assets, create_vulnerability_model
+from core.input import create_vulnerability_input
 from core.parsers import parse_exposure, parse_vulnerability
 
 from core.db import session
 from esloss.datamodel.asset import Site
+from esloss.datamodel.vulnerability import StructuralVulnerabilityModel
 from core.utils import ini_to_dict
 from settings import get_config
 
@@ -38,38 +40,21 @@ def main():
     vulnerability_struc = create_vulnerability_model(
         model_structural, session)
 
-    print(vulnerability_struc)
+    # print(vulnerability_struc)
+
+    # stmt = select(StructuralVulnerabilityModel.__table__).where(
+    #     StructuralVulnerabilityModel._oid == vulnerability_struc._oid)
+
+    # print(session.execute(stmt).unique().mappings().all())
     ############################################################
-    # with open('model/contents_vulnerability.xml', 'r') as s:
-    #     model_cont, functions_cont = parse_oq_vulnerability_file(s)
-
-    # SAVE PARSED INPUT TO DATABASE
-
-    # vulnerability_cont_oid = create_vulnerability_model(
-    #     model_cont, functions_cont)
-    # loss_model_oid = create_loss_model(
-    #     risk_dict,
-    #     asset_collection_oid,
-    #     [vulnerability_struc_oid,
-    #      vulnerability_cont_oid])
-
-    # # GET INPUT FROM DATABASE
-    # losscategory = 'structural'
-    # aggregateby = ''
-    # loss_model_oid = 1
-
-    # loss_model = session.query(LossModel).get(loss_model_oid)
-
-    # vulnerability_model = next(
-    #     v for v in loss_model.vulnerabilitymodels
-    #     if v.losscategory == losscategory)
 
     # exposure.xml
     # exposure_xml = create_exposure_xml(loss_model.assetcollection)
     # # exposure_assets.csv
     # assets_csv = create_exposure_csv(loss_model.assetcollection.assets)
     # # vulnerability.xml
-    # vulnerability_xml = create_vulnerability_xml(vulnerability_model)
+    vulnerability_xml = create_vulnerability_input(
+        vulnerability_struc._oid, session)
     # # pre-calculation.ini
     # hazard_ini = create_hazard_ini(loss_model)
     # # risk.ini
@@ -81,8 +66,8 @@ def main():
     # with open('test_output/exposure_assets.csv', 'w') as f:
     #     f.write(assets_csv.getvalue())
 
-    # with open('test_output/vulnerability.xml', 'w') as f:
-    #     f.write(vulnerability_xml.getvalue())
+    with open('test_output/vulnerability.xml', 'w') as f:
+        f.write(vulnerability_xml.getvalue())
 
     # with open('test_output/hazard.ini', 'w') as f:
     #     f.write(hazard_ini.getvalue())

@@ -145,6 +145,11 @@ def read_vulnerability_models(session: Session) -> list[VulnerabilityModel]:
     return session.execute(stmt).unique().scalars().all()
 
 
+def read_vulnerability_model(oid: int, session: Session) -> VulnerabilityModel:
+    stmt = select(VulnerabilityModel).where(VulnerabilityModel._oid == oid)
+    return session.execute(stmt).unique().scalar()
+
+
 def delete_vulnerability_model(
         vulnerability_model_oid: int,
         session: Session) -> int:

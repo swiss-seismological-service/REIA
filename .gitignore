@@ -4,6 +4,7 @@ node_modules/
 dist/
 test.py
 oq_outputs/
+test_output/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,4 +1,7 @@
+from core.db.crud import read_vulnerability_model, LOSSCATEGORY_OBJECT_MAPPING
 from core.utils import create_file_pointer
+
+from sqlalchemy.orm import Session
 
 import io
 import pandas as pd
@@ -12,14 +15,24 @@ def create_exposure_xml(
     return create_file_pointer(template_name, data=data)
 
 
-def create_vulnerability_xml(
-        vulnerability_model,
+def create_vulnerability_input(
+        vulnerability_model_oid,
+        session: Session,
         template_name='core/templates/vulnerability.xml'):
     """ create an in memory vulnerability xml file for OpenQuake"""
+    vulnerability_model = read_vulnerability_model(
+        vulnerability_model_oid, session)
+
     data = vulnerability_model._asdict()
+    data['_type'] = next((k for k, v in LOSSCATEGORY_OBJECT_MAPPING.items()
+                          if v.__name__.lower() == data['_type']))
     data['vulnerabilityfunctions'] = []
-    for vulnerability_function in vulnerability_model.vulnerabilityfunctions:
-        data['vulnerabilityfunctions'].append(vulnerability_function._asdict())
+
+    for vf in vulnerability_model.vulnerabilityfunctions:
+        vf_dict = vf._asdict()
+        vf_dict['lossratios'] = [lr._asdict() for lr in vf.lossratios]
+        data['vulnerabilityfunctions'].append(vf_dict)
+
     return create_file_pointer(template_name, data=data)
 
 
