@@ -80,7 +80,7 @@ def list_exposure():
     for ac in asset_collections:
         typer.echo('{0:<10} {1:<25} {2}'.format(
             ac._oid,
-            ac.name,
+            ac.name or '',
             ac.creationinfo_creationtime))
     session.remove()
 

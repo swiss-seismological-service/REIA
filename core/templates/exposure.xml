@@ -1,16 +1,16 @@
-<?xml version="1.0" encoding="UTF-8"  ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <nrml xmlns="http://openquake.org/xmlns/nrml/0.5" xmlns:gml="http://www.opengis.net/gml">
    <exposureModel id="{{data.publicid_resourceid}}" category="{{data.category}}" taxonomySource="{{data.taxonomysource}}">
-      <description>{{data.name}}</description>
+      <description>{{data.description}}</description>
       <conversions>
          <costTypes>
             {%- for type in data.costtypes %}
-            <costType name="{{type}}" type="aggregated" unit="CHF"/>
+            <costType name="{{type.name}}" type="{{type.type}}" unit="{{type.unit}}" />
             {%- endfor %}
          </costTypes>
       </conversions>
       <tagNames>{% for tag in data.tagnames -%} {{tag+" "}} {%- endfor %}</tagNames>
-      <occupancyPeriods>{% for period in data.occupancyperiods -%} {{period+" "}} {%- endfor %}</occupancyPeriods>
+      <occupancyPeriods>{{ 'day' if data.dayoccupancy else '' }}{{ 'night' if data.nightoccupancy else ''}}{{'transit' if data.transitoccupancy else ''}}</occupancyPeriods>
       <assets>exposure_assets.csv</assets>
    </exposureModel>
 </nrml>

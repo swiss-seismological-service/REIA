@@ -1,6 +1,7 @@
+import time
 from sqlalchemy import select
 from core.db.crud import create_asset_collection, create_assets, create_vulnerability_model
-from core.input import create_vulnerability_input
+from core.input import create_exposure_input, create_vulnerability_input
 from core.parsers import parse_exposure, parse_vulnerability
 
 from core.db import session
@@ -32,13 +33,13 @@ def main():
     # sites = session.execute(stmt).scalars().all()
     # print(len(sites))
 
-    with open('model/structural_vulnerability.xml', 'r') as s:
-        model_structural = parse_vulnerability(s)
+    # with open('model/structural_vulnerability.xml', 'r') as s:
+    #     model_structural = parse_vulnerability(s)
 
     # print(model_structural)
 
-    vulnerability_struc = create_vulnerability_model(
-        model_structural, session)
+    # vulnerability_struc = create_vulnerability_model(
+    #     model_structural, session)
 
     # print(vulnerability_struc)
 
@@ -49,25 +50,27 @@ def main():
     ############################################################
 
     # exposure.xml
-    # exposure_xml = create_exposure_xml(loss_model.assetcollection)
+
+    exposure_xml, exposure_csv = create_exposure_input(
+        33, session)
+
     # # exposure_assets.csv
-    # assets_csv = create_exposure_csv(loss_model.assetcollection.assets)
     # # vulnerability.xml
-    vulnerability_xml = create_vulnerability_input(
-        vulnerability_struc._oid, session)
+    # vulnerability_xml = create_vulnerability_input(
+    #     vulnerability_struc._oid, session)
     # # pre-calculation.ini
     # hazard_ini = create_hazard_ini(loss_model)
     # # risk.ini
     # risk_ini = create_risk_ini(loss_model, 'site')
 
-    # with open('test_output/exposure.xml', 'w') as f:
-    #     f.write(exposure_xml.getvalue())
+    with open('test_output/exposure.xml', 'w') as f:
+        f.write(exposure_xml.getvalue())
 
-    # with open('test_output/exposure_assets.csv', 'w') as f:
-    #     f.write(assets_csv.getvalue())
+    with open('test_output/exposure_assets.csv', 'w') as f:
+        f.write(exposure_csv.getvalue())
 
-    with open('test_output/vulnerability.xml', 'w') as f:
-        f.write(vulnerability_xml.getvalue())
+    # with open('test_output/vulnerability.xml', 'w') as f:
+    #     f.write(vulnerability_xml.getvalue())
 
     # with open('test_output/hazard.ini', 'w') as f:
     #     f.write(hazard_ini.getvalue())

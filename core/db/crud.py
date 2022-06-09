@@ -130,6 +130,11 @@ def read_asset_collections(session: Session) -> list[AssetCollection]:
     return session.execute(stmt).unique().scalars().all()
 
 
+def read_asset_collection(oid, session: Session) -> AssetCollection:
+    stmt = select(AssetCollection).where(AssetCollection._oid == oid)
+    return session.execute(stmt).unique().scalar()
+
+
 def delete_asset_collection(
         asset_collection_oid: int,
         session: Session) -> int:
