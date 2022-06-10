@@ -1,14 +1,13 @@
-import time
-from sqlalchemy import select
-from core.db.crud import create_asset_collection, create_assets, create_vulnerability_model
-from core.input import create_exposure_input, create_vulnerability_input
-from core.parsers import parse_exposure, parse_vulnerability
+from sqlalchemy import select  # noqa
+from core.db.crud import create_asset_collection, create_assets, create_vulnerability_model  # noqa
+from core.input import create_exposure_input, create_vulnerability_input  # noqa
+from core.parsers import parse_exposure, parse_vulnerability  # noqa
 
-from core.db import session
-from esloss.datamodel.asset import Site
-from esloss.datamodel.vulnerability import StructuralVulnerabilityModel
-from core.utils import ini_to_dict
-from settings import get_config
+from core.db import session  # noqa
+from esloss.datamodel.asset import Site  # noqa
+from esloss.datamodel.vulnerability import StructuralVulnerabilityModel  # noqa
+from core.utils import ini_to_dict  # noqa
+from settings import get_config  # noqa
 
 
 def main():
@@ -52,7 +51,7 @@ def main():
     # exposure.xml
 
     exposure_xml, exposure_csv = create_exposure_input(
-        33, session)
+        32, session)
 
     # # exposure_assets.csv
     # # vulnerability.xml

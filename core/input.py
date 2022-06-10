@@ -1,4 +1,4 @@
-import time
+from pathlib import Path
 from typing import Tuple
 from core.db.crud import (read_asset_collection,
                           read_vulnerability_model,
@@ -14,11 +14,17 @@ import pandas as pd
 
 
 def create_vulnerability_input(
-        vulnerability_model_oid: int,
-        session: Session,
-        template_name: str = 'core/templates/vulnerability.xml') -> io.StringIO:
+    vulnerability_model_oid: int,
+    session: Session,
+    template_name: Path = Path('core/templates/vulnerability.xml')) \
+        -> io.StringIO:
     """
-    create an in memory vulnerability xml file for OpenQuake
+    Create an in memory vulnerability xml file for OpenQuake.
+
+    :param vulnerability_model_oid: oid of the VulnerabilityModel to be used.
+    :param session: SQLAlchemy database session.
+    :param template_name: Template to be used for the vulnerability file.
+    :returns: Filepointer for exposure xml and one for csv list of assets.
     """
 
     vulnerability_model = read_vulnerability_model(
@@ -40,15 +46,22 @@ def create_vulnerability_input(
 def create_exposure_input(
     asset_collection_oid: int,
     session: Session,
-    template_name='core/templates/exposure.xml') \
+    template_name: Path = Path('core/templates/exposure.xml'),
+    assets_csv_name: Path = Path('exposure_assets.csv')) \
         -> Tuple[io.StringIO, io.StringIO]:
     """
-    create an in memory exposure xml file for OpenQuake
+    Creates in-memory exposure input files for OpenQuake.
+
+    :param asset_collection_oid: oid of the AssetCollection to be used.
+    :param session: SQLAlchemy database session.
+    :param template_name: Template to be used for the exposure file.
+    :returns: Filepointer for exposure xml and one for csv list of assets.
     """
 
     asset_collection = read_asset_collection(asset_collection_oid, session)
     data = asset_collection._asdict()
 
+    data['assets_csv_name'] = assets_csv_name.name
     data['costtypes'] = [c._asdict() for c in asset_collection.costtypes]
     data['tagnames'] = {
         agg.type: agg.name for agg in asset_collection.aggregationtags}
@@ -60,14 +73,14 @@ def create_exposure_input(
     exposure_csv = io.StringIO()
     exposure_df.to_csv(exposure_csv)
     exposure_csv.seek(0)
-    exposure_csv.name = 'exposure_assets.csv'
+    exposure_csv.name = assets_csv_name.name
 
     return (exposure_xml, exposure_csv)
 
 
 def assets_to_dataframe(assets: list[Asset]) -> pd.DataFrame:
     """
-    create an in-memory assets csv file for OpenQuake
+    Parses a list of Asset objects to a DataFrame.
     """
 
     assets_df = pd.DataFrame([x._asdict() for x in assets]).set_index('_oid')
@@ -94,21 +107,3 @@ def assets_to_dataframe(assets: list[Asset]) -> pd.DataFrame:
     result_df.index.name = 'id'
 
     return result_df
-
-
-def create_hazard_ini(
-        loss_model,
-        template_name='core/templates/prepare_risk.ini'):
-    """ create an in memory vulnerability xml file for OpenQuake"""
-    data = loss_model._asdict()
-    return create_file_pointer(template_name, data=data)
-
-
-def create_risk_ini(
-        loss_model,
-        aggregate_by=None,
-        template_name='core/templates/risk.ini'):
-    """ create an in memory vulnerability xml file for OpenQuake"""
-    data = loss_model._asdict()
-    data['aggregateBy'] = aggregate_by
-    return create_file_pointer(template_name, data=data)

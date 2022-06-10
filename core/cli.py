@@ -1,6 +1,6 @@
 import typer
 from pathlib import Path
-from core.input import create_vulnerability_input
+from core.input import create_exposure_input, create_vulnerability_input
 
 from core.parsers import parse_exposure, parse_vulnerability
 from core.db import drop_db, init_db, session
@@ -85,6 +85,24 @@ def list_exposure():
     session.remove()
 
 
+@exposure.command('create')
+def create_exposure(id: int, filename: Path):
+    p_xml = filename.with_suffix('.xml')
+    p_csv = filename.with_suffix('.csv')
+    fp_xml, fp_csv = create_exposure_input(id, session, assets_csv_name=p_csv)
+    session.remove()
+
+    p_xml.parent.mkdir(exist_ok=True)
+    p_xml.open('w').write(fp_xml.getvalue())
+    p_csv.open('w').write(fp_csv.getvalue())
+
+    if p_xml.exists() and p_csv.exists():
+        typer.echo(
+            f'Successfully created file "{str(p_xml)}" and "{str(p_csv)}".')
+    else:
+        typer.echo('Error occurred, file was not created.')
+
+
 @vulnerability.command('add')
 def add_vulnerability(vulnerability: Path, name: str):
     '''Allows to add an vulnerability model to the database. '''
@@ -131,14 +149,15 @@ def list_vulnerability():
 
 @vulnerability.command('create')
 def create_vulnerability(id: int, filename: Path):
+    filename = filename.with_suffix('.xml')
     file_pointer = create_vulnerability_input(id, session)
     session.remove()
 
-    p = Path(filename)
-    p.parent.mkdir(exist_ok=True)
+    filename.parent.mkdir(exist_ok=True)
+    filename.open('w').write(file_pointer.getvalue())
 
-    p.open('w').write(file_pointer.getvalue())
-    if p.exists():
-        typer.echo(f'Successfully created file "{str(p)}".')
+    if filename.exists():
+        typer.echo(
+            f'Successfully created file "{str(filename)}".')
     else:
         typer.echo('Error occurred, file was not created.')

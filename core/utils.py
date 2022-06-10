@@ -126,5 +126,5 @@ def create_file_pointer(template_name: str, **kwargs) -> io.StringIO:
         template = Template(t.read(), autoescape=select_autoescape())
     template.stream(**kwargs).dump(sio)
     sio.seek(0)
-    sio.name = template_name.rsplit('/', 1)[-1]
+    sio.name = template_name.name
     return sio
