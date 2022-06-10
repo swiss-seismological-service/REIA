@@ -1,3 +1,4 @@
+import configparser
 from pathlib import Path
 from typing import Tuple
 from core.db.crud import (read_asset_collection,
@@ -107,3 +108,47 @@ def assets_to_dataframe(assets: list[Asset]) -> pd.DataFrame:
     result_df.index.name = 'id'
 
     return result_df
+
+
+def assemble_calculation(settings: Path | configparser.ConfigParser,
+                         session: Session) -> list[io.StringIO]:
+    calculation_files = []
+    if isinstance(settings, configparser.ConfigParser):
+        job = settings
+    else:
+        job = configparser.ConfigParser()
+        job.read(settings)
+
+    exposure_xml, exposure_csv = create_exposure_input(
+        job['exposure']['exposure_file'], session)
+    exposure_xml.name = 'exposure.xml'
+    job['exposure']['exposure_file'] = exposure_xml.name
+
+    calculation_files.extend([exposure_xml, exposure_csv])
+
+    for k, v in job['vulnerability'].items():
+        xml = create_vulnerability_input(v, session)
+        xml.name = "{}.xml".format(k.replace('_file', ''))
+        job['vulnerability'][k] = xml.name
+        calculation_files.append(xml)
+
+    for k, v in job['hazard'].items():
+        with open(v, 'r') as f:
+            file = io.StringIO(f.read())
+        file.name = Path(v).name
+        job['hazard'][k] = file.name
+        calculation_files.append(file)
+
+    job_file = create_job_file(job)
+    job_file.name = 'job.ini'
+    calculation_files.append(job_file)
+
+    return calculation_files
+
+
+def create_job_file(settings: configparser.ConfigParser) -> io.StringIO:
+    job_ini = io.StringIO()
+    settings.write(job_ini)
+    job_ini.seek(0)
+
+    return job_ini

@@ -1,29 +1,36 @@
+from typing import Optional
 import typer
 from pathlib import Path
-from core.input import create_exposure_input, create_vulnerability_input
 
+from settings import get_config
+
+from core.input import (assemble_calculation,
+                        create_exposure_input,
+                        create_vulnerability_input)
 from core.parsers import parse_exposure, parse_vulnerability
 from core.db import drop_db, init_db, session
-from core.db.crud import (
-    create_asset_collection,
-    create_assets,
-    create_vulnerability_model,
-    delete_asset_collection,
-    delete_vulnerability_model,
-    read_asset_collections,
-    read_sites,
-    read_vulnerability_models)
+from core.db.crud import (create_asset_collection,
+                          create_assets,
+                          create_vulnerability_model,
+                          delete_asset_collection,
+                          delete_vulnerability_model,
+                          read_asset_collections,
+                          read_sites,
+                          read_vulnerability_models)
 
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()
 exposure = typer.Typer()
 vulnerability = typer.Typer()
+calculation = typer.Typer()
 
 app.add_typer(db, name='db', help='Database Commands')
 app.add_typer(exposure, name='exposure', help='Manage Exposure Models')
 app.add_typer(vulnerability, name='vulnerability',
               help='Manage Vulnerability Models')
+app.add_typer(calculation, name='calculation',
+              help='Create or execute calculations')
 
 
 @db.command('drop')
@@ -161,3 +168,24 @@ def create_vulnerability(id: int, filename: Path):
             f'Successfully created file "{str(filename)}".')
     else:
         typer.echo('Error occurred, file was not created.')
+
+
+@calculation.command('create_files')
+def create_calculation_files(
+        target_folder: Path,
+        settings_file: Optional[Path] = typer.Argument(None)):
+
+    target_folder.mkdir(exist_ok=True)
+
+    if not settings_file:
+        config = get_config()
+        settings_file = Path(config.OQ_SETTINGS)
+
+    files = assemble_calculation(settings_file, session)
+
+    for file in files:
+        with open(target_folder / file.name, 'w') as f:
+            f.write(file.getvalue())
+    typer.echo('Openquake calculation files created '
+               f'in folder "{str(target_folder)}".')
+    session.remove()

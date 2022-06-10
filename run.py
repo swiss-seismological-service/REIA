@@ -1,6 +1,8 @@
+import configparser
+from pathlib import Path
 from sqlalchemy import select  # noqa
 from core.db.crud import create_asset_collection, create_assets, create_vulnerability_model  # noqa
-from core.input import create_exposure_input, create_vulnerability_input  # noqa
+from core.input import assemble_calculation, create_exposure_input, create_job_file, create_vulnerability_input  # noqa
 from core.parsers import parse_exposure, parse_vulnerability  # noqa
 
 from core.db import session  # noqa
@@ -14,11 +16,17 @@ def main():
 
     config = get_config()
 
-    with open(config.OQ_SETTINGS, 'r') as f:
-        settings = ini_to_dict(f)  # noqa
+    # with open(config.OQ_SETTINGS, 'r') as f:
+    #     settings = ini_to_dict(f)  # noqa
 
-    with open('model/exposure.xml', 'r') as e:
-        exposure, assets = parse_exposure(e)
+    calculation_files = assemble_calculation(Path(config.OQ_SETTINGS), session)
+    print(len(calculation_files))
+    # job_ini = create_job_file(settings)
+    # with open('test_output/job.ini', 'w') as f:
+    #     f.write(job_ini.getvalue())
+
+    # with open('model/exposure.xml', 'r') as e:
+    #     exposure, assets = parse_exposure(e)
 
     # print(settings)
     # print(exposure)
@@ -50,8 +58,8 @@ def main():
 
     # exposure.xml
 
-    exposure_xml, exposure_csv = create_exposure_input(
-        32, session)
+    # exposure_xml, exposure_csv = create_exposure_input(
+    #     32, session)
 
     # # exposure_assets.csv
     # # vulnerability.xml
@@ -62,11 +70,11 @@ def main():
     # # risk.ini
     # risk_ini = create_risk_ini(loss_model, 'site')
 
-    with open('test_output/exposure.xml', 'w') as f:
-        f.write(exposure_xml.getvalue())
+    # with open('test_output/exposure.xml', 'w') as f:
+    #     f.write(exposure_xml.getvalue())
 
-    with open('test_output/exposure_assets.csv', 'w') as f:
-        f.write(exposure_csv.getvalue())
+    # with open('test_output/exposure_assets.csv', 'w') as f:
+    #     f.write(exposure_csv.getvalue())
 
     # with open('test_output/vulnerability.xml', 'w') as f:
     #     f.write(vulnerability_xml.getvalue())
