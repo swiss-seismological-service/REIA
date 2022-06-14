@@ -3,29 +3,15 @@ import time
 import requests
 
 
-def oqapi_send_pre_calculation(
+def oqapi_send_calculation(
         job_config: io.StringIO,
-        input_model_1: io.StringIO,
-        input_model_2: io.StringIO,
-        input_model_3: io.StringIO):
-    response = requests.post(
-        'http://localhost:8800/v1/calc/run', files=locals())
-    if response.ok:
-        print(
-            'Successfully sent calculation job to OpenQuake.')
-        return response
-    else:
-        print(
-            'Error sending the calculation job to OpenQuake.')
-        return response
+        *args: io.StringIO):
 
-
-def oqapi_send_main_calculation(job_id, job_config, input_model_1):
+    files = {f'input_model_{i+1}': v for i, v in enumerate(args)}
+    files['job_config'] = job_config
 
     response = requests.post(
-        'http://localhost:8800/v1/calc/run', files=locals(),
-        data={'hazard_job_id': job_id})
-
+        'http://localhost:8800/v1/calc/run', files=files)
     if response.ok:
         print(
             'Successfully sent calculation job to OpenQuake.')

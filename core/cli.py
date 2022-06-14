@@ -1,6 +1,7 @@
 from typing import Optional
 import typer
 from pathlib import Path
+from core.oqapi import oqapi_send_calculation
 
 from settings import get_config
 
@@ -189,3 +190,19 @@ def create_calculation_files(
     typer.echo('Openquake calculation files created '
                f'in folder "{str(target_folder)}".')
     session.remove()
+
+
+@calculation.command('run_test')
+def run_test_calculation(settings_file: Optional[Path] = typer.Argument(None)):
+
+    if not settings_file:
+        config = get_config()
+        settings_file = Path(config.OQ_SETTINGS)
+
+    files = assemble_calculation(settings_file, session)
+
+    config = files.pop(
+        next((i for i, f in enumerate(files) if f.name == 'job.ini')))
+
+    response = oqapi_send_calculation(config, *files)
+    typer.echo(response.json())

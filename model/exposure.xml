@@ -9,6 +9,6 @@
     </conversions>
     <tagNames>Canton,CantonGemeinde</tagNames>
     <occupancyPeriods>day</occupancyPeriods>
-    <assets>exposure_assets_full.csv</assets>
+    <assets>exposure_assets.csv</assets>
   </exposureModel>
 </nrml>

@@ -67,7 +67,7 @@ def create_assets(assets: pd.DataFrame,
     statement = select(Asset).where(
         Asset._assetcollection_oid == asset_collection._oid)
 
-    return session.execute(statement).scalars().all()
+    return session.execute(statement).unique().scalars().all()
 
 
 def create_asset_collection(exposure: dict,
