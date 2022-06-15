@@ -3,23 +3,17 @@ import time
 import requests
 
 
-def oqapi_send_calculation(
-        job_config: io.StringIO,
-        *args: io.StringIO):
+def oqapi_send_calculation(*args: io.StringIO):
+    args = list(args)
+    job_config = args.pop(
+        next((i for i, f in enumerate(args) if f.name == 'job.ini')))
 
     files = {f'input_model_{i+1}': v for i, v in enumerate(args)}
     files['job_config'] = job_config
 
     response = requests.post(
         'http://localhost:8800/v1/calc/run', files=files)
-    if response.ok:
-        print(
-            'Successfully sent calculation job to OpenQuake.')
-        return response
-    else:
-        print(
-            'Error sending the calculation job to OpenQuake.')
-        return response
+    return response
 
 
 def oqapi_get_job_status(job_id):
@@ -27,11 +21,22 @@ def oqapi_get_job_status(job_id):
         .json()['status']
 
 
-def oqapi_wait_for_job(job_id):
+def oqapi_wait_for_job_completion(job_id):
     check_status = oqapi_get_job_status(job_id)
 
-    while check_status != 'complete':
+    while check_status not in ('complete', 'failed', 'aborted'):
         time.sleep(1)
         check_status = oqapi_get_job_status(job_id)
-        if check_status == 'failed':
-            return Exception(check_status.json())
+
+    return check_status
+
+
+def oqapi_wait_for_job_status(job_id: int, status: tuple | str):
+    check_status = oqapi_get_job_status(job_id)
+
+    status = status if isinstance(status, tuple) else (status)
+    while check_status not in status:
+        time.sleep(1)
+        check_status = oqapi_get_job_status(job_id)
+
+    return check_status

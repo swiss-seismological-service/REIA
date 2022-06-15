@@ -1,3 +1,7 @@
+from core.parsers import ASSETS_COLS_MAPPING
+from core.utils import aggregationtags_from_assets, sites_from_assets
+from sqlalchemy.orm import Session
+from sqlalchemy import delete, select
 import pandas as pd
 
 from esloss.datamodel.asset import (
@@ -7,12 +11,9 @@ from esloss.datamodel.vulnerability import (
     OccupantsVulnerabilityModel, ContentsVulnerabilityModel,
     StructuralVulnerabilityModel, BusinessInterruptionVulnerabilityModel,
     VulnerabilityModel)
+from esloss.datamodel.calculations import (LossCalculation, RiskCalculation,
+                                           DamageCalculation, EStatus)
 
-from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
-
-from core.utils import aggregationtags_from_assets, sites_from_assets
-from core.parsers import ASSETS_COLS_MAPPING
 
 LOSSCATEGORY_OBJECT_MAPPING = {
     'structural': StructuralVulnerabilityModel,
@@ -20,6 +21,9 @@ LOSSCATEGORY_OBJECT_MAPPING = {
     'contents': ContentsVulnerabilityModel,
     'businesss_interruption': BusinessInterruptionVulnerabilityModel,
     'occupants': OccupantsVulnerabilityModel}
+
+CALCULATION_MAPPING = {'scenario_risk': RiskCalculation,
+                       'scenario_damage': DamageCalculation}
 
 
 def create_assets(assets: pd.DataFrame,
@@ -163,3 +167,33 @@ def delete_vulnerability_model(
     dlt = session.execute(stmt).rowcount
     session.commit()
     return dlt
+
+
+def create_calculation(
+        job: dict,
+        session: Session) -> RiskCalculation | DamageCalculation:
+
+    calculation = CALCULATION_MAPPING[job.pop('calculation_mode')]
+    calculation = calculation(**job)
+    session.add(calculation)
+    session.commit()
+    return calculation
+
+
+def read_calculation(oid: int, session: Session) -> LossCalculation:
+    stmt = select(LossCalculation).where(LossCalculation._oid == oid)
+    return session.execute(stmt).unique().scalar()
+
+
+def update_calculation_status(calculation_oid: int,
+                              status: EStatus,
+                              session: Session) -> LossCalculation:
+    calculation = read_calculation(calculation_oid, session)
+    calculation.status = status
+    session.commit()
+    return calculation
+
+
+def read_calculations(session: Session) -> list[LossCalculation]:
+    stmt = select(LossCalculation)
+    return session.execute(stmt).unique().scalars().all()

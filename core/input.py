@@ -110,14 +110,10 @@ def assets_to_dataframe(assets: list[Asset]) -> pd.DataFrame:
     return result_df
 
 
-def assemble_calculation(settings: Path | configparser.ConfigParser,
-                         session: Session) -> list[io.StringIO]:
+def assemble_calculation_input(job: configparser.ConfigParser,
+                               session: Session) -> list[io.StringIO]:
+
     calculation_files = []
-    if isinstance(settings, configparser.ConfigParser):
-        job = settings
-    else:
-        job = configparser.ConfigParser()
-        job.read(settings)
 
     exposure_xml, exposure_csv = create_exposure_input(
         job['exposure']['exposure_file'], session)

@@ -94,16 +94,18 @@ def aggregationtags_from_assets(
     return all_tags, agg_groups.grouper.group_info[0]
 
 
-def ini_to_dict(file: TextIO) -> dict:
-    # make sure ini has at least one section
-    content = file.read()
+def flatten_config(file: TextIO) -> dict:
 
-    file_content = '[dummy_section]\n' + content
+    if not isinstance(file, configparser.ConfigParser):
+        # make sure ini has at least one section
+        content = file.read()
+        file_content = '[dummy_section]\n' + content
 
-    # read ini
-    config = configparser.RawConfigParser()
-    config.read_string(file_content)
-
+        # read ini
+        config = configparser.RawConfigParser()
+        config.read_string(file_content)
+    else:
+        config = file
     # parse to dict
     mydict = {}
     for k, v in {s: dict(config.items(s)) for s in config.sections()}.items():

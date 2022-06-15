@@ -1,7 +1,10 @@
+import configparser
 import os
 from typing import TextIO, Tuple
 import pandas as pd
 import xml.etree.ElementTree as ET
+
+from core.utils import flatten_config
 
 ASSETS_COLS_MAPPING = {'taxonomy': 'taxonomy_concept',
                        'number': 'buildingcount',
@@ -13,6 +16,21 @@ ASSETS_COLS_MAPPING = {'taxonomy': 'taxonomy_concept',
                        'nonstructural': 'nonstructuralvalue',
                        'business_interruption': 'businessinterruptionvalue'
                        }
+
+VULNERABILITY_FK_MAPPING = {
+    'structural_vulnerability_file': '_structuralvulnerabilitymodel_oid',
+    'contents_vulnerability_file': '_contentsvulnerabilitymodel_oid',
+    'occupants_vulnerability_file': '_occupantsvulnerabilitymodel_oid',
+    'nonstructural_vulnerability_file': '_nonstructuralvulnerabilitymodel_oid',
+    'business_interruption_vulnerability_file':
+    '_businessinterruptionvulnerabilitymodel_oid'}
+
+FRAGILITY_FK_MAPPING = {
+    'structural_fragility_file': '_structuralfragilitymodel_oid',
+    'contents_fragility_file': '_contentsfragilitymodel_oid',
+    'nonstructural_fragility_file': '_nonstructuralfragilitymodel_oid',
+    'business_interruption_fragility_file':
+    '_businessinterruptionfragilitymodel_oid'}
 
 
 def parse_assets(file: TextIO, tagnames: list[str]) -> pd.DataFrame:
@@ -125,3 +143,32 @@ def parse_vulnerability(file: TextIO) -> dict:
         model['vulnerabilityfunctions'].append(fun)
 
     return model
+
+
+def parse_calculation(job: configparser.ConfigParser) -> dict:
+
+    flat_job = configparser.ConfigParser()
+    flat_job.read_dict(job)
+    for s in ['vulnerability', 'exposure', 'hazard', 'fragility']:
+        flat_job.remove_section(s)
+    flat_job = flatten_config(flat_job)
+
+    calculation = {}
+
+    calculation['calculation_mode'] = flat_job.pop('calculation_mode')
+    calculation['description'] = flat_job.pop('description', None)
+    calculation['aggregateby'] = flat_job.pop('aggregate_by', None)
+
+    calculation['config'] = flat_job
+
+    if calculation['calculation_mode'] == 'scenario_risk':
+        for k, v in job['vulnerability'].items():
+            calculation[VULNERABILITY_FK_MAPPING[k]] = v
+
+    if calculation['calculation_mode'] == 'scenario_damage':
+        for k, v in job['fragility'].items():
+            calculation[FRAGILITY_FK_MAPPING[k]] = v
+
+    calculation['_assetcollection_oid'] = job['exposure']['exposure_file']
+
+    return calculation

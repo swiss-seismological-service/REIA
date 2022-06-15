@@ -1,23 +1,29 @@
+import configparser
 from typing import Optional
 import typer
 from pathlib import Path
-from core.oqapi import oqapi_send_calculation
+from core.actions import execute_openquake_calculation
+from core.oqapi import (oqapi_send_calculation)
 
 from settings import get_config
 
-from core.input import (assemble_calculation,
+from core.input import (assemble_calculation_input,
                         create_exposure_input,
                         create_vulnerability_input)
-from core.parsers import parse_exposure, parse_vulnerability
+from core.parsers import (
+    parse_exposure,
+    parse_calculation,
+    parse_vulnerability)
 from core.db import drop_db, init_db, session
 from core.db.crud import (create_asset_collection,
-                          create_assets,
+                          create_assets, create_calculation,
                           create_vulnerability_model,
                           delete_asset_collection,
                           delete_vulnerability_model,
-                          read_asset_collections,
+                          read_asset_collections, read_calculations,
                           read_sites,
-                          read_vulnerability_models)
+                          read_vulnerability_models,
+                          EStatus)
 
 
 app = typer.Typer(add_completion=False)
@@ -89,7 +95,7 @@ def list_exposure():
         typer.echo('{0:<10} {1:<25} {2}'.format(
             ac._oid,
             ac.name or '',
-            ac.creationinfo_creationtime))
+            str(ac.creationinfo_creationtime)))
     session.remove()
 
 
@@ -151,7 +157,7 @@ def list_vulnerability():
             vm._oid,
             vm.name or "",
             vm._type,
-            vm.creationinfo_creationtime))
+            str(vm.creationinfo_creationtime)))
     session.remove()
 
 
@@ -182,7 +188,7 @@ def create_calculation_files(
         config = get_config()
         settings_file = Path(config.OQ_SETTINGS)
 
-    files = assemble_calculation(settings_file, session)
+    files = assemble_calculation_input(settings_file, session)
 
     for file in files:
         with open(target_folder / file.name, 'w') as f:
@@ -195,14 +201,57 @@ def create_calculation_files(
 @calculation.command('run_test')
 def run_test_calculation(settings_file: Optional[Path] = typer.Argument(None)):
 
-    if not settings_file:
-        config = get_config()
-        settings_file = Path(config.OQ_SETTINGS)
+    job_file = configparser.ConfigParser()
+    job_file.read(settings_file or Path(get_config().OQ_SETTINGS))
 
-    files = assemble_calculation(settings_file, session)
+    files = assemble_calculation_input(job_file, session)
 
-    config = files.pop(
-        next((i for i, f in enumerate(files) if f.name == 'job.ini')))
+    response = oqapi_send_calculation(*files)
 
-    response = oqapi_send_calculation(config, *files)
     typer.echo(response.json())
+
+    session.remove()
+
+
+@calculation.command('run')
+def run_calculation(settings_file: Optional[Path] = typer.Argument(None)):
+
+    job_file = configparser.ConfigParser()
+    job_file.read(settings_file or Path(get_config().OQ_SETTINGS))
+
+    # save calculation to database
+    calculation_dict = parse_calculation(job_file)
+    # create calculation files
+    files = assemble_calculation_input(job_file, session)
+
+    calculation_dict['status'] = EStatus.DISPATCHED
+    calculation = create_calculation(calculation_dict, session)
+
+    execute_openquake_calculation(files, calculation, session)
+
+    typer.echo(
+        f'Calculation finished with status "{EStatus(calculation.status)}".')
+
+    session.remove()
+
+
+@calculation.command('list')
+def list_calculations():
+    calculations = read_calculations(session)
+
+    typer.echo('List of existing calculations:')
+    typer.echo('{0:<10} {1:<25} {2:<25} {3:<30} {4}'.format(
+        'ID',
+        'Status',
+        'Type',
+        'Created',
+        'Description'))
+
+    for c in calculations:
+        typer.echo('{0:<10} {1:<25} {2:<25} {3:<30} {4}'.format(
+            c._oid,
+            c.status,
+            c._type,
+            str(c.creationinfo_creationtime),
+            c.description))
+    session.remove()

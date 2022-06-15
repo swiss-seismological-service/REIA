@@ -2,7 +2,7 @@ import configparser
 from pathlib import Path
 from sqlalchemy import select  # noqa
 from core.db.crud import create_asset_collection, create_assets, create_vulnerability_model  # noqa
-from core.input import assemble_calculation, create_exposure_input, create_job_file, create_vulnerability_input  # noqa
+from core.input import assemble_calculation_input, create_exposure_input, create_job_file, create_vulnerability_input  # noqa
 from core.parsers import parse_exposure, parse_vulnerability  # noqa
 
 from core.db import session  # noqa
@@ -19,7 +19,8 @@ def main():
     # with open(config.OQ_SETTINGS, 'r') as f:
     #     settings = ini_to_dict(f)  # noqa
 
-    calculation_files = assemble_calculation(Path(config.OQ_SETTINGS), session)
+    calculation_files = assemble_calculation_input(
+        Path(config.OQ_SETTINGS), session)
     print(len(calculation_files))
     # job_ini = create_job_file(settings)
     # with open('test_output/job.ini', 'w') as f:
