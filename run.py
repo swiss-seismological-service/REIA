@@ -1,129 +1,47 @@
-import configparser
-from pathlib import Path
-from sqlalchemy import select  # noqa
-from core.db.crud import create_asset_collection, create_assets, create_vulnerability_model  # noqa
-from core.input import assemble_calculation_input, create_exposure_input, create_job_file, create_vulnerability_input  # noqa
-from core.parsers import parse_exposure, parse_vulnerability  # noqa
+from openquake.calculators.extract import WebExtractor
+from openquake.commonlib.datastore import read
+import pandas as pd
+from esloss.datamodel.lossvalues import ELossCategory
+from esloss.datamodel.vulnerability import VulnerabilityModel
 
-from core.db import session  # noqa
-from esloss.datamodel.asset import Site  # noqa
-from esloss.datamodel.vulnerability import StructuralVulnerabilityModel  # noqa
-from core.utils import ini_to_dict  # noqa
-from settings import get_config  # noqa
+# print(ELossCategory['structural'.upper()])
+# pd.set_option('display.max_rows', None)
+dstore = read(-1)
+# print(dstore['oqparam'])
+# print(list(dstore.keys()))
+# print([d.decode().split(',') for d in dstore['agg_keys'][:]])
+# print(dstore['oqparam'].loss_types)
+# print(dstore['oqparam'].aggregate_by[0])
+# df = dstore.read_df('risk_by_event')
+# df = dstore.read_df('risk_by_event', 'event_id')
+# print(df)
+# print(df.loc[(df['loss_id'] == 0) & (df['event_id'] == 0.)])
+# print(df.loc[(df['loss_id'] == 0) & (df['event_id'] == 0.)]['loss'].mean())
+# print(df.loc[(df['loss_id'] == 0) & (df['event_id'] == 0.)].shape[0])
+# print(dstore.read_df('agg_values'))
+# print(dstore['risk_by_event']['agg_id'])
 
+# extractor = WebExtractor(47, server='http://localhost:8800')
+# obj = extractor.get('risk_by_event')
+# print(obj.array)
+# extractor.close()
 
-def main():
+assert(dstore['oqparam'].calculation_mode == 'scenario_risk')
 
-    config = get_config()
+agg_keys = [d.decode().split(',') for d in dstore['agg_keys'][:]]
+loss_types = dstore['oqparam'].loss_types
 
-    # with open(config.OQ_SETTINGS, 'r') as f:
-    #     settings = ini_to_dict(f)  # noqa
+print(dstore['oqparam'].aggregate_by[0])
 
-    calculation_files = assemble_calculation_input(
-        Path(config.OQ_SETTINGS), session)
-    print(len(calculation_files))
-    # job_ini = create_job_file(settings)
-    # with open('test_output/job.ini', 'w') as f:
-    #     f.write(job_ini.getvalue())
+df = dstore.read_df('risk_by_event')
+df = df.rename(columns={'event_id': 'eventid',
+                        'agg_id': 'aggregationtags',
+                        'loss_id': 'losscategory',
+                        'variance': 'loss_uncertainty',
+                        'loss': 'loss_value'})
 
-    # with open('model/exposure.xml', 'r') as e:
-    #     exposure, assets = parse_exposure(e)
-
-    # print(settings)
-    # print(exposure)
-    # print(assets)
-    # asset_collection = create_asset_collection(exposure, session)
-    # print(asset_collection._oid)
-    # assets = create_assets(assets, asset_collection, session)
-    # print(len(assets))
-    # stmt = select(Site).where(
-    #     Site._assetcollection_oid == asset_collection._oid)
-    # sites = session.execute(stmt).scalars().all()
-    # print(len(sites))
-
-    # with open('model/structural_vulnerability.xml', 'r') as s:
-    #     model_structural = parse_vulnerability(s)
-
-    # print(model_structural)
-
-    # vulnerability_struc = create_vulnerability_model(
-    #     model_structural, session)
-
-    # print(vulnerability_struc)
-
-    # stmt = select(StructuralVulnerabilityModel.__table__).where(
-    #     StructuralVulnerabilityModel._oid == vulnerability_struc._oid)
-
-    # print(session.execute(stmt).unique().mappings().all())
-    ############################################################
-
-    # exposure.xml
-
-    # exposure_xml, exposure_csv = create_exposure_input(
-    #     32, session)
-
-    # # exposure_assets.csv
-    # # vulnerability.xml
-    # vulnerability_xml = create_vulnerability_input(
-    #     vulnerability_struc._oid, session)
-    # # pre-calculation.ini
-    # hazard_ini = create_hazard_ini(loss_model)
-    # # risk.ini
-    # risk_ini = create_risk_ini(loss_model, 'site')
-
-    # with open('test_output/exposure.xml', 'w') as f:
-    #     f.write(exposure_xml.getvalue())
-
-    # with open('test_output/exposure_assets.csv', 'w') as f:
-    #     f.write(exposure_csv.getvalue())
-
-    # with open('test_output/vulnerability.xml', 'w') as f:
-    #     f.write(vulnerability_xml.getvalue())
-
-    # with open('test_output/hazard.ini', 'w') as f:
-    #     f.write(hazard_ini.getvalue())
-
-    # with open('test_output/risk.ini', 'w') as f:
-    #     f.write(risk_ini.getvalue())
-
-    # response = oqapi_send_pre_calculation(hazard_ini,
-    #                                       exposure_xml,
-    #                                       assets_csv,
-    #                                       vulnerability_xml)
-
-    # if response.status_code >= 400:
-    #     return None
-
-    # # wait for pre-calculation to finish
-    # pre_job_id = response.json()['job_id']
-    # oqapi_wait_for_job(pre_job_id)
-    # shakemap_zip = open('model/shapefiles.zip', 'rb')
-
-    # response_main = oqapi_send_main_calculation(
-    #     pre_job_id, risk_ini, shakemap_zip)
-    # main_job_id = response_main.json()['job_id']
-    # oqapi_wait_for_job(main_job_id)
-    # loss_calculation = LossCalculation(
-    #     shakemapid_resourceid='shakemap_address',
-    #     _lossmodel_oid=loss_config._lossmodel_oid,
-    #     losscategory=loss_config.losscategory,
-    #     aggregateBy=loss_config.aggregateby,
-    #     timestamp_starttime=datetime.now()
-    # )
-    # session.add(loss_calculation)
-    # session.commit()
-    # # wait, fetch and save results
-    # fetch_oq_results.apply_async(
-    #     [response_main.json()['job_id'], loss_calculation._oid])
-#     from openquake.calculators.extract import WebExtractor
-#     # fetch results
-#     extractor = WebExtractor(4, 'http://localhost:8800')
-#     arr, attrs = extractor.get('risk_by_event')
-#     # json.loads(attrs['json'].tobytes())
-#     print(attrs)
-#     print(arr)
-
-
-if __name__ == "__main__":
-    main()
-#     session.remove()
+df['losscategory'] = df['losscategory'].apply(
+    lambda x: ELossCategory[loss_types[x].upper()])
+df['aggregationtags'] = df['aggregationtags'].apply(
+    lambda x: agg_keys[x - 1])
+print(df)
