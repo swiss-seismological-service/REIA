@@ -32,8 +32,10 @@ exposure = typer.Typer()
 vulnerability = typer.Typer()
 calculation = typer.Typer()
 
-app.add_typer(db, name='db', help='Database Commands')
-app.add_typer(exposure, name='exposure', help='Manage Exposure Models')
+app.add_typer(db, name='db',
+              help='Database Commands')
+app.add_typer(exposure, name='exposure',
+              help='Manage Exposure Models')
 app.add_typer(vulnerability, name='vulnerability',
               help='Manage Vulnerability Models')
 app.add_typer(calculation, name='calculation',
@@ -42,22 +44,27 @@ app.add_typer(calculation, name='calculation',
 
 @db.command('drop')
 def drop_database():
-    '''Drops all tables.'''
+    '''
+    Drop all tables.
+    '''
     drop_db()
     typer.echo('Tables Dropped')
 
 
 @db.command('init')
 def initialize_database():
-    '''Creates all tables.'''
+    '''
+    Create all tables.
+    '''
     init_db()
     typer.echo('Tables created')
 
 
 @exposure.command('add')
 def add_exposure(exposure: Path, name: str):
-    '''Allows to add an exposure model to the database. '''
-
+    '''
+    Add an exposure model.
+    '''
     with open(exposure, 'r') as f:
         exposure, assets = parse_exposure(f)
 
@@ -75,6 +82,9 @@ def add_exposure(exposure: Path, name: str):
 
 @exposure.command('delete')
 def delete_exposure(asset_collection_oid: int):
+    '''
+    Delete an exposure model.
+    '''
     deleted = delete_asset_collection(asset_collection_oid, session)
     typer.echo(
         f'Deleted {deleted} asset collections with ID {asset_collection_oid}.')
@@ -83,6 +93,9 @@ def delete_exposure(asset_collection_oid: int):
 
 @exposure.command('list')
 def list_exposure():
+    '''
+    List all exposure models.
+    '''
     asset_collections = read_asset_collections(session)
 
     typer.echo('List of existing asset collections:')
@@ -99,8 +112,11 @@ def list_exposure():
     session.remove()
 
 
-@exposure.command('create')
+@exposure.command('create_file')
 def create_exposure(id: int, filename: Path):
+    '''
+    Create input files for an exposure model.
+    '''
     p_xml = filename.with_suffix('.xml')
     p_csv = filename.with_suffix('.csv')
     fp_xml, fp_csv = create_exposure_input(id, session, assets_csv_name=p_csv)
@@ -119,7 +135,9 @@ def create_exposure(id: int, filename: Path):
 
 @vulnerability.command('add')
 def add_vulnerability(vulnerability: Path, name: str):
-    '''Allows to add an vulnerability model to the database. '''
+    '''
+    Add a vulnerability model.
+    '''
 
     with open(vulnerability, 'r') as f:
         model = parse_vulnerability(f)
@@ -134,6 +152,9 @@ def add_vulnerability(vulnerability: Path, name: str):
 
 @vulnerability.command('delete')
 def delete_vulnerability(vulnerability_model_oid: int):
+    '''
+    Delete a vulnerability model.
+    '''
     deleted = delete_vulnerability_model(vulnerability_model_oid, session)
     typer.echo(
         f'Deleted {deleted} vulnerability models with '
@@ -143,6 +164,9 @@ def delete_vulnerability(vulnerability_model_oid: int):
 
 @vulnerability.command('list')
 def list_vulnerability():
+    '''
+    List all vulnerability models.
+    '''
     vulnerability_models = read_vulnerability_models(session)
 
     typer.echo('List of existing vulnerability models:')
@@ -161,8 +185,11 @@ def list_vulnerability():
     session.remove()
 
 
-@vulnerability.command('create')
+@vulnerability.command('create_file')
 def create_vulnerability(id: int, filename: Path):
+    '''
+    Create input file for a vulnerability model.
+    '''
     filename = filename.with_suffix('.xml')
     file_pointer = create_vulnerability_input(id, session)
     session.remove()
@@ -181,7 +208,9 @@ def create_vulnerability(id: int, filename: Path):
 def create_calculation_files(
         target_folder: Path,
         settings_file: Optional[Path] = typer.Argument(None)):
-
+    '''
+    Create all files for a OpenQuake calculation.
+    '''
     target_folder.mkdir(exist_ok=True)
 
     if not settings_file:
@@ -200,7 +229,9 @@ def create_calculation_files(
 
 @calculation.command('run_test')
 def run_test_calculation(settings_file: Optional[Path] = typer.Argument(None)):
-
+    '''
+    Send a calculation to OpenQuake as a test.
+    '''
     job_file = configparser.ConfigParser()
     job_file.read(settings_file or Path(get_config().OQ_SETTINGS))
 
@@ -215,7 +246,9 @@ def run_test_calculation(settings_file: Optional[Path] = typer.Argument(None)):
 
 @calculation.command('run')
 def run_calculation(settings_file: Optional[Path] = typer.Argument(None)):
-
+    '''
+    Run an OpenQuake calculation.
+    '''
     job_file = configparser.ConfigParser()
     job_file.read(settings_file or Path(get_config().OQ_SETTINGS))
 
@@ -237,6 +270,9 @@ def run_calculation(settings_file: Optional[Path] = typer.Argument(None)):
 
 @calculation.command('list')
 def list_calculations():
+    '''
+    List all calculations.
+    '''
     calculations = read_calculations(session)
 
     typer.echo('List of existing calculations:')
