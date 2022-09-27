@@ -1,39 +1,42 @@
-from openquake.calculators.extract import WebExtractor
-from openquake.commonlib.datastore import read
-import pandas as pd
-from esloss.datamodel.lossvalues import ELossCategory
-from esloss.datamodel.vulnerability import VulnerabilityModel
 
-# print(ELossCategory['structural'.upper()])
-# pd.set_option('display.max_rows', None)
-dstore = read(-1)
-# print(dstore['oqparam'])
-# print(list(dstore.keys()))
-# print([d.decode().split(',') for d in dstore['agg_keys'][:]])
-# print(dstore['oqparam'].loss_types)
-# print(dstore['oqparam'].aggregate_by[0])
-# df = dstore.read_df('risk_by_event')
-# df = dstore.read_df('risk_by_event', 'event_id')
-# print(df)
+import pandas as pd
+from esloss.datamodel.asset import AggregationTag
+from esloss.datamodel.lossvalues import AggregatedLoss, ELossCategory
+from openquake.commonlib.datastore import read
+from sqlalchemy import select
+
+from core.db import session
+
+pd.set_option('display.max_rows', None)
+dstore = read(91)
+
+
+oq_parameter_inputs = dstore['oqparam']
+all_keys = list(dstore.keys())
+
+all_agg_keys = [d.decode().split(',')
+                for d in dstore['agg_keys'][:]]
+
+all_loss_types = dstore['oqparam'].loss_types
+total_values_per_agg_key = dstore.read_df('agg_values')
+
+df = dstore.read_df('risk_by_event')  # get risk_by_event
+# df = dstore.read_df('risk_by_event', 'event_id')  # indexed with event_id
+
+# either or:
+# all_agg_keys.append(['Total']) #
+df = df.loc[df['agg_id'] != len(all_agg_keys)]
+
+# how to query
 # print(df.loc[(df['loss_id'] == 0) & (df['event_id'] == 0.)])
 # print(df.loc[(df['loss_id'] == 0) & (df['event_id'] == 0.)]['loss'].mean())
 # print(df.loc[(df['loss_id'] == 0) & (df['event_id'] == 0.)].shape[0])
-# print(dstore.read_df('agg_values'))
-# print(dstore['risk_by_event']['agg_id'])
 
-# extractor = WebExtractor(47, server='http://localhost:8800')
-# obj = extractor.get('risk_by_event')
-# print(obj.array)
-# extractor.close()
+assert(oq_parameter_inputs.calculation_mode == 'scenario_risk')
 
-assert(dstore['oqparam'].calculation_mode == 'scenario_risk')
+loss_types = oq_parameter_inputs.loss_types
+agg_types = oq_parameter_inputs.aggregate_by[0]
 
-agg_keys = [d.decode().split(',') for d in dstore['agg_keys'][:]]
-loss_types = dstore['oqparam'].loss_types
-
-print(dstore['oqparam'].aggregate_by[0])
-
-df = dstore.read_df('risk_by_event')
 df = df.rename(columns={'event_id': 'eventid',
                         'agg_id': 'aggregationtags',
                         'loss_id': 'losscategory',
@@ -42,6 +45,20 @@ df = df.rename(columns={'event_id': 'eventid',
 
 df['losscategory'] = df['losscategory'].apply(
     lambda x: ELossCategory[loss_types[x].upper()])
+
 df['aggregationtags'] = df['aggregationtags'].apply(
-    lambda x: agg_keys[x - 1])
-print(df)
+    lambda x: all_agg_keys[x])
+
+aggregations = {}
+for type in agg_types:
+    stmt = select(AggregationTag).where(
+        AggregationTag.type == type,
+        AggregationTag._assetcollection_oid == 1)
+    type_tags = session.execute(stmt).scalars().all()
+    aggregations.update({tag.name: tag for tag in type_tags})
+
+df['aggregationtags'] = df['aggregationtags'].apply(
+    lambda x: [aggregations[y] for y in x])
+
+loss_objects = list(map(lambda x: AggregatedLoss(**x, _losscalculation_oid=1),
+                        df.to_dict('records')))
