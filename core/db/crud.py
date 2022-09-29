@@ -1,19 +1,15 @@
+import pandas as pd
 from core.parsers import ASSETS_COLS_MAPPING
 from core.utils import aggregationtags_from_assets, sites_from_assets
-from sqlalchemy.orm import Session
-from sqlalchemy import delete, select
-import pandas as pd
-
-from esloss.datamodel.asset import (
-    AssetCollection, Asset, CostType, Site)
+from esloss.datamodel.asset import Asset, AssetCollection, CostType, Site
+from esloss.datamodel.calculations import (DamageCalculation, EStatus,
+                                           LossCalculation, RiskCalculation)
 from esloss.datamodel.vulnerability import (
-    VulnerabilityFunction, LossRatio, NonstructuralVulnerabilityModel,
-    OccupantsVulnerabilityModel, ContentsVulnerabilityModel,
-    StructuralVulnerabilityModel, BusinessInterruptionVulnerabilityModel,
-    VulnerabilityModel)
-from esloss.datamodel.calculations import (LossCalculation, RiskCalculation,
-                                           DamageCalculation, EStatus)
-
+    BusinessInterruptionVulnerabilityModel, ContentsVulnerabilityModel,
+    LossRatio, NonstructuralVulnerabilityModel, OccupantsVulnerabilityModel,
+    StructuralVulnerabilityModel, VulnerabilityFunction, VulnerabilityModel)
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
 LOSSCATEGORY_OBJECT_MAPPING = {
     'structural': StructuralVulnerabilityModel,
@@ -27,7 +23,7 @@ CALCULATION_MAPPING = {'scenario_risk': RiskCalculation,
 
 
 def create_assets(assets: pd.DataFrame,
-                  asset_collection: AssetCollection,
+                  asset_collection_oid: int,
                   session: Session) -> list[Asset]:
     """
     Extract Sites and AggregationTags from Assets, saves them in DB
@@ -39,14 +35,14 @@ def create_assets(assets: pd.DataFrame,
             ASSETS_COLS_MAPPING.values()) + ['longitude', 'latitude']]
 
     # assign AssetCollection to assets
-    assets['_assetcollection_oid'] = asset_collection._oid
+    assets['_assetcollection_oid'] = asset_collection_oid
     assets['aggregationtags'] = assets.apply(lambda _: [], axis=1)
 
     # create Sites objects and assign them to assets
     sites, assets['site'] = sites_from_assets(
         assets)
     for s in sites:
-        s._assetcollection_oid = asset_collection._oid
+        s._assetcollection_oid = asset_collection_oid
     assets['site'] = assets.apply(
         lambda x: sites[x['site']], axis=1)
 
@@ -55,7 +51,7 @@ def create_assets(assets: pd.DataFrame,
         tags_of_type, assets['aggregationtags_list_index'] = \
             aggregationtags_from_assets(assets, tag)
         for t in tags_of_type:
-            t._assetcollection_oid = asset_collection._oid
+            t._assetcollection_oid = asset_collection_oid
         assets.apply(lambda x: x['aggregationtags'].append(
             tags_of_type[x['aggregationtags_list_index']]), axis=1)
 
@@ -69,7 +65,7 @@ def create_assets(assets: pd.DataFrame,
     session.commit()
 
     statement = select(Asset).where(
-        Asset._assetcollection_oid == asset_collection._oid)
+        Asset._assetcollection_oid == asset_collection_oid)
 
     return session.execute(statement).unique().scalars().all()
 

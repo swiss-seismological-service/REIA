@@ -1,46 +1,51 @@
-import io
+import time
+from configparser import ConfigParser
+
+from esloss.datamodel.calculations import EStatus
+from requests import Response
 from sqlalchemy.orm import Session
-from esloss.datamodel.calculations import LossCalculation, EStatus
-from core.db.crud import update_calculation_status
 
-from core.oqapi import (oqapi_send_calculation,
-                        oqapi_wait_for_job_completion,
-                        oqapi_wait_for_job_status)
+from core.db import crud
+from core.input import assemble_calculation_input
+from core.oqapi import oqapi_get_job_status, oqapi_send_calculation
 
 
-def execute_openquake_calculation(files: list[io.StringIO],
-                                  calculation: LossCalculation,
-                                  session: Session):
-    try:
-        # send calculation to openquake
-        response = oqapi_send_calculation(*files)
+def dispatch_openquake_calculation(
+        job_file: ConfigParser,
+        session: Session) -> Response:
+    """
+    Assemble and dispatch an OQ calculation.
 
-        # check if response is ok
-        if response.ok:
-            update_calculation_status(
-                calculation._oid, EStatus.PENDING, session)
-        else:
-            return update_calculation_status(
-                calculation._oid, EStatus.ERROR, session)
+    :param job_file: Config file for OQ job.
+    :param session: Database session object.
+    :returns: The Response object from the OpenQuake API.
+    """
 
-        # wait for job to run and update status to RUNNING
-        oqapi_wait_for_job_status(
-            response.json()['job_id'],
-            ('executing', 'complete', 'failed', 'aborted'))
-        update_calculation_status(
-            calculation._oid, EStatus.RUNNING, session)
+    # create calculation files
+    files = assemble_calculation_input(job_file, session)
+    response = oqapi_send_calculation(*files)
+    response.raise_for_status()
+    return response
 
-        end_status = oqapi_wait_for_job_completion(calculation._oid)
 
-        if end_status == 'complete':
-            calculation = update_calculation_status(
-                calculation._oid, EStatus.COMPLETE, session)
-        else:
-            calculation = update_calculation_status(
-                calculation._oid, EStatus.ERROR, session)
+def monitor_openquake_calculation(job_id: int,
+                                  calculation_oid: int,
+                                  session: Session) -> None:
+    """
+    Monitor OQ calculation and update status accordingly.
 
-        return calculation
-    except Exception as e:
-        update_calculation_status(
-            calculation._oid, EStatus.ERROR, session)
-        raise e
+    :param job_id: ID of the OQ job.
+    :param calculation_oid: ID of the LossCalculation DB row.
+    :param session: Database session object.
+    """
+    while True:
+        response = oqapi_get_job_status(job_id)
+        response.raise_for_status()
+
+        status = EStatus[response.json()['status'].upper()]
+        crud.update_calculation_status(calculation_oid, status, session)
+
+        if status in (EStatus.COMPLETE, EStatus.ABORTED, EStatus.FAILED):
+            return
+
+        time.sleep(1)

@@ -1,17 +1,17 @@
 import configparser
+import io
+import pickle
 from pathlib import Path
 from typing import Tuple
-from core.db.crud import (read_asset_collection,
-                          read_vulnerability_model,
-                          LOSSCATEGORY_OBJECT_MAPPING)
+
+import pandas as pd
+from esloss.datamodel.asset import Asset
+from sqlalchemy.orm import Session
+
+from core.db.crud import (LOSSCATEGORY_OBJECT_MAPPING, read_asset_collection,
+                          read_vulnerability_model)
 from core.parsers import ASSETS_COLS_MAPPING
 from core.utils import create_file_pointer
-
-from sqlalchemy.orm import Session
-from esloss.datamodel.asset import Asset
-
-import io
-import pandas as pd
 
 
 def create_vulnerability_input(
@@ -112,30 +112,33 @@ def assets_to_dataframe(assets: list[Asset]) -> pd.DataFrame:
 
 def assemble_calculation_input(job: configparser.ConfigParser,
                                session: Session) -> list[io.StringIO]:
+    # create deep copy of configparser
+    tmp = pickle.dumps(job)
+    working_job = pickle.loads(tmp)
 
     calculation_files = []
 
     exposure_xml, exposure_csv = create_exposure_input(
-        job['exposure']['exposure_file'], session)
+        working_job['exposure']['exposure_file'], session)
     exposure_xml.name = 'exposure.xml'
-    job['exposure']['exposure_file'] = exposure_xml.name
+    working_job['exposure']['exposure_file'] = exposure_xml.name
 
     calculation_files.extend([exposure_xml, exposure_csv])
 
-    for k, v in job['vulnerability'].items():
+    for k, v in working_job['vulnerability'].items():
         xml = create_vulnerability_input(v, session)
         xml.name = "{}.xml".format(k.replace('_file', ''))
-        job['vulnerability'][k] = xml.name
+        working_job['vulnerability'][k] = xml.name
         calculation_files.append(xml)
 
-    for k, v in job['hazard'].items():
+    for k, v in working_job['hazard'].items():
         with open(v, 'r') as f:
             file = io.StringIO(f.read())
         file.name = Path(v).name
-        job['hazard'][k] = file.name
+        working_job['hazard'][k] = file.name
         calculation_files.append(file)
 
-    job_file = create_job_file(job)
+    job_file = create_job_file(working_job)
     job_file.name = 'job.ini'
     calculation_files.append(job_file)
 

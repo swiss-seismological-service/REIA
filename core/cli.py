@@ -1,30 +1,17 @@
 import configparser
-from typing import Optional
-import typer
 from pathlib import Path
-from core.actions import execute_openquake_calculation
-from core.oqapi import (oqapi_send_calculation)
+from typing import Optional
 
+import typer
+from esloss.datamodel.calculations import EStatus
 from settings import get_config
 
-from core.input import (assemble_calculation_input,
-                        create_exposure_input,
+from core.actions import (dispatch_openquake_calculation,
+                          monitor_openquake_calculation)
+from core.db import crud, drop_db, init_db, session
+from core.input import (assemble_calculation_input, create_exposure_input,
                         create_vulnerability_input)
-from core.parsers import (
-    parse_exposure,
-    parse_calculation,
-    parse_vulnerability)
-from core.db import drop_db, init_db, session
-from core.db.crud import (create_asset_collection,
-                          create_assets, create_calculation,
-                          create_vulnerability_model,
-                          delete_asset_collection,
-                          delete_vulnerability_model,
-                          read_asset_collections, read_calculations,
-                          read_sites,
-                          read_vulnerability_models,
-                          EStatus)
-
+from core.parsers import parse_calculation, parse_exposure, parse_vulnerability
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()
@@ -70,10 +57,10 @@ def add_exposure(exposure: Path, name: str):
 
     exposure['name'] = name
 
-    asset_collection = create_asset_collection(exposure, session)
+    asset_collection = crud.create_asset_collection(exposure, session)
 
-    asset_objects = create_assets(assets, asset_collection, session)
-    sites = read_sites(asset_collection._oid, session)
+    asset_objects = crud.create_assets(assets, asset_collection._oid, session)
+    sites = crud.read_sites(asset_collection._oid, session)
 
     typer.echo(f'Created asset collection with ID {asset_collection._oid} and '
                f'{len(sites)} sites with {len(asset_objects)} assets.')
@@ -85,7 +72,7 @@ def delete_exposure(asset_collection_oid: int):
     '''
     Delete an exposure model.
     '''
-    deleted = delete_asset_collection(asset_collection_oid, session)
+    deleted = crud.delete_asset_collection(asset_collection_oid, session)
     typer.echo(
         f'Deleted {deleted} asset collections with ID {asset_collection_oid}.')
     session.remove()
@@ -96,7 +83,7 @@ def list_exposure():
     '''
     List all exposure models.
     '''
-    asset_collections = read_asset_collections(session)
+    asset_collections = crud.read_asset_collections(session)
 
     typer.echo('List of existing asset collections:')
     typer.echo('{0:<10} {1:<25} {2}'.format(
@@ -142,7 +129,7 @@ def add_vulnerability(vulnerability: Path, name: str):
     with open(vulnerability, 'r') as f:
         model = parse_vulnerability(f)
     model['name'] = name
-    vulnerability_model = create_vulnerability_model(model, session)
+    vulnerability_model = crud.create_vulnerability_model(model, session)
 
     typer.echo(
         f'Created vulnerability model of type "{vulnerability_model._type}"'
@@ -155,7 +142,7 @@ def delete_vulnerability(vulnerability_model_oid: int):
     '''
     Delete a vulnerability model.
     '''
-    deleted = delete_vulnerability_model(vulnerability_model_oid, session)
+    deleted = crud.delete_vulnerability_model(vulnerability_model_oid, session)
     typer.echo(
         f'Deleted {deleted} vulnerability models with '
         f'ID {vulnerability_model_oid}.')
@@ -167,7 +154,7 @@ def list_vulnerability():
     '''
     List all vulnerability models.
     '''
-    vulnerability_models = read_vulnerability_models(session)
+    vulnerability_models = crud.read_vulnerability_models(session)
 
     typer.echo('List of existing vulnerability models:')
     typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
@@ -235,9 +222,7 @@ def run_test_calculation(settings_file: Optional[Path] = typer.Argument(None)):
     job_file = configparser.ConfigParser()
     job_file.read(settings_file or Path(get_config().OQ_SETTINGS))
 
-    files = assemble_calculation_input(job_file, session)
-
-    response = oqapi_send_calculation(*files)
+    response = dispatch_openquake_calculation(job_file, session)
 
     typer.echo(response.json())
 
@@ -253,14 +238,18 @@ def run_calculation(settings_file: Optional[Path] = typer.Argument(None)):
     job_file.read(settings_file or Path(get_config().OQ_SETTINGS))
 
     # save calculation to database
-    calculation_dict = parse_calculation(job_file)
-    # create calculation files
-    files = assemble_calculation_input(job_file, session)
+    calculation = crud.create_calculation(parse_calculation(job_file), session)
 
-    calculation_dict['status'] = EStatus.DISPATCHED
-    calculation = create_calculation(calculation_dict, session)
-
-    execute_openquake_calculation(files, calculation, session)
+    # send calculation to OQ and keep updating
+    try:
+        response = dispatch_openquake_calculation(job_file, session)
+        monitor_openquake_calculation(
+            response.json()['job_id'], calculation._oid, session)
+    except BaseException as e:
+        crud.update_calculation_status(
+            calculation._oid, EStatus.FAILED, session)
+        session.remove()
+        raise e
 
     typer.echo(
         f'Calculation finished with status "{EStatus(calculation.status)}".')
@@ -273,7 +262,7 @@ def list_calculations():
     '''
     List all calculations.
     '''
-    calculations = read_calculations(session)
+    calculations = crud.read_calculations(session)
 
     typer.echo('List of existing calculations:')
     typer.echo('{0:<10} {1:<25} {2:<25} {3:<30} {4}'.format(

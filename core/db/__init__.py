@@ -1,13 +1,8 @@
-from sqlalchemy import create_engine
-from sqlalchemy.schema import MetaData
-from sqlalchemy.orm import scoped_session, sessionmaker
-
 from esloss.datamodel.base import ORMBase
-from esloss.datamodel.vulnerability import VulnerabilityModel  # noqa
-from esloss.datamodel.calculations import LossCalculation  # noqa
-from esloss.datamodel.asset import AssetCollection  # noqa
 from settings import get_config
-
+from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.schema import MetaData
 
 config = get_config()
 engine = create_engine(config.DB_CONNECTION_STRING, echo=False, future=True)
