@@ -5,13 +5,12 @@ from pathlib import Path
 from typing import Tuple
 
 import pandas as pd
-from esloss.datamodel.asset import Asset
-from sqlalchemy.orm import Session
-
 from core.db.crud import (LOSSCATEGORY_OBJECT_MAPPING, read_asset_collection,
                           read_vulnerability_model)
-from core.parsers import ASSETS_COLS_MAPPING
+from core.io.parse_input import ASSETS_COLS_MAPPING
 from core.utils import create_file_pointer
+from esloss.datamodel.asset import Asset
+from sqlalchemy.orm import Session
 
 
 def create_vulnerability_input(

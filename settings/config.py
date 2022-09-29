@@ -11,6 +11,7 @@ class DevelopmentConfig(Config):
     DB_CONNECTION_STRING = 'postgresql+psycopg2://postgres:' \
         'password@localhost:5432/esloss_db'
     OQ_SETTINGS = 'settings/oq_settings.ini'
+    OQ_API_SERVER = 'http://localhost:8800'
 
 
 class ProductionConfig(Config):

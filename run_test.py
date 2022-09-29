@@ -1,7 +1,7 @@
 
 import pandas as pd
 from esloss.datamodel.asset import Site
-from esloss.datamodel.lossvalues import ELossCategory, SiteLoss
+from esloss.datamodel.lossvalues import ELossCategory
 from openquake.commonlib.datastore import read
 from openquake.risklib.scientific import LOSSTYPE
 from sqlalchemy import select

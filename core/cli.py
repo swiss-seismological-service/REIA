@@ -7,11 +7,14 @@ from esloss.datamodel.calculations import EStatus
 from settings import get_config
 
 from core.actions import (dispatch_openquake_calculation,
-                          monitor_openquake_calculation)
+                          monitor_openquake_calculation,
+                          save_openquake_results)
 from core.db import crud, drop_db, init_db, session
-from core.input import (assemble_calculation_input, create_exposure_input,
-                        create_vulnerability_input)
-from core.parsers import parse_calculation, parse_exposure, parse_vulnerability
+from core.io.create_input import (assemble_calculation_input,
+                                  create_exposure_input,
+                                  create_vulnerability_input)
+from core.io.parse_input import (parse_calculation, parse_exposure,
+                                 parse_vulnerability)
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()
@@ -237,22 +240,27 @@ def run_calculation(settings_file: Optional[Path] = typer.Argument(None)):
     job_file = configparser.ConfigParser()
     job_file.read(settings_file or Path(get_config().OQ_SETTINGS))
 
-    # save calculation to database
+    # save calculation information to database
     calculation = crud.create_calculation(parse_calculation(job_file), session)
 
-    # send calculation to OQ and keep updating
+    # send calculation to OQ and keep updating its status
     try:
         response = dispatch_openquake_calculation(job_file, session)
-        monitor_openquake_calculation(
-            response.json()['job_id'], calculation._oid, session)
+        job_id = response.json()['job_id']
+        monitor_openquake_calculation(job_id, calculation._oid, session)
     except BaseException as e:
         crud.update_calculation_status(
             calculation._oid, EStatus.FAILED, session)
         session.remove()
         raise e
 
+    # TODO: Collect OQ results and save to database
+
     typer.echo(
         f'Calculation finished with status "{EStatus(calculation.status)}".')
+
+    if calculation.status == EStatus.COMPLETE:
+        save_openquake_results(calculation, job_id, session)
 
     session.remove()
 

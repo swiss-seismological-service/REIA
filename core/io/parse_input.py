@@ -1,8 +1,9 @@
 import configparser
 import os
-from typing import TextIO, Tuple
-import pandas as pd
 import xml.etree.ElementTree as ET
+from typing import TextIO, Tuple
+
+import pandas as pd
 
 from core.utils import flatten_config
 

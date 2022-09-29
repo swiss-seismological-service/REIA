@@ -1,13 +1,15 @@
 import time
 from configparser import ConfigParser
 
-from esloss.datamodel.calculations import EStatus
+from esloss.datamodel.calculations import EStatus, LossCalculation
 from requests import Response
 from sqlalchemy.orm import Session
 
 from core.db import crud
-from core.input import assemble_calculation_input
-from core.oqapi import oqapi_get_job_status, oqapi_send_calculation
+from core.io.create_input import assemble_calculation_input
+from core.io.parse_output import parse_aggregated_risk
+from core.oqapi import (oqapi_get_calculation_result, oqapi_get_job_status,
+                        oqapi_send_calculation)
 
 
 def dispatch_openquake_calculation(
@@ -49,3 +51,28 @@ def monitor_openquake_calculation(job_id: int,
             return
 
         time.sleep(1)
+
+
+def save_openquake_results(calculation: LossCalculation,
+                           job_id: int,
+                           session: Session) -> None:
+    try:
+        dstore = oqapi_get_calculation_result(job_id)
+        oq_parameter_inputs = dstore['oqparam']
+
+        if oq_parameter_inputs.calculation_mode == 'scenario_risk':
+            df = parse_aggregated_risk(dstore)
+            crud.create_aggregated_losses(
+                df,
+                oq_parameter_inputs.aggregate_by[0],
+                calculation._oid,
+                calculation._assetcollection_oid,
+                session)
+
+    except BaseException as e:
+        session.rollback()
+        crud.update_calculation_status(
+            calculation._oid, EStatus.FAILED, session)
+        raise e
+
+    return None

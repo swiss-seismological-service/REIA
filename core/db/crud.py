@@ -1,9 +1,11 @@
 import pandas as pd
-from core.parsers import ASSETS_COLS_MAPPING
+from core.io.parse_input import ASSETS_COLS_MAPPING
 from core.utils import aggregationtags_from_assets, sites_from_assets
-from esloss.datamodel.asset import Asset, AssetCollection, CostType, Site
+from esloss.datamodel.asset import (AggregationTag, Asset, AssetCollection,
+                                    CostType, Site)
 from esloss.datamodel.calculations import (DamageCalculation, EStatus,
                                            LossCalculation, RiskCalculation)
+from esloss.datamodel.lossvalues import AggregatedLoss
 from esloss.datamodel.vulnerability import (
     BusinessInterruptionVulnerabilityModel, ContentsVulnerabilityModel,
     LossRatio, NonstructuralVulnerabilityModel, OccupantsVulnerabilityModel,
@@ -126,7 +128,7 @@ def read_sites(asset_collection_oid: int, session: Session) -> list[Site]:
 
 
 def read_asset_collections(session: Session) -> list[AssetCollection]:
-    stmt = select(AssetCollection)
+    stmt = select(AssetCollection).order_by(AssetCollection._oid)
     return session.execute(stmt).unique().scalars().all()
 
 
@@ -146,7 +148,7 @@ def delete_asset_collection(
 
 
 def read_vulnerability_models(session: Session) -> list[VulnerabilityModel]:
-    stmt = select(VulnerabilityModel)
+    stmt = select(VulnerabilityModel).order_by(VulnerabilityModel._oid)
     return session.execute(stmt).unique().scalars().all()
 
 
@@ -191,5 +193,33 @@ def update_calculation_status(calculation_oid: int,
 
 
 def read_calculations(session: Session) -> list[LossCalculation]:
-    stmt = select(LossCalculation)
+    stmt = select(LossCalculation).order_by(LossCalculation._oid)
     return session.execute(stmt).unique().scalars().all()
+
+
+def create_aggregated_losses(
+        losses: pd.DataFrame,
+        aggregationtypes: list[str],
+        calculation_oid: int,
+        assetcollection_oid: int,
+        session: Session) -> list[AggregatedLoss]:
+
+    aggregations = {}
+    for type in aggregationtypes:
+        stmt = select(AggregationTag).where(
+            AggregationTag.type == type,
+            AggregationTag._assetcollection_oid == assetcollection_oid)
+        type_tags = session.execute(stmt).scalars().all()
+        aggregations.update({tag.name: tag for tag in type_tags})
+
+    losses['aggregationtags'] = losses['aggregationtags'].apply(
+        lambda x: [aggregations[y] for y in x])
+
+    loss_objects = list(map(lambda x: AggregatedLoss(
+        **x, _losscalculation_oid=calculation_oid),
+        losses.to_dict('records')))
+
+    session.add_all(loss_objects)
+    session.commit()
+
+    return loss_objects
