@@ -4,7 +4,6 @@ import xml.etree.ElementTree as ET
 from typing import TextIO, Tuple
 
 import pandas as pd
-
 from core.utils import flatten_config
 
 ASSETS_COLS_MAPPING = {'taxonomy': 'taxonomy_concept',
@@ -94,7 +93,7 @@ def parse_exposure(file: TextIO) -> Tuple[dict, pd.DataFrame]:
     for test in root.findall('exposureModel/conversions/costTypes/costType'):
         model['costtypes'].append(test.attrib)
 
-    tagnames = root.find('exposureModel/tagNames').text.split(',')
+    tagnames = root.find('exposureModel/tagNames').text.split(' ')
 
     asset_csv = root.find('exposureModel/assets').text
     asset_csv = os.path.join(os.path.dirname(file.name), asset_csv)
