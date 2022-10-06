@@ -154,7 +154,8 @@ def parse_calculation(job: configparser.ConfigParser) -> dict:
     flat_job = flatten_config(flat_job)
 
     calculation = {}
-
+    calculation['_earthquakeinformation_oid'] = flat_job.pop(
+        'earthquakeinformation', None)
     calculation['calculation_mode'] = flat_job.pop('calculation_mode')
     calculation['description'] = flat_job.pop('description', None)
     calculation['aggregateby'] = flat_job.pop('aggregate_by', None)

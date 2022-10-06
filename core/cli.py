@@ -1,4 +1,5 @@
 import configparser
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -233,12 +234,19 @@ def run_test_calculation(settings_file: Optional[Path] = typer.Argument(None)):
 
 
 @calculation.command('run')
-def run_calculation(settings_file: Optional[Path] = typer.Argument(None)):
+def run_calculation(
+        earthquake_file: typer.FileText,
+        settings: Optional[Path] = typer.Option(None)):
     '''
     Run an OpenQuake calculation.
     '''
     job_file = configparser.ConfigParser()
-    job_file.read(settings_file or Path(get_config().OQ_SETTINGS))
+    job_file.read(settings or Path(get_config().OQ_SETTINGS))
+
+    # create or update earthquake
+    earthquake_oid = crud.create_or_update_earthquake_information(
+        json.loads(earthquake_file.read()), session)
+    job_file['general']['earthquakeinformation'] = str(earthquake_oid)
 
     # save calculation information to database
     calculation = crud.create_calculation(parse_calculation(job_file), session)

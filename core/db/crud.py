@@ -1,6 +1,7 @@
 import pandas as pd
 from core.io.parse_input import ASSETS_COLS_MAPPING
 from core.utils import aggregationtags_from_assets, sites_from_assets
+from esloss.datamodel import EarthquakeInformation
 from esloss.datamodel.asset import (AggregationTag, Asset, AssetCollection,
                                     CostType, Site)
 from esloss.datamodel.calculations import (DamageCalculation, EStatus,
@@ -11,6 +12,7 @@ from esloss.datamodel.vulnerability import (
     LossRatio, NonstructuralVulnerabilityModel, OccupantsVulnerabilityModel,
     StructuralVulnerabilityModel, VulnerabilityFunction, VulnerabilityModel)
 from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 LOSSCATEGORY_OBJECT_MAPPING = {
@@ -165,6 +167,22 @@ def delete_vulnerability_model(
     dlt = session.execute(stmt).rowcount
     session.commit()
     return dlt
+
+
+def create_or_update_earthquake_information(
+        earthquake: dict,
+        session: Session) -> EarthquakeInformation:
+
+    stmt = insert(EarthquakeInformation).values(**earthquake)
+    upsert_stmt = stmt.on_conflict_do_update(
+        constraint='eventid_unique', set_=earthquake)
+    earthquake = session.scalars(
+        upsert_stmt.returning(
+            EarthquakeInformation._oid),
+        execution_options={
+            "populate_existing": True}).first()
+    # session.commit()
+    return earthquake
 
 
 def create_calculation(

@@ -1,0 +1,10 @@
+{
+    "time": "2022-10-06T12:00:00",
+    "eventid": "smi:sed_220106",
+    "depth_value": 4.2,
+    "magnitude": 6.0,
+    "evaluationmethod": "automatic",
+    "latitude_value": 46.22504,
+    "longitude_value": 7.38330,
+    "hazardlevel": 5
+}
