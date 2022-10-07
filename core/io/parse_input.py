@@ -159,7 +159,8 @@ def parse_calculation(job: configparser.ConfigParser) -> dict:
     calculation['calculation_mode'] = flat_job.pop('calculation_mode')
     calculation['description'] = flat_job.pop('description', None)
     calculation['aggregateby'] = flat_job.pop('aggregate_by', None)
-
+    calculation['aggregateby'] = \
+        [x.strip() for x in calculation['aggregateby'].split(',')]
     calculation['config'] = flat_job
 
     if calculation['calculation_mode'] == 'scenario_risk':
