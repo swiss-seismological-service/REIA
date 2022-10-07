@@ -19,7 +19,7 @@ LOSSCATEGORY_OBJECT_MAPPING = {
     'structural': StructuralVulnerabilityModel,
     'nonstructural': NonstructuralVulnerabilityModel,
     'contents': ContentsVulnerabilityModel,
-    'businesss_interruption': BusinessInterruptionVulnerabilityModel,
+    'business_interruption': BusinessInterruptionVulnerabilityModel,
     'occupants': OccupantsVulnerabilityModel}
 
 CALCULATION_MAPPING = {'scenario_risk': RiskCalculation,
