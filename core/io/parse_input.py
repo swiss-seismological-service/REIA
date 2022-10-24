@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 from typing import TextIO, Tuple
 
 import pandas as pd
+
 from core.utils import flatten_config
 
 ASSETS_COLS_MAPPING = {'taxonomy': 'taxonomy_concept',
@@ -173,4 +174,7 @@ def parse_calculation(job: configparser.ConfigParser) -> dict:
 
     calculation['_assetcollection_oid'] = job['exposure']['exposure_file']
 
+    gmfs = pd.read_csv(job['hazard']['gmfs_csv'])
+    calculation['config']['number_of_ground_motion_fields'] = \
+        len(gmfs.eid.unique())
     return calculation
