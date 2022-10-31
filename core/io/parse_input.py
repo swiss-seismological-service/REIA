@@ -1,11 +1,12 @@
 import configparser
 import os
 import xml.etree.ElementTree as ET
+from collections import Counter
 from typing import TextIO, Tuple
 
 import pandas as pd
 
-from core.utils import flatten_config
+from core.utils import CalculationBranchSettings, flatten_config
 
 ASSETS_COLS_MAPPING = {'taxonomy': 'taxonomy_concept',
                        'number': 'buildingcount',
@@ -146,35 +147,76 @@ def parse_vulnerability(file: TextIO) -> dict:
     return model
 
 
-def parse_calculation(job: configparser.ConfigParser) -> dict:
-
-    flat_job = configparser.ConfigParser()
-    flat_job.read_dict(job)
-    for s in ['vulnerability', 'exposure', 'hazard', 'fragility']:
-        flat_job.remove_section(s)
-    flat_job = flatten_config(flat_job)
-
+def parse_calculation(branch_settings: list[CalculationBranchSettings]) \
+        -> tuple[dict, list[dict]]:
+    """
+    Parses multiple `esloss` OQ calculation files to the structure of a
+    `LossCalculation` and multiple `CalculationBranch` objects respectively.
+    """
     calculation = {}
-    calculation['_earthquakeinformation_oid'] = flat_job.pop(
-        'earthquakeinformation', None)
-    calculation['calculation_mode'] = flat_job.pop('calculation_mode')
-    calculation['description'] = flat_job.pop('description', None)
-    calculation['aggregateby'] = flat_job.pop('aggregate_by', None)
-    calculation['aggregateby'] = \
-        [x.strip() for x in calculation['aggregateby'].split(',')]
-    calculation['config'] = flat_job
+    calculation_branches = []
 
-    if calculation['calculation_mode'] == 'scenario_risk':
-        for k, v in job['vulnerability'].items():
-            calculation[VULNERABILITY_FK_MAPPING[k]] = v
+    for settings in branch_settings:
+        calculation_branch_setting = {}
 
-    if calculation['calculation_mode'] == 'scenario_damage':
-        for k, v in job['fragility'].items():
-            calculation[FRAGILITY_FK_MAPPING[k]] = v
+        # clean and flatten config
+        flat_job = configparser.ConfigParser()
+        flat_job.read_dict(settings.config)
+        for s in ['vulnerability', 'exposure', 'hazard', 'fragility']:
+            flat_job.remove_section(s)
+        flat_job = flatten_config(flat_job)
 
-    calculation['_assetcollection_oid'] = job['exposure']['exposure_file']
+        # CALCULATION SETTINGS ###########################################
+        aggregateby = flat_job.pop('aggregate_by', None)
+        aggregateby = [x.strip() for x in aggregateby.split(',')]
 
-    gmfs = pd.read_csv(job['hazard']['gmfs_csv'])
-    calculation['config']['number_of_ground_motion_fields'] = \
-        len(gmfs.eid.unique())
-    return calculation
+        # validate that main calculation settings are the same in all branches
+        if 'calculation_mode' in calculation and \
+                flat_job['calculation_mode'] != calculation[
+                    'calculation_mode']:
+            raise ValueError('Calculation mode must be the same '
+                             'in all calculation branches.')
+
+        if 'aggregate_by' in calculation and \
+                Counter(aggregateby) != Counter(calculation['aggregate_by']):
+            raise ValueError('Aggregation keys must be the same '
+                             'in all calculation branches.')
+
+        if '_assetcollection_oid' in calculation and \
+                calculation['_assetcollection_oid'] != \
+                settings.config['exposure']['exposure_file']:
+            raise ValueError('AssetCollection must be the same '
+                             'in all calculation branches.')
+
+        # assign all settings to dict
+        calculation['calculation_mode'] = flat_job.pop('calculation_mode')
+        calculation['description'] = flat_job.pop('description', None)
+        calculation['aggregate_by'] = aggregateby
+        calculation['_assetcollection_oid'] = \
+            settings.config['exposure']['exposure_file']
+
+        # BRANCH SETTINGS ###########################################
+
+        # vulnerability / fragility functions
+        if calculation['calculation_mode'] == 'scenario_risk':
+            for k, v in settings.config['vulnerability'].items():
+                calculation_branch_setting[VULNERABILITY_FK_MAPPING[k]] = v
+
+        if calculation['calculation_mode'] == 'scenario_damage':
+            for k, v in settings.config['fragility'].items():
+                calculation_branch_setting[FRAGILITY_FK_MAPPING[k]] = v
+
+        # save general config values
+        calculation_branch_setting['config'] = flat_job
+
+        # count number of gmfs of input
+        gmfs = pd.read_csv(settings.config['hazard']['gmfs_csv'])
+        calculation_branch_setting['config'][
+            'number_of_ground_motion_fields'] = len(gmfs.eid.unique())
+
+        # add weight
+        calculation_branch_setting['weight'] = settings.weight
+
+        calculation_branches.append(calculation_branch_setting)
+
+    return (calculation, calculation_branches)
