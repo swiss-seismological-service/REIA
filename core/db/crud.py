@@ -3,7 +3,9 @@ from esloss.datamodel import EarthquakeInformation
 from esloss.datamodel.asset import (AggregationTag, Asset, AssetCollection,
                                     CostType, Site)
 from esloss.datamodel.calculations import (Calculation, DamageCalculation,
-                                           EStatus, RiskCalculation)
+                                           DamageCalculationBranch, EStatus,
+                                           RiskCalculation,
+                                           RiskCalculationBranch)
 from esloss.datamodel.lossvalues import AggregatedLoss
 from esloss.datamodel.vulnerability import (
     BusinessInterruptionVulnerabilityModel, ContentsVulnerabilityModel,
@@ -25,6 +27,9 @@ LOSSCATEGORY_OBJECT_MAPPING = {
 
 CALCULATION_MAPPING = {'scenario_risk': RiskCalculation,
                        'scenario_damage': DamageCalculation}
+
+CALCULATION_BRANCH_MAPPING = {'scenario_risk': RiskCalculationBranch,
+                              'scenario_damage': DamageCalculationBranch}
 
 
 def create_assets(assets: pd.DataFrame,
@@ -195,6 +200,24 @@ def create_calculation(
     session.add(calculation)
     session.commit()
     return calculation
+
+
+def create_calculation_branch(branch: dict,
+                              session: Session,
+                              calculation_oid: int = None) \
+        -> RiskCalculationBranch | DamageCalculationBranch:
+
+    if calculation_oid:
+        branch['_calculation_oid'] = calculation_oid
+
+    calculation_branch = CALCULATION_BRANCH_MAPPING[branch.pop(
+        'calculation_mode')]
+
+    calculation_branch = calculation_branch(**branch)
+    session.add(calculation_branch)
+    session.commit()
+
+    return calculation_branch
 
 
 def read_calculation(oid: int, session: Session) -> Calculation:

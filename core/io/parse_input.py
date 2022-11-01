@@ -1,7 +1,7 @@
 import configparser
 import os
 import xml.etree.ElementTree as ET
-from collections import Counter
+from itertools import groupby
 from typing import TextIO, Tuple
 
 import pandas as pd
@@ -147,6 +147,81 @@ def parse_vulnerability(file: TextIO) -> dict:
     return model
 
 
+def equal_section_options(configs: list[configparser.ConfigParser], name: str):
+    """Returns `True` if all configparsers have:
+        - The same section and the same option keys inside this section.
+        - All don't have the section.
+    """
+
+    has_any = any(c.has_section(name) for c in configs)
+
+    if not has_any:
+        return True
+
+    has_all = all(c.has_section(name) for c in configs)
+
+    if not has_all:
+        return False
+
+    g = groupby(dict(c[name]).keys() for c in configs)
+    return next(g, True) and not next(g, False)
+
+
+def equal_options(
+        configs: list[configparser.ConfigParser], section: str, name: str):
+
+    has_any = any(c.has_option(section, name) for c in configs)
+
+    if not has_any:
+        return True
+
+    has_all = all(c.has_option(section, name) for c in configs)
+
+    if not has_all:
+        return False
+
+    g = groupby(c[section][name] for c in configs)
+    return next(g, True) and not next(g, False)
+
+
+def validate_calculation_input(
+        branch_settings: list[CalculationBranchSettings]) -> None:
+
+    # validate weights
+    if not sum([b.weight for b in branch_settings]) == 1:
+        raise ValueError('The sum of the weights for the calculation '
+                         'branches has to be 1.')
+
+    configs = [s.config for s in branch_settings]
+
+    for config in configs:
+        if config.has_option('general', 'aggregate_by'):
+            sorted_agg = [x.strip().lower() for x in
+                          config['general']['aggregate_by'].split(',')]
+            sorted_agg = ','.join(sorted(sorted_agg))
+            config['general']['aggregate_by'] = sorted_agg
+
+    if not equal_section_options(configs, 'vulnerability'):
+        raise ValueError('All branches of a calculation need to calculate '
+                         'the same vulnerability loss categories.')
+
+    if not equal_section_options(configs, 'fragility'):
+        raise ValueError('All branches of a calculation need to calculate '
+                         'the same fragility damage categories.')
+
+    if not equal_options(configs, 'general', 'aggregate_by'):
+        raise ValueError('Aggregation keys must be the same '
+                         'in all calculation branches.')
+
+    if not equal_options(configs, 'general', 'calculation_mode'):
+        raise ValueError('Calculation mode must be the same '
+                         'in all calculation branches.')
+
+    if not equal_options(configs, 'exposure', 'exposure_file'):
+        raise ValueError('AssetCollection must be the same '
+                         'in all calculation branches.')
+
+
 def parse_calculation(branch_settings: list[CalculationBranchSettings]) \
         -> tuple[dict, list[dict]]:
     """
@@ -167,31 +242,12 @@ def parse_calculation(branch_settings: list[CalculationBranchSettings]) \
         flat_job = flatten_config(flat_job)
 
         # CALCULATION SETTINGS ###########################################
-        aggregateby = flat_job.pop('aggregate_by', None)
-        aggregateby = [x.strip() for x in aggregateby.split(',')]
 
-        # validate that main calculation settings are the same in all branches
-        if 'calculation_mode' in calculation and \
-                flat_job['calculation_mode'] != calculation[
-                    'calculation_mode']:
-            raise ValueError('Calculation mode must be the same '
-                             'in all calculation branches.')
-
-        if 'aggregate_by' in calculation and \
-                Counter(aggregateby) != Counter(calculation['aggregate_by']):
-            raise ValueError('Aggregation keys must be the same '
-                             'in all calculation branches.')
-
-        if '_assetcollection_oid' in calculation and \
-                calculation['_assetcollection_oid'] != \
-                settings.config['exposure']['exposure_file']:
-            raise ValueError('AssetCollection must be the same '
-                             'in all calculation branches.')
-
-        # assign all settings to dict
+        # assign all settings to calculation dict
         calculation['calculation_mode'] = flat_job.pop('calculation_mode')
         calculation['description'] = flat_job.pop('description', None)
-        calculation['aggregate_by'] = aggregateby
+        calculation['aggregateby'] = [x.strip() for x in flat_job.pop(
+            'aggregate_by').split(',')] if 'aggregate_by' in flat_job else None
         calculation['_assetcollection_oid'] = \
             settings.config['exposure']['exposure_file']
 
@@ -205,6 +261,10 @@ def parse_calculation(branch_settings: list[CalculationBranchSettings]) \
         if calculation['calculation_mode'] == 'scenario_damage':
             for k, v in settings.config['fragility'].items():
                 calculation_branch_setting[FRAGILITY_FK_MAPPING[k]] = v
+
+        # add the mode to distinguish between risk and damage branch
+        calculation_branch_setting['calculation_mode'] = \
+            calculation['calculation_mode']
 
         # save general config values
         calculation_branch_setting['config'] = flat_job

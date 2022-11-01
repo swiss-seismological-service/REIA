@@ -1,4 +1,5 @@
 import configparser
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -13,7 +14,8 @@ from core.io.create_input import (assemble_calculation_input,
                                   create_exposure_input,
                                   create_vulnerability_input)
 from core.io.parse_input import (parse_calculation, parse_exposure,
-                                 parse_vulnerability)
+                                 parse_vulnerability,
+                                 validate_calculation_input)
 from core.utils import CalculationBranchSettings
 from settings import get_config
 
@@ -241,13 +243,10 @@ def run_calculation(
     '''
     Run an OpenQuake calculation.
     '''
-    # input validation
-    if settings and \
-            (not len(settings) == len(weights) or sum(weights) != 1):
-        typer.echo(
-            'Error:\n'
-            'Number of setting files and weights provided have to be '
-            'equal.\nTotal sum of all weights has to be 1.\nExiting...')
+    # console input validation
+    if settings and not len(settings) == len(weights):
+        typer.echo('Error: Number of setting files and weights provided '
+                   'have to be equal. Exiting...')
         raise typer.Exit(code=1)
 
     # input parsing
@@ -258,20 +257,22 @@ def run_calculation(
         job_file.read(Path(s[1]))
         branch_settings.append(CalculationBranchSettings(s[0], job_file))
 
+    validate_calculation_input(branch_settings)
+
     # create or update earthquake
-    # earthquake_oid = crud.create_or_update_earthquake_information(
-    #     json.loads(earthquake_file.read()), session)
+    earthquake_oid = crud.create_or_update_earthquake_information(
+        json.loads(earthquake_file.read()), session)
 
     calculation_dict, branches_dicts = parse_calculation(branch_settings)
-    # calculation_dict['_earthquakeinformation_oid'] = earthquake_oid
+    calculation_dict['_earthquakeinformation_oid'] = earthquake_oid
 
-    # calculation = crud.create_calculation(calculation_dict, session)
-    # branches = [crud.create_branch(b, calculation._oid, session)
-    #             for b in branches_dicts]
+    calculation = crud.create_calculation(calculation_dict, session)
 
-    print(branch_settings)
-    print(calculation_dict)
-    print(branches_dicts)
+    branches = [crud.create_calculation_branch(b, session, calculation._oid)
+                for b in branches_dicts]
+
+    print(calculation)
+    print(branches)
     return
 
     # send calculation to OQ and keep updating its status
