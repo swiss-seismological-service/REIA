@@ -1,11 +1,9 @@
 import pandas as pd
-from core.io.parse_input import ASSETS_COLS_MAPPING
-from core.utils import aggregationtags_from_assets, sites_from_assets
 from esloss.datamodel import EarthquakeInformation
 from esloss.datamodel.asset import (AggregationTag, Asset, AssetCollection,
                                     CostType, Site)
-from esloss.datamodel.calculations import (DamageCalculation, EStatus,
-                                           LossCalculation, RiskCalculation)
+from esloss.datamodel.calculations import (Calculation, DamageCalculation,
+                                           EStatus, RiskCalculation)
 from esloss.datamodel.lossvalues import AggregatedLoss
 from esloss.datamodel.vulnerability import (
     BusinessInterruptionVulnerabilityModel, ContentsVulnerabilityModel,
@@ -14,6 +12,9 @@ from esloss.datamodel.vulnerability import (
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
+
+from core.io.parse_input import ASSETS_COLS_MAPPING
+from core.utils import aggregationtags_from_assets, sites_from_assets
 
 LOSSCATEGORY_OBJECT_MAPPING = {
     'structural': StructuralVulnerabilityModel,
@@ -196,22 +197,22 @@ def create_calculation(
     return calculation
 
 
-def read_calculation(oid: int, session: Session) -> LossCalculation:
-    stmt = select(LossCalculation).where(LossCalculation._oid == oid)
+def read_calculation(oid: int, session: Session) -> Calculation:
+    stmt = select(Calculation).where(Calculation._oid == oid)
     return session.execute(stmt).unique().scalar()
 
 
 def update_calculation_status(calculation_oid: int,
                               status: EStatus,
-                              session: Session) -> LossCalculation:
+                              session: Session) -> Calculation:
     calculation = read_calculation(calculation_oid, session)
     calculation.status = status
     session.commit()
     return calculation
 
 
-def read_calculations(session: Session) -> list[LossCalculation]:
-    stmt = select(LossCalculation).order_by(LossCalculation._oid)
+def read_calculations(session: Session) -> list[Calculation]:
+    stmt = select(Calculation).order_by(Calculation._oid)
     return session.execute(stmt).unique().scalars().all()
 
 
@@ -234,7 +235,7 @@ def create_aggregated_losses(
         lambda x: [aggregations[y] for y in x])
 
     loss_objects = list(map(lambda x: AggregatedLoss(
-        **x, _losscalculation_oid=calculation_oid),
+        **x, _riskcalculation_oid=calculation_oid),
         losses.to_dict('records')))
 
     session.add_all(loss_objects)

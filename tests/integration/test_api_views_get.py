@@ -1,10 +1,9 @@
-from esloss.datamodel.lossmodel import LossCalculation, LossConfig, LossModel
-from esloss.datamodel.vulnerability import VulnerabilityFunction, VulnerabilityModel
-from esloss.datamodel.asset import Asset, AssetCollection, Site
-
-from dateutil.parser import parse
-
 import pytest
+from dateutil.parser import parse
+from esloss.datamodel.asset import Asset, AssetCollection, Site
+from esloss.datamodel.lossmodel import Calculation, LossConfig, LossModel
+from esloss.datamodel.vulnerability import (VulnerabilityFunction,
+                                            VulnerabilityModel)
 
 
 @pytest.mark.usefixtures("test_data")
@@ -42,8 +41,8 @@ class TestAPIGet:
 
         response_db = db_class.query(LossModel).first()._asdict()
         response_db['_vulnerabilitymodels_oids'] = sorted([2, 1])
-        response_db['calculations_count'] = db_class.query(LossCalculation).filter(
-            LossCalculation._lossmodel_oid == response_db['_oid']).count()
+        response_db['calculations_count'] = db_class.query(Calculation).filter(
+            Calculation._lossmodel_oid == response_db['_oid']).count()
 
         response_get = client_class.get('/api/v1/lossmodel')
         assert response_get.status == '200 OK'
@@ -62,11 +61,11 @@ class TestAPIGet:
         response_json = response_get.json[0]
         assert response_json == response_db
 
-    def test_get_losscalculation(self, client_class, db_class):
+    def test_get_calculation(self, client_class, db_class):
 
-        response_db = db_class.query(LossCalculation).first()._asdict()
+        response_db = db_class.query(Calculation).first()._asdict()
 
-        response_get = client_class.get('/api/v1/losscalculation')
+        response_get = client_class.get('/api/v1/calculation')
         assert response_get.status == '200 OK'
 
         response_json = response_get.json[0]

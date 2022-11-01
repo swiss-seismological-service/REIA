@@ -151,7 +151,7 @@ def parse_calculation(branch_settings: list[CalculationBranchSettings]) \
         -> tuple[dict, list[dict]]:
     """
     Parses multiple `esloss` OQ calculation files to the structure of a
-    `LossCalculation` and multiple `CalculationBranch` objects respectively.
+    `Calculation` and multiple `CalculationBranch` objects respectively.
     """
     calculation = {}
     calculation_branches = []

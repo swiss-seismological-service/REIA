@@ -1,7 +1,7 @@
 import time
 from configparser import ConfigParser
 
-from esloss.datamodel.calculations import EStatus, LossCalculation
+from esloss.datamodel.calculations import Calculation, EStatus
 from requests import Response
 from sqlalchemy.orm import Session
 
@@ -37,7 +37,7 @@ def monitor_openquake_calculation(job_id: int,
     Monitor OQ calculation and update status accordingly.
 
     :param job_id: ID of the OQ job.
-    :param calculation_oid: ID of the LossCalculation DB row.
+    :param calculation_oid: ID of the Calculation DB row.
     :param session: Database session object.
     """
     while True:
@@ -53,7 +53,7 @@ def monitor_openquake_calculation(job_id: int,
         time.sleep(1)
 
 
-def save_openquake_results(calculation: LossCalculation,
+def save_openquake_results(calculation: Calculation,
                            job_id: int,
                            session: Session) -> None:
     try:

@@ -1,11 +1,12 @@
+from datetime import datetime
 from io import BytesIO
-from app import create_app
-from esloss.datamodel.lossmodel import LossCalculation, LossConfig, LossModel
-from esloss.datamodel.vulnerability import VulnerabilityFunction, VulnerabilityModel
-from esloss.datamodel.asset import AssetCollection, Site, Asset
 
 import pytest
-from datetime import datetime
+from app import create_app
+from esloss.datamodel.asset import Asset, AssetCollection, Site
+from esloss.datamodel.lossmodel import Calculation, LossConfig, LossModel
+from esloss.datamodel.vulnerability import (VulnerabilityFunction,
+                                            VulnerabilityModel)
 
 
 @pytest.fixture(scope='class')
@@ -37,13 +38,24 @@ def test_data_from_files(client_class):
     with open('tests/integration/data/risk.ini', 'rb') as file:
         loss_fp = BytesIO(file.read())
 
-    client_class.post('/api/v1/assetcollection', content_type='multipart/form-data',
-                      data={'exposureCSV': (assets_fp, 'exposure_assets.csv'),
-                            'exposureXML': (exposure_fp, 'exposure.xml')})
+    client_class.post(
+        '/api/v1/assetcollection',
+        content_type='multipart/form-data',
+        data={
+            'exposureCSV': (
+                assets_fp,
+                'exposure_assets.csv'),
+            'exposureXML': (
+                exposure_fp,
+                'exposure.xml')})
 
-    client_class.post('/api/v1/vulnerabilitymodel', content_type='multipart/form-data',
-                      data={'vulnerabilitymodel': (vulnerability_fp,
-                                                   'structural_vulnerability.xml')})
+    client_class.post(
+        '/api/v1/vulnerabilitymodel',
+        content_type='multipart/form-data',
+        data={
+            'vulnerabilitymodel': (
+                vulnerability_fp,
+                'structural_vulnerability.xml')})
 
     client_class.post('/api/v1/lossmodel', content_type='multipart/form-data',
                       data={'riskini': (loss_fp, 'risk.ini'),
@@ -74,26 +86,33 @@ def test_data(db_class):
 
     vulnerability_model_1 = VulnerabilityModel(losscategory='structural')
     vulnerability_model_2 = VulnerabilityModel(_oid=2, losscategory='content')
-    vulnerability_function = VulnerabilityFunction(distribution='beta',
-                                                   intensitymeasuretype='mmi',
-                                                   vulnerabilitymodel=vulnerability_model_1)
+    vulnerability_function = VulnerabilityFunction(
+        distribution='beta',
+        intensitymeasuretype='mmi',
+        vulnerabilitymodel=vulnerability_model_1)
 
     asset_collection = AssetCollection(name='test_collection')
 
-    loss_model = LossModel(preparationcalculationmode='scenario',
-                           maincalculationmode='scenario',
-                           numberofgroundmotionfields=200,
-                           assetcollection=asset_collection,
-                           vulnerabilitymodels=[vulnerability_model_1, vulnerability_model_2])
+    loss_model = LossModel(
+        preparationcalculationmode='scenario',
+        maincalculationmode='scenario',
+        numberofgroundmotionfields=200,
+        assetcollection=asset_collection,
+        vulnerabilitymodels=[
+            vulnerability_model_1,
+            vulnerability_model_2])
 
     loss_config = LossConfig(losscategory='structural', lossmodel=loss_model)
 
     asset_collection = AssetCollection(name='test_collection')
 
-    loss_calculation = LossCalculation(shakemapid_resourceid='some_id',
-                                       lossmodel=loss_model,
-                                       losscategory='structural',
-                                       timestamp_starttime=datetime.now().isoformat(' ', 'seconds'))
+    loss_calculation = Calculation(
+        shakemapid_resourceid='some_id',
+        lossmodel=loss_model,
+        losscategory='structural',
+        timestamp_starttime=datetime.now().isoformat(
+            ' ',
+            'seconds'))
 
     db_class.add(loss_calculation)
     db_class.add(loss_config)

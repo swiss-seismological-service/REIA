@@ -1,10 +1,9 @@
-from celery import Celery
-from core.oqapi import oqapi_wait_for_job
-from core.db import session
 from esloss.datamodel import MeanAssetLoss
-
 from openquake.calculators.extract import Extractor
 
+from celery import Celery
+from core.db import session
+from core.oqapi import oqapi_wait_for_job
 
 celery = Celery()
 
@@ -24,6 +23,6 @@ def fetch_oq_results(oqJobId, calcId):
 
     # save results to database
     data = data.apply(lambda x: MeanAssetLoss(
-        _losscalculation_oid=calcId, **x), axis=1)
+        _calculation_oid=calcId, **x), axis=1)
     session.add_all(data)
     session.commit()
