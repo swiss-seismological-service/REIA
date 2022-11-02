@@ -167,9 +167,13 @@ def equal_section_options(configs: list[configparser.ConfigParser], name: str):
     return next(g, True) and not next(g, False)
 
 
-def equal_options(
+def equal_option_value(
         configs: list[configparser.ConfigParser], section: str, name: str):
-
+    """
+    Returns `True` if all configparsers have:
+        - The same option inside the same section with the same value.
+        - All don't have this option.
+    """
     has_any = any(c.has_option(section, name) for c in configs)
 
     if not has_any:
@@ -194,6 +198,7 @@ def validate_calculation_input(
 
     configs = [s.config for s in branch_settings]
 
+    # sort aggregation keys in order to be able to string-compare
     for config in configs:
         if config.has_option('general', 'aggregate_by'):
             sorted_agg = [x.strip().lower() for x in
@@ -201,6 +206,7 @@ def validate_calculation_input(
             sorted_agg = ','.join(sorted(sorted_agg))
             config['general']['aggregate_by'] = sorted_agg
 
+    # validate that the necessary options are consistent over branches
     if not equal_section_options(configs, 'vulnerability'):
         raise ValueError('All branches of a calculation need to calculate '
                          'the same vulnerability loss categories.')
@@ -209,15 +215,15 @@ def validate_calculation_input(
         raise ValueError('All branches of a calculation need to calculate '
                          'the same fragility damage categories.')
 
-    if not equal_options(configs, 'general', 'aggregate_by'):
+    if not equal_option_value(configs, 'general', 'aggregate_by'):
         raise ValueError('Aggregation keys must be the same '
                          'in all calculation branches.')
 
-    if not equal_options(configs, 'general', 'calculation_mode'):
+    if not equal_option_value(configs, 'general', 'calculation_mode'):
         raise ValueError('Calculation mode must be the same '
                          'in all calculation branches.')
 
-    if not equal_options(configs, 'exposure', 'exposure_file'):
+    if not equal_option_value(configs, 'exposure', 'exposure_file'):
         raise ValueError('AssetCollection must be the same '
                          'in all calculation branches.')
 
@@ -242,7 +248,6 @@ def parse_calculation(branch_settings: list[CalculationBranchSettings]) \
         flat_job = flatten_config(flat_job)
 
         # CALCULATION SETTINGS ###########################################
-
         # assign all settings to calculation dict
         calculation['calculation_mode'] = flat_job.pop('calculation_mode')
         calculation['description'] = flat_job.pop('description', None)
@@ -252,7 +257,6 @@ def parse_calculation(branch_settings: list[CalculationBranchSettings]) \
             settings.config['exposure']['exposure_file']
 
         # BRANCH SETTINGS ###########################################
-
         # vulnerability / fragility functions
         if calculation['calculation_mode'] == 'scenario_risk':
             for k, v in settings.config['vulnerability'].items():
