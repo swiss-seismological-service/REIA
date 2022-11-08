@@ -2,7 +2,8 @@ import pandas as pd
 from esloss.datamodel import EarthquakeInformation
 from esloss.datamodel.asset import (AggregationTag, Asset, AssetCollection,
                                     CostType, Site)
-from esloss.datamodel.calculations import (Calculation, DamageCalculation,
+from esloss.datamodel.calculations import (Calculation, CalculationBranch,
+                                           DamageCalculation,
                                            DamageCalculationBranch, EStatus,
                                            RiskCalculation,
                                            RiskCalculationBranch)
@@ -202,6 +203,12 @@ def create_calculation(
     return calculation
 
 
+def read_calculation_branch(oid: int,
+                            session: Session) -> CalculationBranch:
+    stmt = select(CalculationBranch).where(CalculationBranch._oid == oid)
+    return session.execute(stmt).unique().scalar()
+
+
 def create_calculation_branch(branch: dict,
                               session: Session,
                               calculation_oid: int = None) \
@@ -218,6 +225,15 @@ def create_calculation_branch(branch: dict,
     session.commit()
 
     return calculation_branch
+
+
+def update_calculation_branch_status(calculation_oid: int,
+                                     status: EStatus,
+                                     session: Session) -> CalculationBranch:
+    calculation = read_calculation_branch(calculation_oid, session)
+    calculation.status = status
+    session.commit()
+    return calculation
 
 
 def read_calculation(oid: int, session: Session) -> Calculation:

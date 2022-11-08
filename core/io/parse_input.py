@@ -201,7 +201,7 @@ def validate_calculation_input(
     # sort aggregation keys in order to be able to string-compare
     for config in configs:
         if config.has_option('general', 'aggregate_by'):
-            sorted_agg = [x.strip().lower() for x in
+            sorted_agg = [x.strip() for x in
                           config['general']['aggregate_by'].split(',')]
             sorted_agg = ','.join(sorted(sorted_agg))
             config['general']['aggregate_by'] = sorted_agg

@@ -4,18 +4,14 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-from esloss.datamodel.calculations import EStatus
+from esloss.datamodel import EStatus
 
-from core.actions import (dispatch_openquake_calculation,
-                          monitor_openquake_calculation,
-                          save_openquake_results)
+from core.actions import dispatch_openquake_calculation, run_calculations
 from core.db import crud, drop_db, init_db, session
 from core.io.create_input import (assemble_calculation_input,
                                   create_exposure_input,
                                   create_vulnerability_input)
-from core.io.parse_input import (parse_calculation, parse_exposure,
-                                 parse_vulnerability,
-                                 validate_calculation_input)
+from core.io.parse_input import parse_exposure, parse_vulnerability
 from core.utils import CalculationBranchSettings
 from settings import get_config
 
@@ -243,6 +239,7 @@ def run_calculation(
     '''
     Run an OpenQuake calculation.
     '''
+
     # console input validation
     if settings and not len(settings) == len(weights):
         typer.echo('Error: Number of setting files and weights provided '
@@ -250,52 +247,25 @@ def run_calculation(
         raise typer.Exit(code=1)
 
     # input parsing
-    settings = zip(weights, settings) if settings else get_config().OQ_SETTINGS
+    settings = zip(
+        weights,
+        settings) if settings else get_config().OQ_SETTINGS
     branch_settings = []
     for s in settings:
         job_file = configparser.ConfigParser()
         job_file.read(Path(s[1]))
         branch_settings.append(CalculationBranchSettings(s[0], job_file))
 
-    validate_calculation_input(branch_settings)
-
     # create or update earthquake
     earthquake_oid = crud.create_or_update_earthquake_information(
         json.loads(earthquake_file.read()), session)
 
-    calculation_dict, branches_dicts = parse_calculation(branch_settings)
-    calculation_dict['_earthquakeinformation_oid'] = earthquake_oid
-
-    calculation = crud.create_calculation(calculation_dict, session)
-
-    branches = [crud.create_calculation_branch(b, session, calculation._oid)
-                for b in branches_dicts]
-
-    print(calculation)
-    print(branches)
-    return
-
-    # send calculation to OQ and keep updating its status
-    try:
-        response = dispatch_openquake_calculation(job_file, session)
-        job_id = response.json()['job_id']
-        monitor_openquake_calculation(job_id, calculation._oid, session)
-    except BaseException as e:
-        crud.update_calculation_status(
-            calculation._oid, EStatus.FAILED, session)
-        session.remove()
-        raise e
-    typer.echo(
-        f'Calculation finished with status "{EStatus(calculation.status)}".')
-
-    # Collect OQ results and save to database
-    if calculation.status == EStatus.COMPLETE:
-        save_openquake_results(calculation, job_id, session)
+    run_calculations(branch_settings, earthquake_oid, session)
 
     session.remove()
 
 
-@calculation.command('list')
+@ calculation.command('list')
 def list_calculations():
     '''
     List all calculations.

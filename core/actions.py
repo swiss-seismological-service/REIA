@@ -3,13 +3,16 @@ from configparser import ConfigParser
 
 from esloss.datamodel.calculations import Calculation, EStatus
 from requests import Response
+from sqlalchemy.exc import PendingRollbackError
 from sqlalchemy.orm import Session
 
 from core.db import crud
 from core.io.create_input import assemble_calculation_input
+from core.io.parse_input import parse_calculation, validate_calculation_input
 from core.io.parse_output import parse_aggregated_risk
 from core.oqapi import (oqapi_get_calculation_result, oqapi_get_job_status,
                         oqapi_send_calculation)
+from core.utils import CalculationBranchSettings
 
 
 def dispatch_openquake_calculation(
@@ -31,7 +34,7 @@ def dispatch_openquake_calculation(
 
 
 def monitor_openquake_calculation(job_id: int,
-                                  calculation_oid: int,
+                                  calculation_branch_oid: int,
                                   session: Session) -> None:
     """
     Monitor OQ calculation and update status accordingly.
@@ -45,7 +48,8 @@ def monitor_openquake_calculation(job_id: int,
         response.raise_for_status()
 
         status = EStatus[response.json()['status'].upper()]
-        crud.update_calculation_status(calculation_oid, status, session)
+        crud.update_calculation_branch_status(
+            calculation_branch_oid, status, session)
 
         if status in (EStatus.COMPLETE, EStatus.ABORTED, EStatus.FAILED):
             return
@@ -76,3 +80,55 @@ def save_openquake_results(calculation: Calculation,
         raise e
 
     return None
+
+
+def run_calculations(branch_settings: list[CalculationBranchSettings],
+                     earthquake_oid: int,
+                     session: Session):
+
+    # validate that required inputs are set and compatible with each other
+    validate_calculation_input(branch_settings)
+
+    # parse information to separate dicts
+    calculation_dict, branches_dicts = parse_calculation(branch_settings)
+    calculation_dict['_earthquakeinformation_oid'] = earthquake_oid
+
+    # create the calculation and the branches on the db
+    calculation = crud.create_calculation(calculation_dict, session)
+    branches = [crud.create_calculation_branch(
+        b, session,
+        calculation._oid) for b in branches_dicts]
+
+    try:
+        crud.update_calculation_status(
+            calculation._oid, EStatus.EXECUTING, session)
+
+        for branch in zip(branch_settings, branches):
+            # send calculation to OQ and keep updating its status
+
+            response = dispatch_openquake_calculation(
+                branch[0].config, session)
+            job_id = response.json()['job_id']
+            monitor_openquake_calculation(job_id, branch[1]._oid, session)
+
+            print('Calculation finished with status '
+                  f'"{EStatus(branch[1].status)}".')
+
+            # Collect OQ results and save to database
+            if branch[1].status == EStatus.COMPLETE:
+                print('SAVE RESULTS')
+                # save_openquake_results(calculation, job_id, session)
+
+        status = EStatus.COMPLETE if all(
+            b.status == EStatus.COMPLETE for b in branches) else EStatus.FAILED
+
+        crud.update_calculation_status(calculation._oid, status, session)
+
+    except BaseException as e:
+        session.rollback()
+        for el in session.identity_map.values():
+            if hasattr(el, 'status') and el.status != EStatus.COMPLETE:
+                el.status = EStatus.ABORTED if isinstance(
+                    e, KeyboardInterrupt) else EStatus.FAILED
+                session.commit()
+        raise e
