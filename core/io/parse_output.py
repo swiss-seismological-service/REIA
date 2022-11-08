@@ -4,7 +4,7 @@ from openquake.commonlib.datastore import DataStore
 from openquake.risklib.scientific import LOSSTYPE
 
 
-def parse_aggregated_risk(dstore: DataStore) -> pd.DataFrame:
+def parse_aggregated_losses(dstore: DataStore) -> pd.DataFrame:
 
     all_agg_keys = [d.decode().split(',')for d in dstore['agg_keys'][:]]
     oq_parameter_inputs = dstore['oqparam']
@@ -13,8 +13,8 @@ def parse_aggregated_risk(dstore: DataStore) -> pd.DataFrame:
     # there is one more agg key for the 'TOTAL'
     df = df.loc[df['agg_id'] != len(all_agg_keys)]
 
-    assert('site_id' not in oq_parameter_inputs.aggregate_by[0])
-    assert(oq_parameter_inputs.calculation_mode == 'scenario_risk')
+    assert 'site_id' not in oq_parameter_inputs.aggregate_by[0]
+    assert oq_parameter_inputs.calculation_mode == 'scenario_risk'
 
     df = df.rename(columns={'event_id': 'eventid',
                             'agg_id': 'aggregationtags',

@@ -1,15 +1,15 @@
 import time
 from configparser import ConfigParser
 
-from esloss.datamodel.calculations import Calculation, EStatus
+from esloss.datamodel.calculations import CalculationBranch, EStatus
 from requests import Response
-from sqlalchemy.exc import PendingRollbackError
 from sqlalchemy.orm import Session
 
 from core.db import crud
 from core.io.create_input import assemble_calculation_input
-from core.io.parse_input import parse_calculation, validate_calculation_input
-from core.io.parse_output import parse_aggregated_risk
+from core.io.parse_input import (parse_calculation_input,
+                                 validate_calculation_input)
+from core.io.parse_output import parse_aggregated_losses
 from core.oqapi import (oqapi_get_calculation_result, oqapi_get_job_status,
                         oqapi_send_calculation)
 from core.utils import CalculationBranchSettings
@@ -57,40 +57,37 @@ def monitor_openquake_calculation(job_id: int,
         time.sleep(1)
 
 
-def save_openquake_results(calculation: Calculation,
+def save_openquake_results(calculationbranch: CalculationBranch,
                            job_id: int,
                            session: Session) -> None:
-    try:
-        dstore = oqapi_get_calculation_result(job_id)
-        oq_parameter_inputs = dstore['oqparam']
 
-        if oq_parameter_inputs.calculation_mode == 'scenario_risk':
-            df = parse_aggregated_risk(dstore)
-            crud.create_aggregated_losses(
-                df,
-                oq_parameter_inputs.aggregate_by[0],
-                calculation._oid,
-                calculation._assetcollection_oid,
-                session)
+    dstore = oqapi_get_calculation_result(job_id)
+    oq_parameter_inputs = dstore['oqparam']
 
-    except BaseException as e:
-        session.rollback()
-        crud.update_calculation_status(
-            calculation._oid, EStatus.FAILED, session)
-        raise e
+    if oq_parameter_inputs.calculation_mode == 'scenario_risk':
+        df = parse_aggregated_losses(dstore)
+        crud.create_aggregated_losses(
+            df,
+            oq_parameter_inputs.aggregate_by[0],
+            calculationbranch._calculation_oid,
+            calculationbranch._oid,
+            calculationbranch.riskcalculation._assetcollection_oid,
+            calculationbranch.weight,
+            session)
 
     return None
 
 
-def run_calculations(branch_settings: list[CalculationBranchSettings],
-                     earthquake_oid: int,
-                     session: Session):
+def run_openquake_calculations(
+        branch_settings: list[CalculationBranchSettings],
+        earthquake_oid: int,
+        session: Session):
 
     # validate that required inputs are set and compatible with each other
     validate_calculation_input(branch_settings)
 
     # parse information to separate dicts
-    calculation_dict, branches_dicts = parse_calculation(branch_settings)
+    calculation_dict, branches_dicts = parse_calculation_input(branch_settings)
     calculation_dict['_earthquakeinformation_oid'] = earthquake_oid
 
     # create the calculation and the branches on the db
@@ -105,7 +102,6 @@ def run_calculations(branch_settings: list[CalculationBranchSettings],
 
         for branch in zip(branch_settings, branches):
             # send calculation to OQ and keep updating its status
-
             response = dispatch_openquake_calculation(
                 branch[0].config, session)
             job_id = response.json()['job_id']
@@ -116,8 +112,9 @@ def run_calculations(branch_settings: list[CalculationBranchSettings],
 
             # Collect OQ results and save to database
             if branch[1].status == EStatus.COMPLETE:
-                print('SAVE RESULTS')
-                # save_openquake_results(calculation, job_id, session)
+                print('Saving results for calculation branch '
+                      f'{branch[1]._oid} with weight {branch[1].weight}')
+                save_openquake_results(branch[1], job_id, session)
 
         status = EStatus.COMPLETE if all(
             b.status == EStatus.COMPLETE for b in branches) else EStatus.FAILED

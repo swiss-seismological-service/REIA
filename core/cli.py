@@ -1,12 +1,11 @@
 import configparser
 import json
 from pathlib import Path
-from typing import Optional
 
 import typer
-from esloss.datamodel import EStatus
 
-from core.actions import dispatch_openquake_calculation, run_calculations
+from core.actions import (dispatch_openquake_calculation,
+                          run_openquake_calculations)
 from core.db import crud, drop_db, init_db, session
 from core.io.create_input import (assemble_calculation_input,
                                   create_exposure_input,
@@ -194,35 +193,35 @@ def create_vulnerability(id: int, filename: Path):
 
 
 @calculation.command('create_files')
-def create_calculation_files(
-        target_folder: Path,
-        settings_file: Optional[Path] = typer.Argument(None)):
+def create_calculation_files(target_folder: Path,
+                             settings_file: Path):
     '''
-    Create all files for a OpenQuake calculation.
+    Create all files for an OpenQuake calculation.
     '''
     target_folder.mkdir(exist_ok=True)
 
-    if not settings_file:
-        config = get_config()
-        settings_file = Path(config.OQ_SETTINGS)
+    job_file = configparser.ConfigParser()
+    job_file.read(settings_file)
 
-    files = assemble_calculation_input(settings_file, session)
+    files = assemble_calculation_input(job_file, session)
 
     for file in files:
         with open(target_folder / file.name, 'w') as f:
             f.write(file.getvalue())
+
     typer.echo('Openquake calculation files created '
                f'in folder "{str(target_folder)}".')
+
     session.remove()
 
 
 @calculation.command('run_test')
-def run_test_calculation(settings_file: Optional[Path] = typer.Argument(None)):
+def run_test_calculation(settings_file: Path):
     '''
     Send a calculation to OpenQuake as a test.
     '''
     job_file = configparser.ConfigParser()
-    job_file.read(settings_file or Path(get_config().OQ_SETTINGS))
+    job_file.read(settings_file)
 
     response = dispatch_openquake_calculation(job_file, session)
 
@@ -247,9 +246,9 @@ def run_calculation(
         raise typer.Exit(code=1)
 
     # input parsing
-    settings = zip(
-        weights,
-        settings) if settings else get_config().OQ_SETTINGS
+    settings = zip(weights, settings) if settings \
+        else get_config().OQ_SETTINGS
+
     branch_settings = []
     for s in settings:
         job_file = configparser.ConfigParser()
@@ -260,7 +259,7 @@ def run_calculation(
     earthquake_oid = crud.create_or_update_earthquake_information(
         json.loads(earthquake_file.read()), session)
 
-    run_calculations(branch_settings, earthquake_oid, session)
+    run_openquake_calculations(branch_settings, earthquake_oid, session)
 
     session.remove()
 

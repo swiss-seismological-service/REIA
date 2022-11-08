@@ -255,12 +255,13 @@ def read_calculations(session: Session) -> list[Calculation]:
     return session.execute(stmt).unique().scalars().all()
 
 
-def create_aggregated_losses(
-        losses: pd.DataFrame,
-        aggregationtypes: list[str],
-        calculation_oid: int,
-        assetcollection_oid: int,
-        session: Session) -> list[AggregatedLoss]:
+def create_aggregated_losses(losses: pd.DataFrame,
+                             aggregationtypes: list[str],
+                             calculation_oid: int,
+                             calculationbranch_oid: int,
+                             assetcollection_oid: int,
+                             weight: float,
+                             session: Session) -> list[AggregatedLoss]:
 
     aggregations = {}
     for type in aggregationtypes:
@@ -273,9 +274,13 @@ def create_aggregated_losses(
     losses['aggregationtags'] = losses['aggregationtags'].apply(
         lambda x: [aggregations[y] for y in x])
 
-    loss_objects = list(map(lambda x: AggregatedLoss(
-        **x, _riskcalculation_oid=calculation_oid),
-        losses.to_dict('records')))
+    loss_objects = list(
+        map(lambda x:
+            AggregatedLoss(**x,
+                           weight=weight,
+                           _riskcalculation_oid=calculation_oid,
+                           _riskcalculationbranch_oid=calculationbranch_oid),
+            losses.to_dict('records')))
 
     session.add_all(loss_objects)
     session.commit()

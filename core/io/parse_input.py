@@ -228,7 +228,7 @@ def validate_calculation_input(
                          'in all calculation branches.')
 
 
-def parse_calculation(branch_settings: list[CalculationBranchSettings]) \
+def parse_calculation_input(branch_settings: list[CalculationBranchSettings]) \
         -> tuple[dict, list[dict]]:
     """
     Parses multiple `esloss` OQ calculation files to the structure of a
