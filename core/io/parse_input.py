@@ -223,10 +223,6 @@ def validate_calculation_input(
         raise ValueError('Calculation mode must be the same '
                          'in all calculation branches.')
 
-    if not equal_option_value(configs, 'exposure', 'exposure_file'):
-        raise ValueError('ExposureModel must be the same '
-                         'in all calculation branches.')
-
 
 def parse_calculation_input(branch_settings: list[CalculationBranchSettings]) \
         -> tuple[dict, list[dict]]:
@@ -253,10 +249,10 @@ def parse_calculation_input(branch_settings: list[CalculationBranchSettings]) \
         calculation['description'] = flat_job.pop('description', None)
         calculation['aggregateby'] = [x.strip() for x in flat_job.pop(
             'aggregate_by').split(',')] if 'aggregate_by' in flat_job else None
-        calculation['_exposuremodel_oid'] = \
-            settings.config['exposure']['exposure_file']
 
         # BRANCH SETTINGS ###########################################
+        calculation_branch_setting['_exposuremodel_oid'] = \
+            settings.config['exposure']['exposure_file']
         # vulnerability / fragility functions
         if calculation['calculation_mode'] == 'scenario_risk':
             for k, v in settings.config['vulnerability'].items():
