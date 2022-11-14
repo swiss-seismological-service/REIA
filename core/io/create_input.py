@@ -64,8 +64,9 @@ def create_exposure_input(
 
     data['assets_csv_name'] = assets_csv_name.name
     data['costtypes'] = [c._asdict() for c in asset_collection.costtypes]
-    data['tagnames'] = {
-        agg.type: agg.name for agg in asset_collection.aggregationtags}
+    # first asset's tag types must be the same as all other's
+    data['tagnames'] = [agg.type for agg in
+                        asset_collection.assets[0].aggregationtags]
 
     exposure_xml = create_file_pointer(template_name, data=data)
 
