@@ -7,7 +7,7 @@ from esloss.datamodel.calculations import (Calculation, CalculationBranch,
                                            DamageCalculationBranch, EStatus,
                                            RiskCalculation,
                                            RiskCalculationBranch)
-from esloss.datamodel.lossvalues import AggregatedLoss
+from esloss.datamodel.lossvalues import LossValue
 from esloss.datamodel.vulnerability import (
     BusinessInterruptionVulnerabilityModel, ContentsVulnerabilityModel,
     LossRatio, NonstructuralVulnerabilityModel, OccupantsVulnerabilityModel,
@@ -261,7 +261,7 @@ def create_aggregated_losses(losses: pd.DataFrame,
                              calculationbranch_oid: int,
                              exposuremodel_oid: int,
                              weight: float,
-                             session: Session) -> list[AggregatedLoss]:
+                             session: Session) -> list[LossValue]:
 
     aggregations = {}
     for type in aggregationtypes:
@@ -276,10 +276,10 @@ def create_aggregated_losses(losses: pd.DataFrame,
 
     loss_objects = list(
         map(lambda x:
-            AggregatedLoss(**x,
-                           weight=weight,
-                           _riskcalculation_oid=calculation_oid,
-                           _riskcalculationbranch_oid=calculationbranch_oid),
+            LossValue(**x,
+                      weight=weight,
+                      _riskcalculation_oid=calculation_oid,
+                      _riskcalculationbranch_oid=calculationbranch_oid),
             losses.to_dict('records')))
 
     session.add_all(loss_objects)
