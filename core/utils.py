@@ -80,7 +80,8 @@ def sites_from_assets(assets: pd.DataFrame) -> Tuple[list[Site], list[int]]:
 
 
 def aggregationtags_from_assets(
-    assets: pd.DataFrame, aggregation_type: str) -> \
+    assets: pd.DataFrame, aggregation_type: str,
+    existing_tags: list[AggregationTag]) -> \
         Tuple[list[AggregationTag], list[int]]:
     """
     Extract aggregationtags from assets dataframe
@@ -89,14 +90,18 @@ def aggregationtags_from_assets(
     :returns:       lists of AggregationTag objects and group numbers for
                     dataframe rows
     """
+    existing_tags = {t.name: t for t in existing_tags}
     agg_groups = assets.groupby(aggregation_type)
 
     all_tags = []
 
     for name, _ in agg_groups:
-        tag = AggregationTag(
-            type=aggregation_type,
-            name=name)
+        if name in existing_tags:
+            tag = existing_tags[name]
+        else:
+            tag = AggregationTag(
+                type=aggregation_type,
+                name=name)
         all_tags.append(tag)
     return all_tags, agg_groups.grouper.group_info[0]
 

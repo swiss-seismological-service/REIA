@@ -59,10 +59,9 @@ def create_assets(assets: pd.DataFrame,
 
     # create AggregationTag objects and assign them to assets
     for tag in aggregation_tags:
+        existing_tags = read_aggregationtags(tag, session)
         tags_of_type, assets['aggregationtags_list_index'] = \
-            aggregationtags_from_assets(assets, tag)
-        for t in tags_of_type:
-            t._exposuremodel_oid = asset_collection_oid
+            aggregationtags_from_assets(assets, tag, existing_tags)
         assets.apply(lambda x: x['aggregationtags'].append(
             tags_of_type[x['aggregationtags_list_index']]), axis=1)
 
@@ -259,15 +258,13 @@ def create_aggregated_losses(losses: pd.DataFrame,
                              aggregationtypes: list[str],
                              calculation_oid: int,
                              calculationbranch_oid: int,
-                             exposuremodel_oid: int,
                              weight: float,
                              session: Session) -> list[LossValue]:
 
     aggregations = {}
     for type in aggregationtypes:
         stmt = select(AggregationTag).where(
-            AggregationTag.type == type,
-            AggregationTag._exposuremodel_oid == exposuremodel_oid)
+            AggregationTag.type == type)
         type_tags = session.execute(stmt).scalars().all()
         aggregations.update({tag.name: tag for tag in type_tags})
 
@@ -286,3 +283,8 @@ def create_aggregated_losses(losses: pd.DataFrame,
     session.commit()
 
     return loss_objects
+
+
+def read_aggregationtags(type: str, session: Session) -> list[AggregationTag]:
+    statement = select(AggregationTag).where(AggregationTag.type == type)
+    return session.execute(statement).unique().scalars().all()

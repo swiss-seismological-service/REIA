@@ -71,7 +71,6 @@ def save_openquake_results(calculationbranch: CalculationBranch,
             oq_parameter_inputs.aggregate_by[0],
             calculationbranch._calculation_oid,
             calculationbranch._oid,
-            calculationbranch.riskcalculation._exposuremodel_oid,
             calculationbranch.weight,
             session)
 
