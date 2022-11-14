@@ -5,12 +5,13 @@ from pathlib import Path
 from typing import Tuple
 
 import pandas as pd
+from esloss.datamodel.asset import Asset
+from sqlalchemy.orm import Session
+
 from core.db.crud import (LOSSCATEGORY_OBJECT_MAPPING, read_asset_collection,
                           read_vulnerability_model)
 from core.io.parse_input import ASSETS_COLS_MAPPING
 from core.utils import create_file_pointer
-from esloss.datamodel.asset import Asset
-from sqlalchemy.orm import Session
 
 
 def create_vulnerability_input(
@@ -52,7 +53,7 @@ def create_exposure_input(
     """
     Creates in-memory exposure input files for OpenQuake.
 
-    :param asset_collection_oid: oid of the AssetCollection to be used.
+    :param asset_collection_oid: oid of the ExposureModel to be used.
     :param session: SQLAlchemy database session.
     :param template_name: Template to be used for the exposure file.
     :returns: Filepointer for exposure xml and one for csv list of assets.

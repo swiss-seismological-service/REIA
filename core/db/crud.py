@@ -1,7 +1,7 @@
 import pandas as pd
 from esloss.datamodel import EarthquakeInformation
-from esloss.datamodel.asset import (AggregationTag, Asset, AssetCollection,
-                                    CostType, Site)
+from esloss.datamodel.asset import (AggregationTag, Asset, CostType,
+                                    ExposureModel, Site)
 from esloss.datamodel.calculations import (Calculation, CalculationBranch,
                                            DamageCalculation,
                                            DamageCalculationBranch, EStatus,
@@ -38,22 +38,22 @@ def create_assets(assets: pd.DataFrame,
                   session: Session) -> list[Asset]:
     """
     Extract Sites and AggregationTags from Assets, saves them in DB
-    as children of the AssetCollection.
+    as children of the ExposureModel.
     """
     # get AggregationTag types
     aggregation_tags = [
         x for x in assets.columns if x not in list(
             ASSETS_COLS_MAPPING.values()) + ['longitude', 'latitude']]
 
-    # assign AssetCollection to assets
-    assets['_assetcollection_oid'] = asset_collection_oid
+    # assign ExposureModel to assets
+    assets['_exposuremodel_oid'] = asset_collection_oid
     assets['aggregationtags'] = assets.apply(lambda _: [], axis=1)
 
     # create Sites objects and assign them to assets
     sites, assets['site'] = sites_from_assets(
         assets)
     for s in sites:
-        s._assetcollection_oid = asset_collection_oid
+        s._exposuremodel_oid = asset_collection_oid
     assets['site'] = assets.apply(
         lambda x: sites[x['site']], axis=1)
 
@@ -62,13 +62,13 @@ def create_assets(assets: pd.DataFrame,
         tags_of_type, assets['aggregationtags_list_index'] = \
             aggregationtags_from_assets(assets, tag)
         for t in tags_of_type:
-            t._assetcollection_oid = asset_collection_oid
+            t._exposuremodel_oid = asset_collection_oid
         assets.apply(lambda x: x['aggregationtags'].append(
             tags_of_type[x['aggregationtags_list_index']]), axis=1)
 
     # create Asset objects from DataFrame
     valid_cols = list(ASSETS_COLS_MAPPING.values()) + \
-        ['site', 'aggregationtags', '_assetcollection_oid']
+        ['site', 'aggregationtags', '_exposuremodel_oid']
     asset_objects = map(lambda x: Asset(**x),
                         assets.filter(valid_cols).to_dict('records'))
 
@@ -76,20 +76,20 @@ def create_assets(assets: pd.DataFrame,
     session.commit()
 
     statement = select(Asset).where(
-        Asset._assetcollection_oid == asset_collection_oid)
+        Asset._exposuremodel_oid == asset_collection_oid)
 
     return session.execute(statement).unique().scalars().all()
 
 
 def create_asset_collection(exposure: dict,
-                            session: Session) -> AssetCollection:
+                            session: Session) -> ExposureModel:
     """
-    Creates an AssetCollection and the respective CostTypes from a dict and
+    Creates an ExposureModel and the respective CostTypes from a dict and
     saves it to the Database.
     """
 
     cost_types = exposure.pop('costtypes')
-    asset_collection = AssetCollection(**exposure)
+    asset_collection = ExposureModel(**exposure)
 
     for ct in cost_types:
         asset_collection.costtypes.append(CostType(**ct))
@@ -132,25 +132,25 @@ def create_vulnerability_model(
 
 def read_sites(asset_collection_oid: int, session: Session) -> list[Site]:
     stmt = select(Site).where(
-        Site._assetcollection_oid == asset_collection_oid)
+        Site._exposuremodel_oid == asset_collection_oid)
     return session.execute(stmt).scalars().all()
 
 
-def read_asset_collections(session: Session) -> list[AssetCollection]:
-    stmt = select(AssetCollection).order_by(AssetCollection._oid)
+def read_asset_collections(session: Session) -> list[ExposureModel]:
+    stmt = select(ExposureModel).order_by(ExposureModel._oid)
     return session.execute(stmt).unique().scalars().all()
 
 
-def read_asset_collection(oid, session: Session) -> AssetCollection:
-    stmt = select(AssetCollection).where(AssetCollection._oid == oid)
+def read_asset_collection(oid, session: Session) -> ExposureModel:
+    stmt = select(ExposureModel).where(ExposureModel._oid == oid)
     return session.execute(stmt).unique().scalar()
 
 
 def delete_asset_collection(
         asset_collection_oid: int,
         session: Session) -> int:
-    stmt = delete(AssetCollection).where(
-        AssetCollection._oid == asset_collection_oid)
+    stmt = delete(ExposureModel).where(
+        ExposureModel._oid == asset_collection_oid)
     dlt = session.execute(stmt).rowcount
     session.commit()
     return dlt
@@ -259,7 +259,7 @@ def create_aggregated_losses(losses: pd.DataFrame,
                              aggregationtypes: list[str],
                              calculation_oid: int,
                              calculationbranch_oid: int,
-                             assetcollection_oid: int,
+                             exposuremodel_oid: int,
                              weight: float,
                              session: Session) -> list[AggregatedLoss]:
 
@@ -267,7 +267,7 @@ def create_aggregated_losses(losses: pd.DataFrame,
     for type in aggregationtypes:
         stmt = select(AggregationTag).where(
             AggregationTag.type == type,
-            AggregationTag._assetcollection_oid == assetcollection_oid)
+            AggregationTag._exposuremodel_oid == exposuremodel_oid)
         type_tags = session.execute(stmt).scalars().all()
         aggregations.update({tag.name: tag for tag in type_tags})
 

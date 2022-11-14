@@ -45,7 +45,7 @@ df['losscategory'] = df['losscategory'].apply(
 print(df)
 
 stmt = select(Site) \
-    .where(Site._assetcollection_oid == 2) \
+    .where(Site._exposuremodel_oid == 2) \
     .order_by(Site.longitude, Site.latitude)
 
 # sort sites and site_collection so I can reference by id (is not true,

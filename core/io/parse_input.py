@@ -224,7 +224,7 @@ def validate_calculation_input(
                          'in all calculation branches.')
 
     if not equal_option_value(configs, 'exposure', 'exposure_file'):
-        raise ValueError('AssetCollection must be the same '
+        raise ValueError('ExposureModel must be the same '
                          'in all calculation branches.')
 
 
@@ -253,7 +253,7 @@ def parse_calculation_input(branch_settings: list[CalculationBranchSettings]) \
         calculation['description'] = flat_job.pop('description', None)
         calculation['aggregateby'] = [x.strip() for x in flat_job.pop(
             'aggregate_by').split(',')] if 'aggregate_by' in flat_job else None
-        calculation['_assetcollection_oid'] = \
+        calculation['_exposuremodel_oid'] = \
             settings.config['exposure']['exposure_file']
 
         # BRANCH SETTINGS ###########################################
