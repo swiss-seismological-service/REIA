@@ -1,4 +1,6 @@
 import pandas as pd
+from core.io.parse_input import ASSETS_COLS_MAPPING
+from core.utils import aggregationtags_from_assets, sites_from_assets
 from esloss.datamodel import EarthquakeInformation
 from esloss.datamodel.asset import (AggregationTag, Asset, CostType,
                                     ExposureModel, Site)
@@ -15,9 +17,6 @@ from esloss.datamodel.vulnerability import (
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
-
-from core.io.parse_input import ASSETS_COLS_MAPPING
-from core.utils import aggregationtags_from_assets, sites_from_assets
 
 LOSSCATEGORY_OBJECT_MAPPING = {
     'structural': StructuralVulnerabilityModel,
@@ -181,13 +180,13 @@ def create_or_update_earthquake_information(
 
     stmt = insert(EarthquakeInformation).values(**earthquake)
     upsert_stmt = stmt.on_conflict_do_update(
-        constraint='eventid_unique', set_=earthquake)
+        constraint='originid_unique', set_=earthquake)
     earthquake = session.scalars(
         upsert_stmt.returning(
             EarthquakeInformation._oid),
         execution_options={
             "populate_existing": True}).first()
-    # session.commit()
+    session.commit()
     return earthquake
 
 
@@ -263,9 +262,7 @@ def create_aggregated_losses(losses: pd.DataFrame,
 
     aggregations = {}
     for type in aggregationtypes:
-        stmt = select(AggregationTag).where(
-            AggregationTag.type == type)
-        type_tags = session.execute(stmt).scalars().all()
+        type_tags = read_aggregationtags(type, session)
         aggregations.update({tag.name: tag for tag in type_tags})
 
     losses['aggregationtags'] = losses['aggregationtags'].apply(
