@@ -1,0 +1,75 @@
+[
+    {
+        "scenario_name": "Szenario Aarau M5.8",
+        "folder": "data/scenarios/aarauM5_8",
+        "originid": "smi:ch.ethz.sed/scenario/aarau5_8",
+        "damage": [
+            {
+                "store": "calc_24495.hdf5",
+                "weight": 0.025
+            },
+            {
+                "store": "calc_24496.hdf5",
+                "weight": 0.025
+            },
+            {
+                "store": "calc_24497.hdf5",
+                "weight": 0.025
+            },
+            {
+                "store": "calc_24498.hdf5",
+                "weight": 0.075
+            },
+            {
+                "store": "calc_24499.hdf5",
+                "weight": 0.075
+            },
+            {
+                "store": "calc_24500.hdf5",
+                "weight": 0.075
+            },
+            {
+                "store": "calc_24555.hdf5",
+                "weight": 0.175
+            },
+            {
+                "store": "calc_24556.hdf5",
+                "weight": 0.525
+            }
+        ],
+        "loss": [
+            {
+                "store": "calc_24415.hdf5",
+                "weight": 0.025
+            },
+            {
+                "store": "calc_24416.hdf5",
+                "weight": 0.025
+            },
+            {
+                "store": "calc_24417.hdf5",
+                "weight": 0.025
+            },
+            {
+                "store": "calc_24418.hdf5",
+                "weight": 0.075
+            },
+            {
+                "store": "calc_24419.hdf5",
+                "weight": 0.075
+            },
+            {
+                "store": "calc_24420.hdf5",
+                "weight": 0.075
+            },
+            {
+                "store": "calc_24475.hdf5",
+                "weight": 0.175
+            },
+            {
+                "store": "calc_24476.hdf5",
+                "weight": 0.525
+            }
+        ]
+    }
+]
