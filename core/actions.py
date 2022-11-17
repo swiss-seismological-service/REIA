@@ -9,7 +9,7 @@ from core.db import crud
 from core.io.create_input import assemble_calculation_input
 from core.io.parse_input import (parse_calculation_input,
                                  validate_calculation_input)
-from core.io.parse_output import parse_aggregated_losses
+from core.io.parse_output import parse_losses
 from core.oqapi import (oqapi_get_calculation_result, oqapi_get_job_status,
                         oqapi_send_calculation)
 from core.utils import CalculationBranchSettings
@@ -65,8 +65,8 @@ def save_openquake_results(calculationbranch: CalculationBranch,
     oq_parameter_inputs = dstore['oqparam']
 
     if oq_parameter_inputs.calculation_mode == 'scenario_risk':
-        df = parse_aggregated_losses(dstore)
-        crud.create_aggregated_losses(
+        df = parse_losses(dstore)
+        crud.create_losses(
             df,
             oq_parameter_inputs.aggregate_by[0],
             calculationbranch._calculation_oid,

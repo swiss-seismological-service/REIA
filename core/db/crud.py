@@ -1,6 +1,4 @@
 import pandas as pd
-from core.io.parse_input import ASSETS_COLS_MAPPING
-from core.utils import aggregationtags_from_assets, sites_from_assets
 from esloss.datamodel import EarthquakeInformation
 from esloss.datamodel.asset import (AggregationTag, Asset, CostType,
                                     ExposureModel, Site)
@@ -17,6 +15,9 @@ from esloss.datamodel.vulnerability import (
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
+
+from core.io.parse_input import ASSETS_COLS_MAPPING
+from core.utils import aggregationtags_from_assets, sites_from_assets
 
 LOSSCATEGORY_OBJECT_MAPPING = {
     'structural': StructuralVulnerabilityModel,
@@ -253,12 +254,12 @@ def read_calculations(session: Session) -> list[Calculation]:
     return session.execute(stmt).unique().scalars().all()
 
 
-def create_aggregated_losses(losses: pd.DataFrame,
-                             aggregationtypes: list[str],
-                             calculation_oid: int,
-                             calculationbranch_oid: int,
-                             weight: float,
-                             session: Session) -> list[LossValue]:
+def create_losses(losses: pd.DataFrame,
+                  aggregationtypes: list[str],
+                  calculation_oid: int,
+                  calculationbranch_oid: int,
+                  weight: float,
+                  session: Session) -> None:
 
     aggregations = {}
     for type in aggregationtypes:
@@ -268,18 +269,15 @@ def create_aggregated_losses(losses: pd.DataFrame,
     losses['aggregationtags'] = losses['aggregationtags'].apply(
         lambda x: [aggregations[y] for y in x])
 
-    loss_objects = list(
-        map(lambda x:
-            LossValue(**x,
-                      weight=weight,
-                      _riskcalculation_oid=calculation_oid,
-                      _riskcalculationbranch_oid=calculationbranch_oid),
-            losses.to_dict('records')))
+    losses['weight'] = losses['weight'] * weight
+    losses['_calculation_oid'] = calculation_oid
+    losses['_riskcalculationbranch_oid'] = calculationbranch_oid
 
-    session.add_all(loss_objects)
+    session.execute(insert(LossValue), losses.to_dict('records'))
+
     session.commit()
 
-    return loss_objects
+    return None
 
 
 def read_aggregationtags(type: str, session: Session) -> list[AggregationTag]:
