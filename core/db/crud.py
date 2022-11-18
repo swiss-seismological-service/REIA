@@ -273,6 +273,7 @@ def create_losses(losses: pd.DataFrame,
     losses['_calculation_oid'] = calculation_oid
     losses['_riskcalculationbranch_oid'] = calculationbranch_oid
 
+    # TODO: FIX - aggregationtags wont get written
     session.execute(insert(LossValue), losses.to_dict('records'))
 
     session.commit()

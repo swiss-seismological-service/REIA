@@ -28,12 +28,13 @@ LOGGER = logging.getLogger(__name__)
 
 def run_scenario():
     start = time.perf_counter()
+    folder = '../../scenario_data/data/exposure'
+    files = [
+        f'{folder}/MIM/Exposure_MIM_RB_2km_v04.4_CH_mp3_allOcc_Aggbl.xml',
+        f'{folder}/MIM/Exposure_MIM_RF_2km_v04.4_CH_mp3_allOcc_Aggbl.xml',
+        f'{folder}/SAM/Exposure_SAM_RB_2km_v04.4_CH_mp5_allOcc_Aggbl.xml',
+        f'{folder}/SAM/Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml']
 
-    files = \
-        ['data/exposure/MIM/Exposure_MIM_RB_2km_v04.4_CH_mp3_allOcc_Aggbl.xml',
-         'data/exposure/MIM/Exposure_MIM_RF_2km_v04.4_CH_mp3_allOcc_Aggbl.xml',
-         'data/exposure/SAM/Exposure_SAM_RB_2km_v04.4_CH_mp5_allOcc_Aggbl.xml',
-         'data/exposure/SAM/Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml']
     aggregation_types = ['Canton', 'CantonGemeinde']
 
     existing_tags = {agg: crud.read_aggregationtags(agg, session)
@@ -41,7 +42,10 @@ def run_scenario():
     aggregation_tags = aggregationtags_from_files(
         files, aggregation_types, existing_tags)
 
-    with open('config/scenarios.json') as f:
+    session.add_all([v for v in aggregation_tags.values()])
+    session.commit()
+
+    with open('settings/scenarios.json') as f:
         scenario_configs = json.load(f)
 
     for config in scenario_configs:
@@ -49,8 +53,8 @@ def run_scenario():
             {'type': EEarthquakeType.SCENARIO, 'originid': config['originid']},
             session)
 
-        LOGGER.info('Creating risk scenarios....')
-        create_risk_scenario(earthquake_oid, aggregation_tags, config, session)
+        # LOGGER.info('Creating risk scenarios....')
+        # create_risk_scenario(earthquake_oid, aggregation_tags, config, session)
 
         LOGGER.info('Creating damage scenarios....')
         create_damage_scenario(
