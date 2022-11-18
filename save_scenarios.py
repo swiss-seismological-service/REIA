@@ -53,8 +53,8 @@ def run_scenario():
             {'type': EEarthquakeType.SCENARIO, 'originid': config['originid']},
             session)
 
-        # LOGGER.info('Creating risk scenarios....')
-        # create_risk_scenario(earthquake_oid, aggregation_tags, config, session)
+        LOGGER.info('Creating risk scenarios....')
+        create_risk_scenario(earthquake_oid, aggregation_tags, config, session)
 
         LOGGER.info('Creating damage scenarios....')
         create_damage_scenario(
