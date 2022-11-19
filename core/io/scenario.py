@@ -1,5 +1,5 @@
 import pandas as pd
-from esloss.datamodel import AggregationTag, ELossCategory
+from esloss.datamodel import ELossCategory
 from openquake.commonlib.datastore import read
 from openquake.risklib.scientific import LOSSTYPE
 
@@ -91,25 +91,29 @@ def get_damages(path: str):
     return df
 
 
-def aggregationtags_from_files(files: list[str],
-                               aggregation_types: list[str],
-                               existing_tags: dict) -> list[AggregationTag]:
-
+def combine_assetfiles(files: list[str]) -> pd.DataFrame():
     asset_collection = pd.DataFrame()
 
     for exposure in files:
         with open(exposure, 'r') as f:
             _, assets = parse_exposure(f)
             asset_collection = pd.concat([asset_collection, assets])
+    return asset_collection
 
-    aggregation_tags = {}
 
-    for agg_type in aggregation_types:
-        all_tags = asset_collection[agg_type].unique()
-        existing_tags_type = {
-            t.name: t for t in existing_tags[agg_type]}
-        for tag in all_tags:
-            aggregation_tags[tag] = \
-                existing_tags_type[tag] if tag in existing_tags_type \
-                else AggregationTag(type=agg_type, name=tag)
-    return aggregation_tags
+# def aggregationtags_from_files(
+#         files: list[str],
+#         aggregation_type: str,
+#         existing_tags: list[AggregationTag]) -> list[AggregationTag]:
+
+#     existing_tags = {t.name: t for t in existing_tags}
+#     aggregation_tags = []
+
+#     all_tags = asset_collection[aggregation_type].unique()
+
+#     for tag in all_tags:
+#         aggregation_tags.append(
+#             existing_tags[tag] if tag in existing_tags
+#             else AggregationTag(type=aggregation_type, name=tag))
+
+#     return aggregation_tags

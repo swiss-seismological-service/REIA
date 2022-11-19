@@ -9,7 +9,8 @@ from esloss.datamodel import EEarthquakeType
 
 from core.db import crud, session
 from core.db.scenario import create_damage_scenario, create_risk_scenario
-from core.io.scenario import aggregationtags_from_files
+from core.io.scenario import combine_assetfiles
+from core.utils import aggregationtags_from_assets
 from settings import get_config
 
 os.makedirs('logs', exist_ok=True)
@@ -41,13 +42,14 @@ def run_scenario():
         f'{data_folder}/exposure/SAM/'
         'Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml']
 
-    aggregation_types = ['Canton', 'CantonGemeinde']
+    assets = combine_assetfiles(files)
 
-    existing_tags = {agg: crud.read_aggregationtags(agg, session)
-                     for agg in aggregation_types}
+    aggregation_tags = {}
 
-    aggregation_tags = aggregationtags_from_files(
-        files, aggregation_types, existing_tags)
+    for type in ['Canton', 'CantonGemeinde']:
+        existing_tags = crud.read_aggregationtags(type, session)
+        all_tags, _ = aggregationtags_from_assets(assets, type, existing_tags)
+        aggregation_tags.update({t.name: t for t in all_tags})
 
     session.add_all([v for v in aggregation_tags.values()])
     session.commit()
