@@ -10,6 +10,7 @@ from esloss.datamodel import EEarthquakeType
 from core.db import crud, session
 from core.db.scenario import create_damage_scenario, create_risk_scenario
 from core.io.scenario import aggregationtags_from_files
+from settings import get_config
 
 os.makedirs('logs', exist_ok=True)
 logging.basicConfig(
@@ -28,17 +29,23 @@ LOGGER = logging.getLogger(__name__)
 
 def run_scenario():
     start = time.perf_counter()
-    folder = '../../scenario_data/data/exposure'
+    data_folder = get_config().SCENARIO_DATA_FOLDER
+
     files = [
-        f'{folder}/MIM/Exposure_MIM_RB_2km_v04.4_CH_mp3_allOcc_Aggbl.xml',
-        f'{folder}/MIM/Exposure_MIM_RF_2km_v04.4_CH_mp3_allOcc_Aggbl.xml',
-        f'{folder}/SAM/Exposure_SAM_RB_2km_v04.4_CH_mp5_allOcc_Aggbl.xml',
-        f'{folder}/SAM/Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml']
+        f'{data_folder}/exposure/MIM/'
+        'Exposure_MIM_RB_2km_v04.4_CH_mp3_allOcc_Aggbl.xml',
+        f'{data_folder}/exposure/MIM/'
+        'Exposure_MIM_RF_2km_v04.4_CH_mp3_allOcc_Aggbl.xml',
+        f'{data_folder}/exposure/SAM/'
+        'Exposure_SAM_RB_2km_v04.4_CH_mp5_allOcc_Aggbl.xml',
+        f'{data_folder}/exposure/SAM/'
+        'Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml']
 
     aggregation_types = ['Canton', 'CantonGemeinde']
 
     existing_tags = {agg: crud.read_aggregationtags(agg, session)
                      for agg in aggregation_types}
+
     aggregation_tags = aggregationtags_from_files(
         files, aggregation_types, existing_tags)
 
@@ -49,6 +56,7 @@ def run_scenario():
         scenario_configs = json.load(f)
 
     for config in scenario_configs:
+        config['folder'] = f"{data_folder}/{config['folder']}"
         earthquake_oid = crud.create_or_update_earthquake_information(
             {'type': EEarthquakeType.SCENARIO, 'originid': config['originid']},
             session)

@@ -1,7 +1,7 @@
 [
     {
         "scenario_name": "Szenario Aarau M5.8",
-        "folder": "../../scenario_data/data/scenarios/aarauM5_8",
+        "folder": "scenarios/aarauM5_8",
         "originid": "smi:ch.ethz.sed/scenario/aarau5_8",
         "damage": [
             {
