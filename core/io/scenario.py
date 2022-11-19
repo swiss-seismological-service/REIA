@@ -1,12 +1,11 @@
 import pandas as pd
 from esloss.datamodel import ELossCategory
 from openquake.commonlib.datastore import read
-from openquake.risklib.scientific import LOSSTYPE
 
 from core.io.parse_input import parse_exposure
 
 
-def get_losses(path: str):
+def get_risk_from_dstore(path: str, column_selectors: dict):
     dstore = read(path)
 
     all_agg_keys = [d.decode().split(',')
@@ -21,61 +20,11 @@ def get_losses(path: str):
     # are used to store the total per agg value. Remove them.
     df = df.loc[df['agg_id'] != len(all_agg_keys)]
 
-    df = df.rename(columns={'event_id': 'eventid',
-                            'agg_id': 'aggregationtags',
-                            'loss_id': 'losscategory',
-                            'variance': 'loss_uncertainty',
-                            'loss': 'loss_value'})
+    df = df.rename(columns=column_selectors)[column_selectors.values()]
 
-    df.drop('loss_uncertainty', axis=1, inplace=True)
-
+    lti = {v: k for k, v in dstore['oqparam'].lti.items()}
     df['losscategory'] = df['losscategory'].apply(
-        lambda x: ELossCategory[LOSSTYPE[x].upper()])
-
-    df['aggregationtags'] = df['aggregationtags'].apply(
-        lambda x: all_agg_keys[x])
-
-    # events have an associated weight which comes from the branch weight
-    events['weight'] = events['rlz_id'].apply(lambda x: weights[x])
-
-    # number of ground motion fields * number of branches
-    num_events = len(events)
-
-    df['weight'] = df['eventid'].map(events['weight']) / num_events
-
-    return df
-
-
-def get_damages(path: str):
-    dstore = read(path)
-
-    oqparams = dstore['oqparam']
-    # all_keys = list(dstore.keys())
-
-    all_agg_keys = [d.decode().split(',')
-                    for d in dstore['agg_keys'][:]]
-
-    df = dstore.read_df('risk_by_event')  # get risk_by_event
-
-    weights = dstore['weights'][:]
-
-    events = dstore.read_df('events', 'id')[['rlz_id']]
-
-    # risk by event contains more agg_id's than keys which
-    # are used to store the total per agg value. Remove them.
-    df = df.loc[df['agg_id'] != len(all_agg_keys)]
-
-    df = df.rename(columns={'event_id': 'eventid',
-                            'agg_id': 'aggregationtags',
-                            'loss_id': 'losscategory',
-                            'dmg_1': 'dg1_value',
-                            'dmg_2': 'dg2_value',
-                            'dmg_3': 'dg3_value',
-                            'dmg_4': 'dg4_value',
-                            'dmg_5': 'dg5_value', })
-
-    df['losscategory'] = df['losscategory'].apply(
-        lambda x: ELossCategory[oqparams.loss_types[x].upper()])
+        lambda x: ELossCategory[lti[x].upper()])
 
     df['aggregationtags'] = df['aggregationtags'].apply(
         lambda x: all_agg_keys[x])
@@ -99,21 +48,3 @@ def combine_assetfiles(files: list[str]) -> pd.DataFrame():
             _, assets = parse_exposure(f)
             asset_collection = pd.concat([asset_collection, assets])
     return asset_collection
-
-
-# def aggregationtags_from_files(
-#         files: list[str],
-#         aggregation_type: str,
-#         existing_tags: list[AggregationTag]) -> list[AggregationTag]:
-
-#     existing_tags = {t.name: t for t in existing_tags}
-#     aggregation_tags = []
-
-#     all_tags = asset_collection[aggregation_type].unique()
-
-#     for tag in all_tags:
-#         aggregation_tags.append(
-#             existing_tags[tag] if tag in existing_tags
-#             else AggregationTag(type=aggregation_type, name=tag))
-
-#     return aggregation_tags

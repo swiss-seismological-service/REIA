@@ -8,7 +8,7 @@ from esloss.datamodel import EStatus, RiskValue, riskvalue_aggregationtag
 from sqlalchemy.orm import Session
 
 from core.db import crud, engine
-from core.io.scenario import get_damages, get_losses
+from core.io.scenario import get_risk_from_dstore
 
 LOGGER = logging.getLogger(__name__)
 
@@ -42,7 +42,9 @@ def get_nextval(cursor, table: str, column: str):
 
 def create_risk_scenario(earthquake_oid: int, aggregation_tags: list,
                          config: dict, session: Session):
-    # RISK CALCULATION
+
+    assert sum([loss['weight'] for loss in config['loss']]) == 1
+
     calculation = crud.create_calculation(
         {'aggregateby': ['Canton;CantonGemeinde'],
          'status': EStatus.COMPLETE,
@@ -50,13 +52,19 @@ def create_risk_scenario(earthquake_oid: int, aggregation_tags: list,
          'calculation_mode': 'scenario_risk'},
         session)
 
-    assert sum([loss['weight'] for loss in config['loss']]) == 1
+    select_columns = {'event_id': 'eventid',
+                      'agg_id': 'aggregationtags',
+                      'loss_id': 'losscategory',
+                      'loss': 'loss_value'}
 
     connection = engine.raw_connection()
 
     for loss_branch in config['loss']:
         LOGGER.info(f'Parsing datastore {loss_branch["store"]}')
-        df = get_losses(f'{config["folder"]}/{loss_branch["store"]}')
+
+        dstore_path = f'{config["folder"]}/{loss_branch["store"]}'
+
+        df = get_risk_from_dstore(dstore_path, select_columns)
 
         df['aggregationtags'] = df['aggregationtags'].apply(
             lambda x: [aggregation_tags[y]._oid for y in x]
@@ -90,7 +98,9 @@ def create_risk_scenario(earthquake_oid: int, aggregation_tags: list,
 
 def create_damage_scenario(earthquake_oid: int, aggregation_tags: list,
                            config: dict, session: Session):
-    # RISK CALCULATION
+
+    assert sum([dmg['weight'] for dmg in config['loss']]) == 1
+
     calculation = crud.create_calculation(
         {'aggregateby': ['Canton;CantonGemeinde'],
          'status': EStatus.COMPLETE,
@@ -98,13 +108,23 @@ def create_damage_scenario(earthquake_oid: int, aggregation_tags: list,
          'calculation_mode': 'scenario_damage'},
         session)
 
-    assert sum([dmg['weight'] for dmg in config['loss']]) == 1
+    select_columns = {'event_id': 'eventid',
+                      'agg_id': 'aggregationtags',
+                      'loss_id': 'losscategory',
+                      'dmg_1': 'dg1_value',
+                      'dmg_2': 'dg2_value',
+                      'dmg_3': 'dg3_value',
+                      'dmg_4': 'dg4_value',
+                      'dmg_5': 'dg5_value', }
 
     connection = engine.raw_connection()
 
     for dmg_branch in config['damage']:
         LOGGER.info(f'Parsing datastore {dmg_branch["store"]}')
-        df = get_damages(f'{config["folder"]}/{dmg_branch["store"]}')
+
+        dstore_path = f'{config["folder"]}/{dmg_branch["store"]}'
+
+        df = get_risk_from_dstore(dstore_path, select_columns)
 
         df['aggregationtags'] = df['aggregationtags'].apply(
             lambda x: [aggregation_tags[y]._oid for y in x]
