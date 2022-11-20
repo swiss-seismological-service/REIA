@@ -1,5 +1,10 @@
+from io import StringIO
+from operator import attrgetter
+
 import pandas as pd
-from esloss.datamodel import EarthquakeInformation
+import psycopg2
+from esloss.datamodel import (EarthquakeInformation, RiskValue,
+                              riskvalue_aggregationtag)
 from esloss.datamodel.asset import (AggregationTag, Asset, CostType,
                                     ExposureModel, Site)
 from esloss.datamodel.calculations import (Calculation, CalculationBranch,
@@ -145,9 +150,8 @@ def read_asset_collection(oid, session: Session) -> ExposureModel:
     return session.execute(stmt).unique().scalar()
 
 
-def delete_asset_collection(
-        asset_collection_oid: int,
-        session: Session) -> int:
+def delete_asset_collection(asset_collection_oid: int,
+                            session: Session) -> int:
     stmt = delete(ExposureModel).where(
         ExposureModel._oid == asset_collection_oid)
     dlt = session.execute(stmt).rowcount
@@ -281,6 +285,65 @@ def create_losses(losses: pd.DataFrame,
     return None
 
 
+def create_risk_values(risk_values: pd.DataFrame,
+                       aggregation_tags: list[AggregationTag],
+                       connection):
+
+    cursor = connection.cursor()
+
+    # lock the table since we're setting indexes manually
+    cursor.execute(
+        f'LOCK TABLE {RiskValue.__table__.name} IN EXCLUSIVE MODE;')
+
+    # create the index on the riskvalues
+    index0 = get_nextval(cursor, RiskValue.__table__.name, '_oid')
+    risk_values['_oid'] = range(index0, index0 + len(risk_values))
+
+    # build up many2many reference table riskvalue_aggregationtag
+    df_agg_val = pd.DataFrame(
+        {'riskvalue': risk_values['_oid'],
+         'aggregationtag': risk_values.pop('aggregationtags')})
+
+    # Explode list of aggregationtags and replace with correct oid's
+    df_agg_val = df_agg_val.explode('aggregationtag', ignore_index=True)
+    df_agg_val['aggregationtag'] = df_agg_val['aggregationtag'].map(
+        aggregation_tags).map(attrgetter('_oid'))
+
+    # write risk values and references
+    copy_from_dataframe(cursor, risk_values, RiskValue.__table__.name)
+    copy_from_dataframe(
+        cursor, df_agg_val, riskvalue_aggregationtag.name)
+
+    connection.commit()
+    cursor.close()
+
+
 def read_aggregationtags(type: str, session: Session) -> list[AggregationTag]:
     statement = select(AggregationTag).where(AggregationTag.type == type)
     return session.execute(statement).unique().scalars().all()
+
+
+def copy_from_dataframe(cursor, df: pd.DataFrame, table: str):
+    # save dataframe to an in memory buffer
+    buffer = StringIO()
+    df.to_csv(buffer, header=False, index=False)
+    buffer.seek(0)
+
+    try:
+        cursor.copy_from(buffer, table, sep=",", columns=df.columns)
+    except (Exception, psycopg2.DatabaseError) as err:
+        cursor.close()
+        raise err
+
+
+def get_nextval(cursor, table: str, column: str):
+    # set sequence to correct number
+    cursor.execute(
+        f"SELECT setval(pg_get_serial_sequence('{table}', '{column}'), "
+        f"coalesce(max({column}),0) + 1, false) FROM {table};"
+    )
+    # get nextval
+    cursor.execute(
+        f"select nextval(pg_get_serial_sequence('{table}', '{column}'))")
+    next = cursor.fetchone()[0]
+    return next
