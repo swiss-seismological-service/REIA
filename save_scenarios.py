@@ -8,8 +8,8 @@ from logging.handlers import TimedRotatingFileHandler
 from esloss.datamodel import EEarthquakeType
 
 from core.db import crud, session
-from core.db.scenario import create_damage_scenario, create_risk_scenario
-from core.io.scenario import combine_assetfiles
+from core.db.scenario import create_risk_scenario
+from core.io.scenario import ERiskType, combine_assetfiles
 from core.utils import aggregationtags_from_assets
 from settings import get_config
 
@@ -64,11 +64,18 @@ def run_scenario():
             session)
 
         LOGGER.info('Creating risk scenarios....')
-        create_risk_scenario(earthquake_oid, aggregation_tags, config, session)
+        create_risk_scenario(earthquake_oid,
+                             ERiskType.LOSS,
+                             aggregation_tags,
+                             config,
+                             session)
 
         LOGGER.info('Creating damage scenarios....')
-        create_damage_scenario(
-            earthquake_oid, aggregation_tags, config, session)
+        create_risk_scenario(earthquake_oid,
+                             ERiskType.DAMAGE,
+                             aggregation_tags,
+                             config,
+                             session)
 
         LOGGER.info(f'Saving the scenario took {time.perf_counter()-start}')
     session.remove()

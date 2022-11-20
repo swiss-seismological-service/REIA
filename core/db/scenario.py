@@ -1,6 +1,7 @@
 
 import logging
 from io import StringIO
+from operator import attrgetter
 
 import pandas as pd
 import psycopg2
@@ -8,7 +9,7 @@ from esloss.datamodel import EStatus, RiskValue, riskvalue_aggregationtag
 from sqlalchemy.orm import Session
 
 from core.db import crud, engine
-from core.io.scenario import get_risk_from_dstore
+from core.io.scenario import ERiskType, get_risk_from_dstore
 
 LOGGER = logging.getLogger(__name__)
 
@@ -40,39 +41,35 @@ def get_nextval(cursor, table: str, column: str):
     return next
 
 
-def create_risk_scenario(earthquake_oid: int, aggregation_tags: list,
-                         config: dict, session: Session):
+def create_risk_scenario(earthquake_oid: int,
+                         risk_type: ERiskType,
+                         aggregation_tags: list,
+                         config: dict,
+                         session: Session):
 
-    assert sum([loss['weight'] for loss in config['loss']]) == 1
+    assert sum([loss['weight']
+               for loss in config[risk_type.name.lower()]]) == 1
 
     calculation = crud.create_calculation(
         {'aggregateby': ['Canton;CantonGemeinde'],
          'status': EStatus.COMPLETE,
          '_earthquakeinformation_oid': earthquake_oid,
-         'calculation_mode': 'scenario_risk'},
+         'calculation_mode': risk_type.value},
         session)
-
-    select_columns = {'event_id': 'eventid',
-                      'agg_id': 'aggregationtags',
-                      'loss_id': 'losscategory',
-                      'loss': 'loss_value'}
 
     connection = engine.raw_connection()
 
-    for loss_branch in config['loss']:
+    for loss_branch in config[risk_type.name.lower()]:
         LOGGER.info(f'Parsing datastore {loss_branch["store"]}')
 
         dstore_path = f'{config["folder"]}/{loss_branch["store"]}'
 
-        df = get_risk_from_dstore(dstore_path, select_columns)
+        df = get_risk_from_dstore(dstore_path, risk_type)
 
-        df['aggregationtags'] = df['aggregationtags'].apply(
-            lambda x: [aggregation_tags[y]._oid for y in x]
-        )
-        df['losscategory'] = df['losscategory'].apply(lambda x: x.name)
+        df['losscategory'] = df['losscategory'].map(attrgetter('name'))
         df['weight'] = df['weight'] * loss_branch['weight']
         df['_calculation_oid'] = calculation._oid
-        df['_type'] = 'lossvalue'
+        df['_type'] = f'{risk_type.name.lower()}value'
 
         cursor = connection.cursor()
         cursor.execute(
@@ -87,70 +84,15 @@ def create_risk_scenario(earthquake_oid: int, aggregation_tags: list,
              'aggregationtag': df.pop('aggregationtags')})
         df_agg_val = df_agg_val.explode('aggregationtag', ignore_index=True)
 
+        df_agg_val['aggregationtag'] = df_agg_val['aggregationtag'].map(
+            aggregation_tags).map(attrgetter('_oid'))
+
+        LOGGER.info(f'COPY data to database from {loss_branch["store"]}')
         copy_from_dataframe(cursor, df, RiskValue.__table__.name)
         copy_from_dataframe(
             cursor, df_agg_val, riskvalue_aggregationtag.name)
+
         connection.commit()
         cursor.close()
-
-    connection.close()
-
-
-def create_damage_scenario(earthquake_oid: int, aggregation_tags: list,
-                           config: dict, session: Session):
-
-    assert sum([dmg['weight'] for dmg in config['loss']]) == 1
-
-    calculation = crud.create_calculation(
-        {'aggregateby': ['Canton;CantonGemeinde'],
-         'status': EStatus.COMPLETE,
-         '_earthquakeinformation_oid': earthquake_oid,
-         'calculation_mode': 'scenario_damage'},
-        session)
-
-    select_columns = {'event_id': 'eventid',
-                      'agg_id': 'aggregationtags',
-                      'loss_id': 'losscategory',
-                      'dmg_1': 'dg1_value',
-                      'dmg_2': 'dg2_value',
-                      'dmg_3': 'dg3_value',
-                      'dmg_4': 'dg4_value',
-                      'dmg_5': 'dg5_value', }
-
-    connection = engine.raw_connection()
-
-    for dmg_branch in config['damage']:
-        LOGGER.info(f'Parsing datastore {dmg_branch["store"]}')
-
-        dstore_path = f'{config["folder"]}/{dmg_branch["store"]}'
-
-        df = get_risk_from_dstore(dstore_path, select_columns)
-
-        df['aggregationtags'] = df['aggregationtags'].apply(
-            lambda x: [aggregation_tags[y]._oid for y in x]
-        )
-        df['weight'] = df['weight'] * dmg_branch['weight']
-        df['_calculation_oid'] = calculation._oid
-        df['losscategory'] = df['losscategory'].apply(lambda x: x.name)
-        df['_type'] = 'damagevalue'
-
-        cursor = connection.cursor()
-        cursor.execute(
-            f'LOCK TABLE {RiskValue.__table__.name} IN EXCLUSIVE MODE;')
-
-        index0 = get_nextval(cursor, RiskValue.__table__.name, '_oid')
-        df['_oid'] = range(index0, index0 + len(df))
-
-        # build up reference table
-        df_agg_val = pd.DataFrame(
-            {'riskvalue': df['_oid'],
-             'aggregationtag': df.pop('aggregationtags')})
-        df_agg_val = df_agg_val.explode('aggregationtag', ignore_index=True)
-
-        copy_from_dataframe(cursor, df, RiskValue.__table__.name)
-        copy_from_dataframe(
-            cursor, df_agg_val, riskvalue_aggregationtag.name)
-        connection.commit()
-        cursor.close()
-
+        break
     connection.close()

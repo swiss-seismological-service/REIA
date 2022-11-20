@@ -1,3 +1,5 @@
+import enum
+
 import pandas as pd
 from esloss.datamodel import ELossCategory
 from openquake.commonlib.datastore import read
@@ -5,7 +7,27 @@ from openquake.commonlib.datastore import read
 from core.io.parse_input import parse_exposure
 
 
-def get_risk_from_dstore(path: str, column_selectors: dict):
+class ERiskType(str, enum.Enum):
+    LOSS = 'scenario_risk'
+    DAMAGE = 'scenario_damage'
+
+
+RISK_COLUMNS_MAPPING = {
+    ERiskType.LOSS: {'event_id': 'eventid',
+                     'agg_id': 'aggregationtags',
+                     'loss_id': 'losscategory',
+                     'loss': 'loss_value'},
+    ERiskType.DAMAGE: {'event_id': 'eventid',
+                       'agg_id': 'aggregationtags',
+                       'loss_id': 'losscategory',
+                       'dmg_1': 'dg1_value',
+                       'dmg_2': 'dg2_value',
+                       'dmg_3': 'dg3_value',
+                       'dmg_4': 'dg4_value',
+                       'dmg_5': 'dg5_value', }}
+
+
+def get_risk_from_dstore(path: str, risk_type: ERiskType):
     dstore = read(path)
 
     all_agg_keys = [d.decode().split(',')
@@ -19,18 +41,19 @@ def get_risk_from_dstore(path: str, column_selectors: dict):
     # risk by event contains more agg_id's than keys which
     # are used to store the total per agg value. Remove them.
     df = df.loc[df['agg_id'] != len(all_agg_keys)]
-
-    df = df.rename(columns=column_selectors)[column_selectors.values()]
+    cols_mapping = RISK_COLUMNS_MAPPING[risk_type]
+    df = df.rename(columns=cols_mapping)[cols_mapping.values()]
 
     lti = {v: k for k, v in dstore['oqparam'].lti.items()}
-    df['losscategory'] = df['losscategory'].apply(
+
+    df['losscategory'] = df['losscategory'].map(
         lambda x: ELossCategory[lti[x].upper()])
 
-    df['aggregationtags'] = df['aggregationtags'].apply(
-        lambda x: all_agg_keys[x])
+    df['aggregationtags'] = df['aggregationtags'].map(
+        all_agg_keys.__getitem__)
 
     # events have an associated weight which comes from the branch weight
-    events['weight'] = events['rlz_id'].apply(lambda x: weights[x])
+    events['weight'] = events['rlz_id'].map(weights.__getitem__)
 
     # number of ground motion fields * number of branches
     num_events = len(events)
