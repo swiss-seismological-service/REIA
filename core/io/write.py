@@ -8,9 +8,8 @@ import pandas as pd
 from esloss.datamodel.asset import Asset
 from sqlalchemy.orm import Session
 
-from core.db.crud import (LOSSCATEGORY_OBJECT_MAPPING, read_asset_collection,
-                          read_vulnerability_model)
-from core.io.parse_input import ASSETS_COLS_MAPPING
+from core.db.crud import read_asset_collection, read_vulnerability_model
+from core.io import ASSETS_COLS_MAPPING, LOSSCATEGORY_OBJECT_MAPPING
 from core.utils import create_file_pointer
 
 

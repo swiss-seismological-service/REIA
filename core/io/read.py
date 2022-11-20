@@ -6,33 +6,9 @@ from typing import TextIO, Tuple
 
 import pandas as pd
 
-from core.utils import CalculationBranchSettings, flatten_config
-
-ASSETS_COLS_MAPPING = {'taxonomy': 'taxonomy_concept',
-                       'number': 'buildingcount',
-                       'contents': 'contentsvalue',
-                       'day': 'dayoccupancy',
-                       'night': 'nightoccupancy',
-                       'transit': 'transitoccupancy',
-                       'structural': 'structuralvalue',
-                       'nonstructural': 'nonstructuralvalue',
-                       'business_interruption': 'businessinterruptionvalue'
-                       }
-
-VULNERABILITY_FK_MAPPING = {
-    'structural_vulnerability_file': '_structuralvulnerabilitymodel_oid',
-    'contents_vulnerability_file': '_contentsvulnerabilitymodel_oid',
-    'occupants_vulnerability_file': '_occupantsvulnerabilitymodel_oid',
-    'nonstructural_vulnerability_file': '_nonstructuralvulnerabilitymodel_oid',
-    'business_interruption_vulnerability_file':
-    '_businessinterruptionvulnerabilitymodel_oid'}
-
-FRAGILITY_FK_MAPPING = {
-    'structural_fragility_file': '_structuralfragilitymodel_oid',
-    'contents_fragility_file': '_contentsfragilitymodel_oid',
-    'nonstructural_fragility_file': '_nonstructuralfragilitymodel_oid',
-    'business_interruption_fragility_file':
-    '_businessinterruptionfragilitymodel_oid'}
+from core.io import (ASSETS_COLS_MAPPING, FRAGILITY_FK_MAPPING,
+                     VULNERABILITY_FK_MAPPING, CalculationBranchSettings)
+from core.utils import flatten_config
 
 
 def parse_assets(file: TextIO, tagnames: list[str]) -> pd.DataFrame:
@@ -280,3 +256,13 @@ def parse_calculation_input(branch_settings: list[CalculationBranchSettings]) \
         calculation_branches.append(calculation_branch_setting)
 
     return (calculation, calculation_branches)
+
+
+def combine_assets(files: list[str]) -> pd.DataFrame():
+    combined_assets = pd.DataFrame()
+
+    for exposure in files:
+        with open(exposure, 'r') as f:
+            _, assets = parse_exposure(f)
+            combined_assets = pd.concat([combined_assets, assets])
+    return combined_assets

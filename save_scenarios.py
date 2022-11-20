@@ -7,9 +7,10 @@ from logging.handlers import TimedRotatingFileHandler
 
 from esloss.datamodel import EEarthquakeType
 
+from core.actions import create_risk_scenario
 from core.db import crud, session
-from core.db.scenario import create_risk_scenario
-from core.io.scenario import ERiskType, combine_assetfiles
+from core.io import ERiskType
+from core.io.read import combine_assets
 from core.utils import aggregationtags_from_assets
 from settings import get_config
 
@@ -42,7 +43,7 @@ def run_scenario():
         f'{data_folder}/exposure/SAM/'
         'Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml']
 
-    assets = combine_assetfiles(files)
+    assets = combine_assets(files)
 
     aggregation_tags = {}
 

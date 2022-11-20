@@ -7,11 +7,10 @@ import typer
 from core.actions import (dispatch_openquake_calculation,
                           run_openquake_calculations)
 from core.db import crud, drop_db, init_db, session
-from core.io.create_input import (assemble_calculation_input,
-                                  create_exposure_input,
-                                  create_vulnerability_input)
-from core.io.parse_input import parse_exposure, parse_vulnerability
-from core.utils import CalculationBranchSettings
+from core.io import CalculationBranchSettings
+from core.io.read import parse_exposure, parse_vulnerability
+from core.io.write import (assemble_calculation_input, create_exposure_input,
+                           create_vulnerability_input)
 from settings import get_config
 
 app = typer.Typer(add_completion=False)

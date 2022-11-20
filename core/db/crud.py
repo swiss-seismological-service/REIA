@@ -3,39 +3,25 @@ from operator import attrgetter
 
 import pandas as pd
 import psycopg2
-from esloss.datamodel import (EarthquakeInformation, RiskValue,
+from esloss.datamodel import (AggregationTag, Asset,
+                              BusinessInterruptionVulnerabilityModel,
+                              Calculation, CalculationBranch,
+                              ContentsVulnerabilityModel, CostType,
+                              DamageCalculation, DamageCalculationBranch,
+                              EarthquakeInformation, EStatus, ExposureModel,
+                              LossRatio, NonstructuralVulnerabilityModel,
+                              OccupantsVulnerabilityModel, RiskCalculation,
+                              RiskCalculationBranch, RiskValue, Site,
+                              StructuralVulnerabilityModel,
+                              VulnerabilityFunction, VulnerabilityModel,
                               riskvalue_aggregationtag)
-from esloss.datamodel.asset import (AggregationTag, Asset, CostType,
-                                    ExposureModel, Site)
-from esloss.datamodel.calculations import (Calculation, CalculationBranch,
-                                           DamageCalculation,
-                                           DamageCalculationBranch, EStatus,
-                                           RiskCalculation,
-                                           RiskCalculationBranch)
-from esloss.datamodel.lossvalues import LossValue
-from esloss.datamodel.vulnerability import (
-    BusinessInterruptionVulnerabilityModel, ContentsVulnerabilityModel,
-    LossRatio, NonstructuralVulnerabilityModel, OccupantsVulnerabilityModel,
-    StructuralVulnerabilityModel, VulnerabilityFunction, VulnerabilityModel)
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from core.io.parse_input import ASSETS_COLS_MAPPING
+from core.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
+                     CALCULATION_MAPPING, LOSSCATEGORY_OBJECT_MAPPING)
 from core.utils import aggregationtags_from_assets, sites_from_assets
-
-LOSSCATEGORY_OBJECT_MAPPING = {
-    'structural': StructuralVulnerabilityModel,
-    'nonstructural': NonstructuralVulnerabilityModel,
-    'contents': ContentsVulnerabilityModel,
-    'business_interruption': BusinessInterruptionVulnerabilityModel,
-    'occupants': OccupantsVulnerabilityModel}
-
-CALCULATION_MAPPING = {'scenario_risk': RiskCalculation,
-                       'scenario_damage': DamageCalculation}
-
-CALCULATION_BRANCH_MAPPING = {'scenario_risk': RiskCalculationBranch,
-                              'scenario_damage': DamageCalculationBranch}
 
 
 def create_assets(assets: pd.DataFrame,
@@ -55,8 +41,7 @@ def create_assets(assets: pd.DataFrame,
     assets['aggregationtags'] = assets.apply(lambda _: [], axis=1)
 
     # create Sites objects and assign them to assets
-    sites, assets['site'] = sites_from_assets(
-        assets)
+    sites, assets['site'] = sites_from_assets(assets)
     for s in sites:
         s._exposuremodel_oid = asset_collection_oid
     assets['site'] = assets.apply(
@@ -258,33 +243,6 @@ def read_calculations(session: Session) -> list[Calculation]:
     return session.execute(stmt).unique().scalars().all()
 
 
-def create_losses(losses: pd.DataFrame,
-                  aggregationtypes: list[str],
-                  calculation_oid: int,
-                  calculationbranch_oid: int,
-                  weight: float,
-                  session: Session) -> None:
-
-    aggregations = {}
-    for type in aggregationtypes:
-        type_tags = read_aggregationtags(type, session)
-        aggregations.update({tag.name: tag for tag in type_tags})
-
-    losses['aggregationtags'] = losses['aggregationtags'].apply(
-        lambda x: [aggregations[y] for y in x])
-
-    losses['weight'] = losses['weight'] * weight
-    losses['_calculation_oid'] = calculation_oid
-    losses['_riskcalculationbranch_oid'] = calculationbranch_oid
-
-    # TODO: FIX - aggregationtags wont get written
-    session.execute(insert(LossValue), losses.to_dict('records'))
-
-    session.commit()
-
-    return None
-
-
 def create_risk_values(risk_values: pd.DataFrame,
                        aggregation_tags: list[AggregationTag],
                        connection):
@@ -308,6 +266,9 @@ def create_risk_values(risk_values: pd.DataFrame,
     df_agg_val = df_agg_val.explode('aggregationtag', ignore_index=True)
     df_agg_val['aggregationtag'] = df_agg_val['aggregationtag'].map(
         aggregation_tags).map(attrgetter('_oid'))
+
+    risk_values['losscategory'] = risk_values['losscategory'].map(
+        attrgetter('name'))
 
     # write risk values and references
     copy_from_dataframe(cursor, risk_values, RiskValue.__table__.name)

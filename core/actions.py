@@ -1,18 +1,56 @@
+import logging
 import time
 from configparser import ConfigParser
 
-from esloss.datamodel.calculations import CalculationBranch, EStatus
+from esloss.datamodel import CalculationBranch, EStatus
+from openquake.commonlib.datastore import read
 from requests import Response
 from sqlalchemy.orm import Session
 
-from core.db import crud
-from core.io.create_input import assemble_calculation_input
-from core.io.parse_input import (parse_calculation_input,
-                                 validate_calculation_input)
-from core.io.parse_output import parse_losses
+from core.db import crud, engine
+from core.io import CalculationBranchSettings, ERiskType
+from core.io.dstore import get_risk_from_dstore
+from core.io.read import parse_calculation_input, validate_calculation_input
+from core.io.write import assemble_calculation_input
 from core.oqapi import (oqapi_get_calculation_result, oqapi_get_job_status,
                         oqapi_send_calculation)
-from core.utils import CalculationBranchSettings
+
+LOGGER = logging.getLogger(__name__)
+
+
+def create_risk_scenario(earthquake_oid: int,
+                         risk_type: ERiskType,
+                         aggregation_tags: list,
+                         config: dict,
+                         session: Session):
+
+    assert sum([loss['weight']
+               for loss in config[risk_type.name.lower()]]) == 1
+
+    calculation = crud.create_calculation(
+        {'aggregateby': ['Canton;CantonGemeinde'],
+         'status': EStatus.COMPLETE,
+         '_earthquakeinformation_oid': earthquake_oid,
+         'calculation_mode': risk_type.value},
+        session)
+
+    connection = engine.raw_connection()
+
+    for loss_branch in config[risk_type.name.lower()]:
+        LOGGER.info(f'Parsing datastore {loss_branch["store"]}')
+
+        dstore_path = f'{config["folder"]}/{loss_branch["store"]}'
+        dstore = read(dstore_path)
+        df = get_risk_from_dstore(dstore, risk_type)
+
+        df['weight'] = df['weight'] * loss_branch['weight']
+        df['_calculation_oid'] = calculation._oid
+        df['_type'] = f'{risk_type.name.lower()}value'
+        LOGGER.info('Saving risk values to database...')
+        crud.create_risk_values(df, aggregation_tags, connection)
+        LOGGER.info('Successfully saved risk values to database.')
+        break
+    connection.close()
 
 
 def dispatch_openquake_calculation(
@@ -64,16 +102,23 @@ def save_openquake_results(calculationbranch: CalculationBranch,
     dstore = oqapi_get_calculation_result(job_id)
     oq_parameter_inputs = dstore['oqparam']
 
-    if oq_parameter_inputs.calculation_mode == 'scenario_risk':
-        df = parse_losses(dstore)
-        crud.create_losses(
-            df,
-            oq_parameter_inputs.aggregate_by[0],
-            calculationbranch._calculation_oid,
-            calculationbranch._oid,
-            calculationbranch.weight,
-            session)
+    aggregation_tags = {}
+    for type in oq_parameter_inputs.aggregate_by[0]:
+        type_tags = crud.read_aggregationtags(type, session)
+        aggregation_tags.update({tag.name: tag for tag in type_tags})
 
+    risk_type = ERiskType(oq_parameter_inputs.calculation_mode)
+
+    df = get_risk_from_dstore(dstore, risk_type)
+
+    df['weight'] = df['weight'] * calculationbranch.weight
+    df['_calculation_oid'] = calculationbranch._calculation_oid
+    df['_riskcalculationbranch_oid'] = calculationbranch._oid
+    df['_type'] = f'{risk_type.name.lower()}value'
+
+    connection = session.get_bind().raw_connection()
+    crud.create_risk_values(df, aggregation_tags, connection)
+    connection.close()
     return None
 
 

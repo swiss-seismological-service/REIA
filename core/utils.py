@@ -2,19 +2,11 @@ import ast
 import configparser
 import io
 import sys
-from dataclasses import dataclass
 from typing import Any, TextIO, Tuple
 
 import pandas as pd
 from esloss.datamodel.asset import AggregationTag, Site
 from jinja2 import Template, select_autoescape
-
-
-@dataclass
-class CalculationBranchSettings:
-    """ Contains the weight and a OQ settings file for a calculation"""
-    weight: float
-    config: configparser.ConfigParser
 
 
 def import_string(import_name: str, silent: bool = False) -> Any:
