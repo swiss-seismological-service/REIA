@@ -7,7 +7,7 @@ class Config(object):
     OQ_SETTINGS = [(0.3, 'settings/oq_settings.ini'),
                    (0.7, 'settings/oq_settings_sion.ini')]
     OQ_API_SERVER = 'http://localhost:8800'
-    SCENARIO_DATA_FOLDER = '../../scenario_data/data'
+    SCENARIO_DATA_FOLDER = os.getenv('SCENARIO_DATA_FOLDER')
 
 
 class DevelopmentConfig(Config):
