@@ -38,6 +38,7 @@ def get_risk_from_dstore(dstore: DataStore, risk_type: ERiskType):
     # number of ground motion fields * number of branches
     num_events = len(events)
 
-    df['weight'] = df['eventid'].map(events['weight']) / num_events
+    df['weight'] = df['eventid'].map(
+        events['weight']) / (num_events / len(weights))
 
     return df
