@@ -49,7 +49,7 @@ def create_risk_scenario(earthquake_oid: int,
         LOGGER.info('Saving risk values to database...')
         crud.create_risk_values(df, aggregation_tags, connection)
         LOGGER.info('Successfully saved risk values to database.')
-        break
+
     connection.close()
 
 
