@@ -19,7 +19,7 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     """ Production specific configurations """
     DB_CONNECTION_STRING = \
-        f"postgresql+psycopg2://{os.getenv('POSTGRES_USER')}:"
-    f"{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}"
-    f":{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DB')}"
+        f"postgresql+psycopg2://{os.getenv('POSTGRES_USER')}:" \
+        f"{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}" \
+        f":{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DB')}"
     OQ_API_SERVER = 'http://localhost:8800'
