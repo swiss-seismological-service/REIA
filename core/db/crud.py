@@ -1,6 +1,9 @@
+import os
 from io import StringIO
+from multiprocessing import Pool
 from operator import attrgetter
 
+import numpy as np
 import pandas as pd
 import psycopg2
 from esloss.datamodel import (AggregationTag, Asset,
@@ -250,11 +253,11 @@ def create_risk_values(risk_values: pd.DataFrame,
     cursor = connection.cursor()
 
     # lock the table since we're setting indexes manually
-    cursor.execute(
-        f'LOCK TABLE {RiskValue.__table__.name} IN EXCLUSIVE MODE;')
-
+    # cursor.execute(
+    #     f'LOCK TABLE {RiskValue.__table__.name} IN EXCLUSIVE MODE;')
     # create the index on the riskvalues
     index0 = get_nextval(cursor, RiskValue.__table__.name, '_oid')
+
     risk_values['_oid'] = range(index0, index0 + len(risk_values))
 
     # build up many2many reference table riskvalue_aggregationtag
@@ -270,13 +273,44 @@ def create_risk_values(risk_values: pd.DataFrame,
     risk_values['losscategory'] = risk_values['losscategory'].map(
         attrgetter('name'))
 
-    # write risk values and references
-    copy_from_dataframe(cursor, risk_values, RiskValue.__table__.name)
-    copy_from_dataframe(
-        cursor, df_agg_val, riskvalue_aggregationtag.name)
+    if os.getenv('MULTI', 'False') == 'True':
+        write_pooled(risk_values, RiskValue.__table__.name)
+        write_pooled(df_agg_val, riskvalue_aggregationtag.name)
+    else:
+        copy_from_dataframe(cursor, risk_values, RiskValue.__table__.name)
+        copy_from_dataframe(cursor, df_agg_val, riskvalue_aggregationtag.name)
 
-    connection.commit()
     cursor.close()
+
+
+def write_pooled(df, tablename):
+    nprocs = 1
+
+    while len(df) / nprocs > 700000 and nprocs < 16:
+        nprocs += 1
+    print(nprocs)
+    chunks = df.groupby(
+        np.arange(len(df)) // (len(df) / nprocs))
+
+    pool_args = [(chunk, tablename) for _, chunk in chunks]
+
+    with Pool(nprocs) as pool:
+        pool.starmap(write_to_db, pool_args)
+
+
+def write_to_db(df, tablename):
+    connect_text = \
+        f"dbname='{os.getenv('POSTGRES_DB')}' " \
+        f"user='{os.getenv('POSTGRES_USER')}' " \
+        f"host={os.getenv('POSTGRES_HOST')} " \
+        f"port={os.getenv('POSTGRES_PORT')} " \
+        f"password='{os.getenv('POSTGRES_PASSWORD')}'"
+
+    conn = psycopg2.connect(connect_text)
+    cursor = conn.cursor()
+    copy_from_dataframe(cursor, df, tablename)
+    conn.commit()
+    conn.close()
 
 
 def read_aggregationtags(type: str, session: Session) -> list[AggregationTag]:
