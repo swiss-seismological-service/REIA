@@ -250,11 +250,15 @@ def create_risk_values(risk_values: pd.DataFrame,
                        aggregation_tags: list[AggregationTag],
                        connection):
 
+    max_procs = int(os.getenv('MAX_PROCESSES', '1'))
     cursor = connection.cursor()
 
     # lock the table since we're setting indexes manually
-    # cursor.execute(
-    #     f'LOCK TABLE {RiskValue.__table__.name} IN EXCLUSIVE MODE;')
+    # TODO: find solution so it works with threading
+    if max_procs == 1:
+        cursor.execute(
+            f'LOCK TABLE {RiskValue.__table__.name} IN EXCLUSIVE MODE;')
+
     # create the index on the riskvalues
     index0 = get_nextval(cursor, RiskValue.__table__.name, '_oid')
 
@@ -272,7 +276,6 @@ def create_risk_values(risk_values: pd.DataFrame,
 
     risk_values['losscategory'] = risk_values['losscategory'].map(
         attrgetter('name'))
-    max_procs = int(os.getenv('MAX_PROCESSES', '1'))
 
     if max_procs > 1:
         copy_pooled(risk_values, RiskValue.__table__.name, max_procs)
@@ -280,7 +283,6 @@ def create_risk_values(risk_values: pd.DataFrame,
     else:
         copy_from_dataframe(cursor, risk_values, RiskValue.__table__.name)
         copy_from_dataframe(cursor, df_agg_val, riskvalue_aggregationtag.name)
-
     cursor.close()
 
 
