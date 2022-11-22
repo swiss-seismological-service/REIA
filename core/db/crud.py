@@ -272,10 +272,11 @@ def create_risk_values(risk_values: pd.DataFrame,
 
     risk_values['losscategory'] = risk_values['losscategory'].map(
         attrgetter('name'))
+    max_procs = int(os.getenv('MAX_PROCESSES', '1'))
 
-    if os.getenv('MULTI', 'False') == 'True':
-        write_pooled(risk_values, RiskValue.__table__.name)
-        write_pooled(df_agg_val, riskvalue_aggregationtag.name)
+    if max_procs > 1:
+        copy_pooled(risk_values, RiskValue.__table__.name, max_procs)
+        copy_pooled(df_agg_val, riskvalue_aggregationtag.name, max_procs)
     else:
         copy_from_dataframe(cursor, risk_values, RiskValue.__table__.name)
         copy_from_dataframe(cursor, df_agg_val, riskvalue_aggregationtag.name)
@@ -283,22 +284,22 @@ def create_risk_values(risk_values: pd.DataFrame,
     cursor.close()
 
 
-def write_pooled(df, tablename):
+def copy_pooled(df, tablename, max_procs, max_entries=750000):
     nprocs = 1
-
-    while len(df) / nprocs > 700000 and nprocs < 16:
+    while len(df) / nprocs > max_entries and nprocs < max_procs:
         nprocs += 1
-    print(nprocs)
+
     chunks = df.groupby(
         np.arange(len(df)) // (len(df) / nprocs))
 
-    pool_args = [(chunk, tablename) for _, chunk in chunks]
+    pool_args = [(chunk, tablename)
+                 for _, chunk in chunks]
 
     with Pool(nprocs) as pool:
-        pool.starmap(write_to_db, pool_args)
+        pool.starmap(copy_raw, pool_args)
 
 
-def write_to_db(df, tablename):
+def copy_raw(df, tablename):
     connect_text = \
         f"dbname='{os.getenv('POSTGRES_DB')}' " \
         f"user='{os.getenv('POSTGRES_USER')}' " \
