@@ -1,3 +1,5 @@
+import os
+
 from esloss.datamodel import ELossCategory
 from openquake.commonlib.datastore import DataStore
 from openquake.risklib.scientific import LOSSTYPE
@@ -21,10 +23,10 @@ def get_risk_from_dstore(dstore: DataStore, risk_type: ERiskType):
     cols_mapping = RISK_COLUMNS_MAPPING[risk_type]
     df = df.rename(columns=cols_mapping)[cols_mapping.values()]
 
-    if risk_type == ERiskType.DAMAGE:
-        loss_types = dstore['oqparam'].loss_types
-    else:
+    if int(os.getenv('OQ_VERSION', '15')) >= 15:
         loss_types = LOSSTYPE
+    else:
+        loss_types = dstore['oqparam'].loss_types
 
     df['losscategory'] = df['losscategory'].map(
         lambda x: ELossCategory[loss_types[x].upper()])
