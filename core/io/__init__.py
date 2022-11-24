@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 from esloss.datamodel.calculations import (DamageCalculation,
                                            DamageCalculationBranch,
-                                           RiskCalculation,
-                                           RiskCalculationBranch)
+                                           LossCalculation,
+                                           LossCalculationBranch)
 from esloss.datamodel.vulnerability import (
     BusinessInterruptionVulnerabilityModel, ContentsVulnerabilityModel,
     NonstructuralVulnerabilityModel, OccupantsVulnerabilityModel,
@@ -18,10 +18,10 @@ LOSSCATEGORY_OBJECT_MAPPING = {
     'business_interruption': BusinessInterruptionVulnerabilityModel,
     'occupants': OccupantsVulnerabilityModel}
 
-CALCULATION_MAPPING = {'scenario_risk': RiskCalculation,
+CALCULATION_MAPPING = {'scenario_risk': LossCalculation,
                        'scenario_damage': DamageCalculation}
 
-CALCULATION_BRANCH_MAPPING = {'scenario_risk': RiskCalculationBranch,
+CALCULATION_BRANCH_MAPPING = {'scenario_risk': LossCalculationBranch,
                               'scenario_damage': DamageCalculationBranch}
 
 ASSETS_COLS_MAPPING = {'taxonomy': 'taxonomy_concept',

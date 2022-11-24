@@ -12,9 +12,9 @@ from esloss.datamodel import (AggregationTag, Asset,
                               ContentsVulnerabilityModel, CostType,
                               DamageCalculation, DamageCalculationBranch,
                               EarthquakeInformation, EStatus, ExposureModel,
+                              LossCalculation, LossCalculationBranch,
                               LossRatio, NonstructuralVulnerabilityModel,
-                              OccupantsVulnerabilityModel, RiskCalculation,
-                              RiskCalculationBranch, RiskValue, Site,
+                              OccupantsVulnerabilityModel, RiskValue, Site,
                               StructuralVulnerabilityModel,
                               VulnerabilityFunction, VulnerabilityModel,
                               riskvalue_aggregationtag)
@@ -185,7 +185,7 @@ def create_or_update_earthquake_information(
 
 def create_calculation(
         job: dict,
-        session: Session) -> RiskCalculation | DamageCalculation:
+        session: Session) -> LossCalculation | DamageCalculation:
 
     calculation = CALCULATION_MAPPING[job.pop('calculation_mode')]
     calculation = calculation(**job)
@@ -203,7 +203,7 @@ def read_calculation_branch(oid: int,
 def create_calculation_branch(branch: dict,
                               session: Session,
                               calculation_oid: int = None) \
-        -> RiskCalculationBranch | DamageCalculationBranch:
+        -> LossCalculationBranch | DamageCalculationBranch:
 
     if calculation_oid:
         branch['_calculation_oid'] = calculation_oid

@@ -37,6 +37,13 @@ def create_risk_scenario(earthquake_oid: int,
     connection = engine.raw_connection()
 
     for loss_branch in config[risk_type.name.lower()]:
+        branch = crud.create_calculation_branch(
+            {'weight': loss_branch['weight'],
+             'status': EStatus.COMPLETE,
+             '_calculation_oid': calculation._oid,
+             '_exposuremodel_oid': config['exposure'],
+             'calculation_mode': risk_type.value},
+            session)
         LOGGER.info(f'Parsing datastore {loss_branch["store"]}')
 
         dstore_path = f'{config["folder"]}/{loss_branch["store"]}'
@@ -45,6 +52,7 @@ def create_risk_scenario(earthquake_oid: int,
 
         df['weight'] = df['weight'] * loss_branch['weight']
         df['_calculation_oid'] = calculation._oid
+        df[f'_{risk_type.name.lower()}calculationbranch_oid'] = branch._oid
         df['_type'] = f'{risk_type.name.lower()}value'
         LOGGER.info('Saving risk values to database...')
         crud.create_risk_values(df, aggregation_tags, connection)
@@ -113,7 +121,8 @@ def save_openquake_results(calculationbranch: CalculationBranch,
 
     df['weight'] = df['weight'] * calculationbranch.weight
     df['_calculation_oid'] = calculationbranch._calculation_oid
-    df['_riskcalculationbranch_oid'] = calculationbranch._oid
+    df[f'_{risk_type.name.lower()}calculationbranch_oid'] = \
+        calculationbranch._oid
     df['_type'] = f'{risk_type.name.lower()}value'
 
     connection = session.get_bind().raw_connection()

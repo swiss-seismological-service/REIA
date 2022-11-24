@@ -3,6 +3,7 @@
         "scenario_name": "Szenario Aarau M5.8",
         "folder": "scenarios/aarauM5_8",
         "originid": "smi:ch.ethz.sed/scenario/aarau5_8",
+        "exposure": 1,
         "damage": [
             {
                 "store": "calc_24495.hdf5",
