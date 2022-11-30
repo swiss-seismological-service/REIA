@@ -34,13 +34,13 @@ def run_scenario():
     data_folder = get_config().SCENARIO_DATA_FOLDER
 
     files = [
-        f'{data_folder}/exposure/MIM/'
+        f'{data_folder}/../../exposure/MIM/'
         'Exposure_MIM_RB_2km_v04.4_CH_mp3_allOcc_Aggbl.xml',
-        f'{data_folder}/exposure/MIM/'
+        f'{data_folder}/../../exposure/MIM/'
         'Exposure_MIM_RF_2km_v04.4_CH_mp3_allOcc_Aggbl.xml',
-        f'{data_folder}/exposure/SAM/'
+        f'{data_folder}/../../exposure/SAM/'
         'Exposure_SAM_RB_2km_v04.4_CH_mp5_allOcc_Aggbl.xml',
-        f'{data_folder}/exposure/SAM/'
+        f'{data_folder}/../../exposure/SAM/'
         'Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml']
 
     assets = combine_assets(files)
@@ -55,7 +55,7 @@ def run_scenario():
     session.add_all([v for v in aggregation_tags.values()])
     session.commit()
 
-    with open('settings/scenarios.json') as f:
+    with open('settings/scenarios/config.json') as f:
         scenario_configs = json.load(f)
 
     for config in scenario_configs:

@@ -41,7 +41,7 @@ def create_risk_scenario(earthquake_oid: int,
             {'weight': loss_branch['weight'],
              'status': EStatus.COMPLETE,
              '_calculation_oid': calculation._oid,
-             '_exposuremodel_oid': config['exposure'],
+             '_exposuremodel_oid': loss_branch['exposure'],
              'calculation_mode': risk_type.value},
             session)
         LOGGER.info(f'Parsing datastore {loss_branch["store"]}')
