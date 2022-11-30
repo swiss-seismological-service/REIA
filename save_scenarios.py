@@ -59,6 +59,7 @@ def run_scenario():
         scenario_configs = json.load(f)
 
     for config in scenario_configs:
+        LOGGER.info(f'Starting to parse scenario {config["scenario_name"]}.')
         config['folder'] = f"{data_folder}/{config['folder']}"
         earthquake_oid = crud.create_or_update_earthquake_information(
             {'type': EEarthquakeType.SCENARIO, 'originid': config['originid']},
@@ -78,10 +79,10 @@ def run_scenario():
                              config,
                              session)
 
-        LOGGER.info(f'Saving the scenario took {time.perf_counter()-start}')
+        LOGGER.info(f'Saving the scenario took {time.perf_counter()-start}.')
     session.remove()
 
-    LOGGER.info(f'Saving all results took {time.perf_counter()-start}')
+    LOGGER.info(f'Saving all results took {time.perf_counter()-start}.')
 
 
 if __name__ == "__main__":
