@@ -6,19 +6,19 @@ from operator import attrgetter
 import numpy as np
 import pandas as pd
 import psycopg2
-from esloss.datamodel import (AggregationTag, Asset,
-                              BusinessInterruptionVulnerabilityModel,
-                              Calculation, CalculationBranch,
-                              ContentsVulnerabilityModel, CostType,
-                              DamageCalculation, DamageCalculationBranch,
-                              EarthquakeInformation, EEarthquakeType, EStatus,
-                              ExposureModel, LossCalculation,
-                              LossCalculationBranch, LossRatio,
-                              NonstructuralVulnerabilityModel,
-                              OccupantsVulnerabilityModel, RiskValue, Site,
-                              StructuralVulnerabilityModel,
-                              VulnerabilityFunction, VulnerabilityModel,
-                              riskvalue_aggregationtag)
+from reia.datamodel import (AggregationTag, Asset,
+                            BusinessInterruptionVulnerabilityModel,
+                            Calculation, CalculationBranch,
+                            ContentsVulnerabilityModel, CostType,
+                            DamageCalculation, DamageCalculationBranch,
+                            EarthquakeInformation, EEarthquakeType, EStatus,
+                            ExposureModel, LossCalculation,
+                            LossCalculationBranch, LossRatio,
+                            NonstructuralVulnerabilityModel,
+                            OccupantsVulnerabilityModel, RiskValue, Site,
+                            StructuralVulnerabilityModel,
+                            VulnerabilityFunction, VulnerabilityModel,
+                            riskvalue_aggregationtag)
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session

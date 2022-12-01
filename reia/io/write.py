@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Tuple
 
 import pandas as pd
-from esloss.datamodel.asset import Asset
+from reia.datamodel.asset import Asset
 from sqlalchemy.orm import Session
 
 from reia.db.crud import read_asset_collection, read_vulnerability_model

@@ -1,6 +1,6 @@
 import os
 
-from esloss.datamodel import ELossCategory
+from reia.datamodel import ELossCategory
 from openquake.commonlib.datastore import DataStore
 from openquake.risklib.scientific import LOSSTYPE
 

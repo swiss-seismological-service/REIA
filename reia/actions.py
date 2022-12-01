@@ -2,7 +2,7 @@ import logging
 import time
 from configparser import ConfigParser
 
-from esloss.datamodel import CalculationBranch, EStatus
+from reia.datamodel import CalculationBranch, EStatus
 from openquake.commonlib.datastore import read
 from requests import Response
 from sqlalchemy.orm import Session

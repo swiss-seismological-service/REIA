@@ -7,7 +7,7 @@ from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
 import typer
-from esloss.datamodel import EEarthquakeType
+from reia.datamodel import EEarthquakeType
 
 from reia.actions import (create_risk_scenario, dispatch_openquake_calculation,
                           run_openquake_calculations)

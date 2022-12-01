@@ -1,1 +1,1 @@
-# ebr
+# Rapid Eearthquake Impact Assessment

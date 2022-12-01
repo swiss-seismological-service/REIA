@@ -5,7 +5,7 @@ import sys
 from typing import Any, TextIO, Tuple
 
 import pandas as pd
-from esloss.datamodel.asset import AggregationTag, Site
+from reia.datamodel.asset import AggregationTag, Site
 from jinja2 import Template, select_autoescape
 
 

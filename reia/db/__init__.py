@@ -1,4 +1,4 @@
-from esloss.datamodel.base import ORMBase
+from reia.datamodel.base import ORMBase
 from settings import get_config
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker

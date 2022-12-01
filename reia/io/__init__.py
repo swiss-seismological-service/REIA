@@ -2,11 +2,11 @@ import configparser
 import enum
 from dataclasses import dataclass
 
-from esloss.datamodel.calculations import (DamageCalculation,
-                                           DamageCalculationBranch,
-                                           LossCalculation,
-                                           LossCalculationBranch)
-from esloss.datamodel.vulnerability import (
+from reia.datamodel.calculations import (DamageCalculation,
+                                         DamageCalculationBranch,
+                                         LossCalculation,
+                                         LossCalculationBranch)
+from reia.datamodel.vulnerability import (
     BusinessInterruptionVulnerabilityModel, ContentsVulnerabilityModel,
     NonstructuralVulnerabilityModel, OccupantsVulnerabilityModel,
     StructuralVulnerabilityModel)
