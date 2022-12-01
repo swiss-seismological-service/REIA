@@ -6,9 +6,9 @@ from typing import TextIO, Tuple
 
 import pandas as pd
 
-from core.io import (ASSETS_COLS_MAPPING, FRAGILITY_FK_MAPPING,
+from reia.io import (ASSETS_COLS_MAPPING, FRAGILITY_FK_MAPPING,
                      VULNERABILITY_FK_MAPPING, CalculationBranchSettings)
-from core.utils import flatten_config
+from reia.utils import flatten_config
 
 
 def parse_assets(file: TextIO, tagnames: list[str]) -> pd.DataFrame:

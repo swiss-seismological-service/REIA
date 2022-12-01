@@ -8,15 +8,15 @@ import pandas as pd
 from esloss.datamodel.asset import Asset
 from sqlalchemy.orm import Session
 
-from core.db.crud import read_asset_collection, read_vulnerability_model
-from core.io import ASSETS_COLS_MAPPING, LOSSCATEGORY_OBJECT_MAPPING
-from core.utils import create_file_pointer
+from reia.db.crud import read_asset_collection, read_vulnerability_model
+from reia.io import ASSETS_COLS_MAPPING, LOSSCATEGORY_OBJECT_MAPPING
+from reia.utils import create_file_pointer
 
 
 def create_vulnerability_input(
     vulnerability_model_oid: int,
     session: Session,
-    template_name: Path = Path('core/templates/vulnerability.xml')) \
+    template_name: Path = Path('reia/templates/vulnerability.xml')) \
         -> io.StringIO:
     """
     Create an in memory vulnerability xml file for OpenQuake.
@@ -46,7 +46,7 @@ def create_vulnerability_input(
 def create_exposure_input(
     asset_collection_oid: int,
     session: Session,
-    template_name: Path = Path('core/templates/exposure.xml'),
+    template_name: Path = Path('reia/templates/exposure.xml'),
     assets_csv_name: Path = Path('exposure_assets.csv')) \
         -> Tuple[io.StringIO, io.StringIO]:
     """

@@ -23,9 +23,9 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from core.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
+from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
                      CALCULATION_MAPPING, LOSSCATEGORY_OBJECT_MAPPING)
-from core.utils import aggregationtags_from_assets, sites_from_assets
+from reia.utils import aggregationtags_from_assets, sites_from_assets
 
 
 def create_assets(assets: pd.DataFrame,

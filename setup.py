@@ -1,11 +1,11 @@
 from setuptools import setup
 
 setup(
-    name='esl',
-    packages=['core'],
+    name='reia',
+    packages=[''],
     entry_points={
         'console_scripts': [
-            'esl=core.cli:app'
+            'reia=reia.cli:app'
         ],
     },
 )

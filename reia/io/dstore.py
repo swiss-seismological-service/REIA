@@ -4,7 +4,7 @@ from esloss.datamodel import ELossCategory
 from openquake.commonlib.datastore import DataStore
 from openquake.risklib.scientific import LOSSTYPE
 
-from core.io import RISK_COLUMNS_MAPPING, ERiskType
+from reia.io import RISK_COLUMNS_MAPPING, ERiskType
 
 
 def get_risk_from_dstore(dstore: DataStore, risk_type: ERiskType):

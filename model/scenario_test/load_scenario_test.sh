@@ -5,7 +5,6 @@ source ../../env/bin/activate
 esl db drop
 esl db init
 
-esl exposure add exposure_full.xml full_model
 esl exposure add exposure.xml test_model
 
 esl vulnerability add structural_vulnerability.xml struc_mmi

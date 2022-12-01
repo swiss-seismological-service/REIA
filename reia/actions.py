@@ -7,12 +7,12 @@ from openquake.commonlib.datastore import read
 from requests import Response
 from sqlalchemy.orm import Session
 
-from core.db import crud, engine
-from core.io import CalculationBranchSettings, ERiskType
-from core.io.dstore import get_risk_from_dstore
-from core.io.read import parse_calculation_input, validate_calculation_input
-from core.io.write import assemble_calculation_input
-from core.oqapi import (oqapi_get_calculation_result, oqapi_get_job_status,
+from reia.db import crud, engine
+from reia.io import CalculationBranchSettings, ERiskType
+from reia.io.dstore import get_risk_from_dstore
+from reia.io.read import parse_calculation_input, validate_calculation_input
+from reia.io.write import assemble_calculation_input
+from reia.oqapi import (oqapi_get_calculation_result, oqapi_get_job_status,
                         oqapi_send_calculation)
 
 LOGGER = logging.getLogger(__name__)

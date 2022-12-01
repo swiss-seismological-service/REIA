@@ -1,6 +1,8 @@
 import os
+
 from dotenv import load_dotenv
-from core.utils import import_string
+
+from reia.utils import import_string
 
 load_dotenv()  # load environment variables
 

@@ -9,12 +9,12 @@ from pathlib import Path
 import typer
 from esloss.datamodel import EEarthquakeType
 
-from core.actions import (create_risk_scenario, dispatch_openquake_calculation,
+from reia.actions import (create_risk_scenario, dispatch_openquake_calculation,
                           run_openquake_calculations)
-from core.db import crud, drop_db, init_db, session
-from core.io import CalculationBranchSettings, ERiskType
-from core.io.read import parse_exposure, parse_vulnerability
-from core.io.write import (assemble_calculation_input, create_exposure_input,
+from reia.db import crud, drop_db, init_db, session
+from reia.io import CalculationBranchSettings, ERiskType
+from reia.io.read import parse_exposure, parse_vulnerability
+from reia.io.write import (assemble_calculation_input, create_exposure_input,
                            create_vulnerability_input)
 from settings import get_config
 
