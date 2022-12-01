@@ -12,6 +12,7 @@ EXPOSUREFILE = {
         'RF': 3
     }
 }
+BASE_FOLDER = '../../scenario_data/data/scenarios/aarauM5_8'
 
 
 def make_config():
@@ -21,7 +22,7 @@ def make_config():
     for scenario, group in df.groupby('OriginID'):
         config_scenario = {
             'scenario_name': f"Szenario {scenario.split('/')[-1]}",
-            'folder': '',
+            'folder': BASE_FOLDER,
             'originid': scenario,
             'damage': [],
             'loss': []

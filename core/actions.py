@@ -31,7 +31,8 @@ def create_risk_scenario(earthquake_oid: int,
         {'aggregateby': ['Canton;CantonGemeinde'],
          'status': EStatus.COMPLETE,
          '_earthquakeinformation_oid': earthquake_oid,
-         'calculation_mode': risk_type.value},
+         'calculation_mode': risk_type.value,
+         'description': config["scenario_name"]},
         session)
 
     connection = engine.raw_connection()

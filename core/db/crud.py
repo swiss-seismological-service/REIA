@@ -11,9 +11,10 @@ from esloss.datamodel import (AggregationTag, Asset,
                               Calculation, CalculationBranch,
                               ContentsVulnerabilityModel, CostType,
                               DamageCalculation, DamageCalculationBranch,
-                              EarthquakeInformation, EStatus, ExposureModel,
-                              LossCalculation, LossCalculationBranch,
-                              LossRatio, NonstructuralVulnerabilityModel,
+                              EarthquakeInformation, EEarthquakeType, EStatus,
+                              ExposureModel, LossCalculation,
+                              LossCalculationBranch, LossRatio,
+                              NonstructuralVulnerabilityModel,
                               OccupantsVulnerabilityModel, RiskValue, Site,
                               StructuralVulnerabilityModel,
                               VulnerabilityFunction, VulnerabilityModel,
@@ -243,6 +244,27 @@ def update_calculation_status(calculation_oid: int,
 
 def read_calculations(session: Session) -> list[Calculation]:
     stmt = select(Calculation).order_by(Calculation._oid)
+    return session.execute(stmt).unique().scalars().all()
+
+
+def delete_scenario_calculation(
+        calculation_oid: int,
+        session: Session) -> None:
+    stmt = delete(Calculation).where(
+        Calculation.earthquakeinformation.has(
+            EarthquakeInformation.type == EEarthquakeType.SCENARIO)).where(
+        Calculation._oid == calculation_oid)
+    dlt = session.execute(
+        stmt, execution_options={
+            "synchronize_session": 'fetch'}).rowcount
+    session.commit()
+    return dlt
+
+
+def read_scenario_calculations(session: Session) -> list[Calculation]:
+    stmt = select(Calculation).join(EarthquakeInformation).where(
+        EarthquakeInformation.type == EEarthquakeType.SCENARIO) \
+        .order_by(Calculation._oid)
     return session.execute(stmt).unique().scalars().all()
 
 

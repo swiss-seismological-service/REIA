@@ -1,13 +1,18 @@
 import configparser
 import json
+import logging
+import os
+import time
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
 import typer
+from esloss.datamodel import EEarthquakeType
 
-from core.actions import (dispatch_openquake_calculation,
+from core.actions import (create_risk_scenario, dispatch_openquake_calculation,
                           run_openquake_calculations)
 from core.db import crud, drop_db, init_db, session
-from core.io import CalculationBranchSettings
+from core.io import CalculationBranchSettings, ERiskType
 from core.io.read import parse_exposure, parse_vulnerability
 from core.io.write import (assemble_calculation_input, create_exposure_input,
                            create_vulnerability_input)
@@ -18,6 +23,7 @@ db = typer.Typer()
 exposure = typer.Typer()
 vulnerability = typer.Typer()
 calculation = typer.Typer()
+scenario = typer.Typer()
 
 app.add_typer(db, name='db',
               help='Database Commands')
@@ -27,6 +33,8 @@ app.add_typer(vulnerability, name='vulnerability',
               help='Manage Vulnerability Models')
 app.add_typer(calculation, name='calculation',
               help='Create or execute calculations')
+app.add_typer(scenario, name='scenario',
+              help='Manage Scenario Data')
 
 
 @db.command('drop')
@@ -263,7 +271,7 @@ def run_calculation(
     session.remove()
 
 
-@ calculation.command('list')
+@calculation.command('list')
 def list_calculations():
     '''
     List all calculations.
@@ -286,3 +294,104 @@ def list_calculations():
             str(c.creationinfo_creationtime),
             c.description))
     session.remove()
+
+
+@scenario.command('list')
+def list_scenario():
+    '''
+    List all scenarios.
+    '''
+    scenarios = crud.read_scenario_calculations(session)
+
+    typer.echo('List of existing scenarios:')
+    typer.echo('{0:<10} {1:<25} {2:<25} {3:<30} {4}'.format(
+        'ID',
+        'Status',
+        'Type',
+        'Created',
+        'Description'))
+
+    for sc in scenarios:
+        typer.echo('{0:<10} {1:<25} {2:<25} {3:<30} {4}'.format(
+            sc._oid,
+            sc.status,
+            sc._type,
+            str(sc.creationinfo_creationtime),
+            sc.description))
+
+    session.remove()
+
+
+@scenario.command('delete')
+def delete_scenario(scenario_oid: int):
+    '''
+    Delete a scenario calculation
+    '''
+    deleted = crud.delete_scenario_calculation(scenario_oid, session)
+    typer.echo(
+        f'Deleted {deleted} vulnerability model with '
+        f'ID {scenario_oid}.')
+    session.remove()
+
+
+@scenario.command('add')
+def add_scenario(config: typer.FileText):
+    '''
+    Add scenario data.
+    '''
+
+    scenario_configs = json.loads(config.read())
+
+    os.makedirs('logs', exist_ok=True)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - [%(filename)s.%(funcName)s] - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[TimedRotatingFileHandler('logs/datapipe.log',
+                                           when='d',
+                                           interval=1,
+                                           backupCount=5),
+                  logging.StreamHandler()
+                  ]
+    )
+    LOGGER = logging.getLogger(__name__)
+
+    start = time.perf_counter()
+
+    aggregation_tags = {}
+
+    for type in ['Canton', 'CantonGemeinde']:
+        existing_tags = crud.read_aggregationtags(type, session)
+        aggregation_tags.update({t.name: t for t in existing_tags})
+
+    for config in scenario_configs:
+        start_scenario = time.perf_counter()
+        LOGGER.info(f'Starting to parse scenario {config["scenario_name"]}.')
+        earthquake_oid = crud.create_or_update_earthquake_information(
+            {'type': EEarthquakeType.SCENARIO, 'originid': config['originid']},
+            session)
+
+        LOGGER.info('Creating risk scenarios....')
+        create_risk_scenario(earthquake_oid,
+                             ERiskType.LOSS,
+                             aggregation_tags,
+                             config,
+                             session)
+
+        LOGGER.info('Creating damage scenarios....')
+        create_risk_scenario(earthquake_oid,
+                             ERiskType.DAMAGE,
+                             aggregation_tags,
+                             config,
+                             session)
+
+        LOGGER.info(
+            'Saving the scenario took '
+            f'{(time.perf_counter()-start_scenario)/60} minutes. Running '
+            f'for a total of {(time.perf_counter()-start)/60/60} hours.')
+
+    session.remove()
+
+    LOGGER.info(
+        f'Saving all results took {(time.perf_counter()-start)/60/60} hours.')
