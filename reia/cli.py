@@ -7,10 +7,10 @@ from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
 import typer
-from reia.datamodel import EEarthquakeType
 
 from reia.actions import (create_risk_scenario, dispatch_openquake_calculation,
                           run_openquake_calculations)
+from reia.datamodel import EEarthquakeType
 from reia.db import crud, drop_db, init_db, session
 from reia.io import CalculationBranchSettings, ERiskType
 from reia.io.read import parse_exposure, parse_vulnerability
@@ -329,7 +329,7 @@ def delete_scenario(scenario_oid: int):
     '''
     deleted = crud.delete_scenario_calculation(scenario_oid, session)
     typer.echo(
-        f'Deleted {deleted} vulnerability model with '
+        f'Deleted {deleted} scenario calculation with '
         f'ID {scenario_oid}.')
     session.remove()
 
