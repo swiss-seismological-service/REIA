@@ -6,6 +6,10 @@ from operator import attrgetter
 import numpy as np
 import pandas as pd
 import psycopg2
+from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
+
 from reia.datamodel import (AggregationTag, Asset,
                             BusinessInterruptionVulnerabilityModel,
                             Calculation, CalculationBranch,
@@ -19,10 +23,6 @@ from reia.datamodel import (AggregationTag, Asset,
                             StructuralVulnerabilityModel,
                             VulnerabilityFunction, VulnerabilityModel,
                             riskvalue_aggregationtag)
-from sqlalchemy import delete, select
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session
-
 from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
                      CALCULATION_MAPPING, LOSSCATEGORY_OBJECT_MAPPING)
 from reia.utils import aggregationtags_from_assets, sites_from_assets
@@ -289,7 +289,9 @@ def create_risk_values(risk_values: pd.DataFrame,
     # build up many2many reference table riskvalue_aggregationtag
     df_agg_val = pd.DataFrame(
         {'riskvalue': risk_values['_oid'],
-         'aggregationtag': risk_values.pop('aggregationtags')})
+         'aggregationtag': risk_values.pop('aggregationtags'),
+         '_calculation_oid': risk_values['_calculation_oid'],
+         'losscategory': risk_values['losscategory']})
 
     # Explode list of aggregationtags and replace with correct oid's
     df_agg_val = df_agg_val.explode('aggregationtag', ignore_index=True)
