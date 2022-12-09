@@ -285,6 +285,8 @@ def create_risk_values(risk_values: pd.DataFrame,
     index0 = get_nextval(cursor, RiskValue.__table__.name, '_oid')
 
     risk_values['_oid'] = range(index0, index0 + len(risk_values))
+    risk_values['losscategory'] = risk_values['losscategory'].map(
+        attrgetter('name'))
 
     # build up many2many reference table riskvalue_aggregationtag
     df_agg_val = pd.DataFrame(
@@ -297,9 +299,6 @@ def create_risk_values(risk_values: pd.DataFrame,
     df_agg_val = df_agg_val.explode('aggregationtag', ignore_index=True)
     df_agg_val['aggregationtag'] = df_agg_val['aggregationtag'].map(
         aggregation_tags).map(attrgetter('_oid'))
-
-    risk_values['losscategory'] = risk_values['losscategory'].map(
-        attrgetter('name'))
 
     if max_procs > 1:
         copy_pooled(risk_values, RiskValue.__table__.name, max_procs)
