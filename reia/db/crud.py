@@ -22,14 +22,14 @@ from reia.datamodel import (AggregationTag, Asset,
                             OccupantsVulnerabilityModel, RiskValue, Site,
                             StructuralVulnerabilityModel,
                             VulnerabilityFunction, VulnerabilityModel,
-                            riskvalue_aggregationtag)
+                            asset_aggregationtag, riskvalue_aggregationtag)
 from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
                      CALCULATION_MAPPING, LOSSCATEGORY_OBJECT_MAPPING)
 from reia.utils import aggregationtags_from_assets, sites_from_assets
 
 
 def create_assets(assets: pd.DataFrame,
-                  asset_collection_oid: int,
+                  exposure_model_oid: int,
                   session: Session) -> list[Asset]:
     """
     Extract Sites and AggregationTags from Assets, saves them in DB
@@ -41,35 +41,53 @@ def create_assets(assets: pd.DataFrame,
             ASSETS_COLS_MAPPING.values()) + ['longitude', 'latitude']]
 
     # assign ExposureModel to assets
-    assets['_exposuremodel_oid'] = asset_collection_oid
+    assets['_exposuremodel_oid'] = exposure_model_oid
     assets['aggregationtags'] = assets.apply(lambda _: [], axis=1)
 
     # create Sites objects and assign them to assets
-    sites, assets['site'] = sites_from_assets(assets)
+    sites, assets['_site_oid'] = sites_from_assets(assets)
     for s in sites:
-        s._exposuremodel_oid = asset_collection_oid
-    assets['site'] = assets.apply(
-        lambda x: sites[x['site']], axis=1)
+        s._exposuremodel_oid = exposure_model_oid
+    session.add_all(sites)
+    session.flush()
+    assets['_site_oid'] = assets['_site_oid'].map(lambda x: sites[x]._oid)
 
     # create AggregationTag objects and assign them to assets
     for tag in aggregation_tags:
         existing_tags = read_aggregationtags(tag, session)
         tags_of_type, assets['aggregationtags_list_index'] = \
             aggregationtags_from_assets(assets, tag, existing_tags)
+        session.add_all(list(tags_of_type))
+        session.flush()
         assets.apply(lambda x: x['aggregationtags'].append(
             tags_of_type[x['aggregationtags_list_index']]), axis=1)
 
+    session.commit()
+
     # create Asset objects from DataFrame
     valid_cols = list(ASSETS_COLS_MAPPING.values()) + \
-        ['site', 'aggregationtags', '_exposuremodel_oid']
-    asset_objects = map(lambda x: Asset(**x),
-                        assets.filter(valid_cols).to_dict('records'))
+        ['_site_oid', 'aggregationtags', '_exposuremodel_oid']
 
-    session.add_all(list(asset_objects))
+    assoc_table = assets[['aggregationtags', '_exposuremodel_oid']].copy()
+    assets = assets.drop(['aggregationtags'], axis=1)
+
+    assoc_table['asset'] = list(session.scalars(insert(Asset).returning(
+        Asset._oid), assets.filter(valid_cols).to_dict('records')).all())
+
+    assoc_table = assoc_table.explode('aggregationtags', ignore_index=True)
+    assoc_table['aggregationtag'] = assoc_table['aggregationtags'].map(
+        attrgetter('_oid'))
+    assoc_table['aggregationtype'] = assoc_table['aggregationtags'].map(
+        attrgetter('type'))
+    assoc_table = assoc_table.drop(['aggregationtags'], axis=1)
+
+    session.execute(insert(asset_aggregationtag),
+                    assoc_table.filter(valid_cols).to_dict('records')
+                    )
     session.commit()
 
     statement = select(Asset).where(
-        Asset._exposuremodel_oid == asset_collection_oid)
+        Asset._exposuremodel_oid == exposure_model_oid)
 
     return session.execute(statement).unique().scalars().all()
 
