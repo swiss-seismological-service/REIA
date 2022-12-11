@@ -71,13 +71,14 @@ def parse_exposure(file: TextIO) -> Tuple[dict, pd.DataFrame]:
     for test in root.findall('exposureModel/conversions/costTypes/costType'):
         model['costtypes'].append(test.attrib)
 
-    tagnames = root.find('exposureModel/tagNames').text.split(' ')
+    model['aggregationtypes'] = root.find(
+        'exposureModel/tagNames').text.split(' ')
 
     asset_csv = root.find('exposureModel/assets').text
     asset_csv = os.path.join(os.path.dirname(file.name), asset_csv)
 
     with open(asset_csv, 'r') as f:
-        assets = parse_assets(f, tagnames)
+        assets = parse_assets(f, model['aggregationtypes'])
 
     return model, assets
 
