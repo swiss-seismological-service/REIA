@@ -2,11 +2,11 @@ import logging
 import time
 from configparser import ConfigParser
 
-from reia.datamodel import CalculationBranch, EStatus
 from openquake.commonlib.datastore import read
 from requests import Response
 from sqlalchemy.orm import Session
 
+from reia.datamodel import CalculationBranch, EStatus
 from reia.db import crud, engine
 from reia.io import CalculationBranchSettings, ERiskType
 from reia.io.dstore import get_risk_from_dstore
@@ -54,7 +54,7 @@ def create_risk_scenario(earthquake_oid: int,
         df['weight'] = df['weight'] * loss_branch['weight']
         df['_calculation_oid'] = calculation._oid
         df[f'_{risk_type.name.lower()}calculationbranch_oid'] = branch._oid
-        df['_type'] = f'{risk_type.name.lower()}value'
+        df['_type'] = risk_type.name
         LOGGER.info('Saving risk values to database...')
         crud.create_risk_values(df, aggregation_tags, connection)
         LOGGER.info('Successfully saved risk values to database.')
@@ -124,7 +124,7 @@ def save_openquake_results(calculationbranch: CalculationBranch,
     df['_calculation_oid'] = calculationbranch._calculation_oid
     df[f'_{risk_type.name.lower()}calculationbranch_oid'] = \
         calculationbranch._oid
-    df['_type'] = f'{risk_type.name.lower()}value'
+    df['_type'] = risk_type.name
 
     connection = session.get_bind().raw_connection()
     crud.create_risk_values(df, aggregation_tags, connection)
