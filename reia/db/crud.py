@@ -42,7 +42,8 @@ def create_assets(assets: pd.DataFrame,
 
     # assign ExposureModel to assets
     assets['_exposuremodel_oid'] = exposure_model_oid
-    assets['aggregationtags'] = assets.apply(lambda _: [], axis=1)
+    assoc_table = pd.DataFrame(
+        {'aggregationtags': assets.apply(lambda _: [], axis=1)})
 
     # create Sites objects and assign them to assets
     sites, assets['_site_oid'] = sites_from_assets(assets)
@@ -55,11 +56,11 @@ def create_assets(assets: pd.DataFrame,
     # create AggregationTag objects and assign them to assets
     for tag in aggregation_tags:
         existing_tags = read_aggregationtags(tag, session)
-        tags_of_type, assets['aggregationtags_list_index'] = \
+        tags_of_type, assoc_table['aggregationtags_list_index'] = \
             aggregationtags_from_assets(assets, tag, existing_tags)
         session.add_all(list(tags_of_type))
         session.flush()
-        assets.apply(lambda x: x['aggregationtags'].append(
+        assoc_table.apply(lambda x: x['aggregationtags'].append(
             tags_of_type[x['aggregationtags_list_index']]), axis=1)
 
     session.commit()
@@ -67,9 +68,6 @@ def create_assets(assets: pd.DataFrame,
     # create Asset objects from DataFrame
     valid_cols = list(ASSETS_COLS_MAPPING.values()) + \
         ['_site_oid', 'aggregationtags', '_exposuremodel_oid']
-
-    assoc_table = assets[['aggregationtags', '_exposuremodel_oid']].copy()
-    assets = assets.drop(['aggregationtags'], axis=1)
 
     assoc_table['asset'] = list(session.scalars(insert(Asset).returning(
         Asset._oid), assets.filter(valid_cols).to_dict('records')).all())
@@ -79,7 +77,8 @@ def create_assets(assets: pd.DataFrame,
         attrgetter('_oid'))
     assoc_table['aggregationtype'] = assoc_table['aggregationtags'].map(
         attrgetter('type'))
-    assoc_table = assoc_table.drop(['aggregationtags'], axis=1)
+    assoc_table = assoc_table.drop(
+        ['aggregationtags', 'aggregationtags_list_index'], axis=1)
 
     session.execute(insert(asset_aggregationtag),
                     assoc_table.filter(valid_cols).to_dict('records')
