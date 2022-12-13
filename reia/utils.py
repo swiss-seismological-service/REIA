@@ -5,8 +5,9 @@ import sys
 from typing import Any, TextIO, Tuple
 
 import pandas as pd
-from reia.datamodel.asset import AggregationTag, Site
 from jinja2 import Template, select_autoescape
+
+from reia.datamodel.asset import AggregationTag, Site
 
 
 def import_string(import_name: str, silent: bool = False) -> Any:
@@ -82,14 +83,14 @@ def aggregationtags_from_assets(
     :returns:       lists of AggregationTag objects and group numbers for
                     dataframe rows
     """
-    existing_tags = {t.name: t for t in existing_tags}
+    existing_tags = {str(t.name): t for t in existing_tags}
     agg_groups = assets.groupby(aggregation_type)
 
     all_tags = []
 
     for name, _ in agg_groups:
-        if name in existing_tags:
-            tag = existing_tags[name]
+        if str(name) in existing_tags:
+            tag = existing_tags[str(name)]
         else:
             tag = AggregationTag(
                 type=aggregation_type,

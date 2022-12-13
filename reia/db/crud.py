@@ -22,7 +22,7 @@ from reia.datamodel import (AggregationTag, Asset,
                             OccupantsVulnerabilityModel, RiskValue, Site,
                             StructuralVulnerabilityModel,
                             VulnerabilityFunction, VulnerabilityModel,
-                            asset_aggregationtag, riskvalue_aggregationtag)
+                            riskvalue_aggregationtag)
 from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
                      CALCULATION_MAPPING, LOSSCATEGORY_OBJECT_MAPPING)
 from reia.utils import aggregationtags_from_assets, sites_from_assets
@@ -80,10 +80,9 @@ def create_assets(assets: pd.DataFrame,
     assoc_table = assoc_table.drop(
         ['aggregationtags', 'aggregationtags_list_index'], axis=1)
 
-    session.execute(insert(asset_aggregationtag),
-                    assoc_table.filter(valid_cols).to_dict('records')
-                    )
     session.commit()
+
+    copy_raw(assoc_table, 'loss_assoc_asset_aggregationtag')
 
     statement = select(Asset).where(
         Asset._exposuremodel_oid == exposure_model_oid)
