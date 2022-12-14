@@ -313,6 +313,8 @@ def create_risk_values(risk_values: pd.DataFrame,
 
     # Explode list of aggregationtags and replace with correct oid's
     df_agg_val = df_agg_val.explode('aggregationtag', ignore_index=True)
+    df_agg_val['aggregationtype'] = df_agg_val['aggregationtag'].map(
+        aggregation_tags).map(attrgetter('type'))
     df_agg_val['aggregationtag'] = df_agg_val['aggregationtag'].map(
         aggregation_tags).map(attrgetter('_oid'))
 
