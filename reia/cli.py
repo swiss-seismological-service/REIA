@@ -388,10 +388,11 @@ def add_scenario(config: typer.FileText):
 
         LOGGER.info(
             'Saving the scenario took '
-            f'{(time.perf_counter()-start_scenario)/60} minutes. Running '
-            f'for a total of {(time.perf_counter()-start)/60/60} hours.')
+            f'{int((time.perf_counter()-start_scenario)/60)} minutes. Running '
+            f'for a total of {int((time.perf_counter()-start)/60/60)} hours.')
 
     session.remove()
 
     LOGGER.info(
-        f'Saving all results took {(time.perf_counter()-start)/60/60} hours.')
+        'Saving all results took '
+        f'{int((time.perf_counter()-start)/60/60)} hours.')

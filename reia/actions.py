@@ -29,7 +29,7 @@ def create_risk_scenario(earthquake_oid: int,
 
     calculation = crud.create_calculation(
         {'aggregateby': ['Canton;CantonGemeinde'],
-         'status': EStatus.COMPLETE,
+         'status': EStatus.CREATED,
          '_earthquakeinformation_oid': earthquake_oid,
          'calculation_mode': risk_type.value,
          'description': config["scenario_name"]},
@@ -37,28 +37,42 @@ def create_risk_scenario(earthquake_oid: int,
 
     connection = engine.raw_connection()
 
-    for loss_branch in config[risk_type.name.lower()]:
-        branch = crud.create_calculation_branch(
-            {'weight': loss_branch['weight'],
-             'status': EStatus.COMPLETE,
-             '_calculation_oid': calculation._oid,
-             '_exposuremodel_oid': loss_branch['exposure'],
-             'calculation_mode': risk_type.value},
-            session)
-        LOGGER.info(f'Parsing datastore {loss_branch["store"]}')
+    try:
+        for loss_branch in config[risk_type.name.lower()]:
+            branch = crud.create_calculation_branch(
+                {'weight': loss_branch['weight'],
+                 'status': EStatus.CREATED,
+                 '_calculation_oid': calculation._oid,
+                 '_exposuremodel_oid': loss_branch['exposure'],
+                 'calculation_mode': risk_type.value},
+                session)
+            LOGGER.info(f'Parsing datastore {loss_branch["store"]}')
 
-        dstore_path = f'{config["folder"]}/{loss_branch["store"]}'
-        dstore = read(dstore_path)
-        df = get_risk_from_dstore(dstore, risk_type)
+            dstore_path = f'{config["folder"]}/{loss_branch["store"]}'
+            dstore = read(dstore_path)
+            df = get_risk_from_dstore(dstore, risk_type)
 
-        df['weight'] = df['weight'] * loss_branch['weight']
-        df['_calculation_oid'] = calculation._oid
-        df[f'_{risk_type.name.lower()}calculationbranch_oid'] = branch._oid
-        df['_type'] = risk_type.name
-        LOGGER.info('Saving risk values to database...')
-        crud.create_risk_values(df, aggregation_tags, connection)
-        LOGGER.info('Successfully saved risk values to database.')
+            df['weight'] = df['weight'] * loss_branch['weight']
+            df['_calculation_oid'] = calculation._oid
+            df[f'_{risk_type.name.lower()}calculationbranch_oid'] = branch._oid
+            df['_type'] = risk_type.name
+            LOGGER.info('Saving risk values to database...')
+            crud.create_risk_values(df, aggregation_tags, connection)
+            crud.update_calculation_branch_status(
+                branch._oid, EStatus.COMPLETE, session)
+            LOGGER.info('Successfully saved risk values to database.')
 
+        crud.update_calculation_status(
+            calculation._oid, EStatus.COMPLETE, session)
+
+    except Exception as e:
+        crud.update_calculation_status(
+            calculation._oid, EStatus.FAILED, session)
+        if branch:
+            crud.update_calculation_branch_status(
+                branch._oid, EStatus.FAILED, session)
+        connection.close()
+        raise e
     connection.close()
 
 
