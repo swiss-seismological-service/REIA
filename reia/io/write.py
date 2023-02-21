@@ -5,12 +5,45 @@ from pathlib import Path
 from typing import Tuple
 
 import pandas as pd
-from reia.datamodel.asset import Asset
 from sqlalchemy.orm import Session
 
-from reia.db.crud import read_asset_collection, read_vulnerability_model
-from reia.io import ASSETS_COLS_MAPPING, LOSSCATEGORY_OBJECT_MAPPING
+from reia.datamodel.asset import Asset
+from reia.db.crud import (read_asset_collection, read_fragility_model,
+                          read_vulnerability_model)
+from reia.io import (ASSETS_COLS_MAPPING, LOSSCATEGORY_FRAGILITY_MAPPING,
+                     LOSSCATEGORY_VULNERABILITY_MAPPING)
 from reia.utils import create_file_pointer
+
+
+def create_fragility_input(
+    fragility_model_oid: int,
+    session: Session,
+    template_name: Path = Path('reia/templates/fragility.xml')) \
+        -> io.StringIO:
+    """
+    Create an in memory fragility xml file for OpenQuake.
+
+    :param fragility_model_oid: oid of the VulnerabilityModel to be used.
+    :param session: SQLAlchemy database session.
+    :param template_name: Template to be used for the fragility file.
+    :returns: Filepointer for exposure xml and one for csv list of assets.
+    """
+
+    fragility_model = read_fragility_model(
+        fragility_model_oid, session)
+
+    data = fragility_model._asdict()
+    data['_type'] = next((k for k, v in
+                          LOSSCATEGORY_FRAGILITY_MAPPING.items(
+                          ) if k == data['_type'].value))
+    data['fragilityfunctions'] = []
+
+    for vf in fragility_model.fragilityfunctions:
+        vf_dict = vf._asdict()
+        vf_dict['limitstates'] = [lr._asdict() for lr in vf.limitstates]
+        data['fragilityfunctions'].append(vf_dict)
+
+    return create_file_pointer(template_name, data=data)
 
 
 def create_vulnerability_input(
@@ -31,8 +64,9 @@ def create_vulnerability_input(
         vulnerability_model_oid, session)
 
     data = vulnerability_model._asdict()
-    data['_type'] = next((k for k, v in LOSSCATEGORY_OBJECT_MAPPING.items()
-                          if v.__name__.lower() == data['_type']))
+    data['_type'] = next((k for k, v in
+                          LOSSCATEGORY_VULNERABILITY_MAPPING.items(
+                          ) if v.__name__.lower() == data['_type']))
     data['vulnerabilityfunctions'] = []
 
     for vf in vulnerability_model.vulnerabilityfunctions:

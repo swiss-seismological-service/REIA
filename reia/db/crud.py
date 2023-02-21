@@ -11,20 +11,25 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from reia.datamodel import (AggregationTag, Asset,
+                            BusinessInterruptionFragilityModel,
                             BusinessInterruptionVulnerabilityModel,
                             Calculation, CalculationBranch,
-                            ContentsVulnerabilityModel, CostType,
-                            DamageCalculation, DamageCalculationBranch,
-                            EarthquakeInformation, EEarthquakeType, EStatus,
-                            ExposureModel, LossCalculation,
-                            LossCalculationBranch, LossRatio,
+                            ContentsFragilityModel, ContentsVulnerabilityModel,
+                            CostType, DamageCalculation,
+                            DamageCalculationBranch, EarthquakeInformation,
+                            EEarthquakeType, EStatus, ExposureModel,
+                            FragilityFunction, FragilityModel, LimitState,
+                            LossCalculation, LossCalculationBranch, LossRatio,
+                            NonstructuralFragilityModel,
                             NonstructuralVulnerabilityModel,
                             OccupantsVulnerabilityModel, RiskValue, Site,
+                            StructuralFragilityModel,
                             StructuralVulnerabilityModel,
                             VulnerabilityFunction, VulnerabilityModel,
                             riskvalue_aggregationtag)
 from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
-                     CALCULATION_MAPPING, LOSSCATEGORY_OBJECT_MAPPING)
+                     CALCULATION_MAPPING, LOSSCATEGORY_FRAGILITY_MAPPING,
+                     LOSSCATEGORY_VULNERABILITY_MAPPING)
 from reia.utils import aggregationtags_from_assets, sites_from_assets
 
 
@@ -109,6 +114,32 @@ def create_asset_collection(exposure: dict,
     return asset_collection
 
 
+def create_fragility_model(
+        model: dict,
+        session: Session) \
+    -> StructuralFragilityModel | NonstructuralFragilityModel | \
+        BusinessInterruptionFragilityModel | ContentsFragilityModel:
+    '''
+    Creates a fragilitymodel of the right subtype from a dict containing
+    all the data.
+    '''
+    fragility_functions = model.pop('fragilityfunctions')
+    loss_category = model.pop('losscategory')
+    fragility_model = LOSSCATEGORY_FRAGILITY_MAPPING[loss_category](
+        **{**model, **{'fragilityfunctions': []}})
+
+    for func in fragility_functions:
+        limit = func.pop('limitstates')
+        function_obj = FragilityFunction(**func)
+        function_obj.limitstates = list(map(lambda x: LimitState(**x), limit))
+        fragility_model.fragilityfunctions.append(function_obj)
+
+    session.add(fragility_model)
+    session.commit()
+
+    return fragility_model
+
+
 def create_vulnerability_model(
     model: dict,
     session: Session) \
@@ -123,7 +154,7 @@ def create_vulnerability_model(
 
     loss_category = model.pop('losscategory')
 
-    vulnerability_model = LOSSCATEGORY_OBJECT_MAPPING[loss_category](
+    vulnerability_model = LOSSCATEGORY_VULNERABILITY_MAPPING[loss_category](
         **{**model, **{'vulnerabilityfunctions': []}})
 
     for func in vulnerability_functions:
@@ -159,6 +190,26 @@ def delete_asset_collection(asset_collection_oid: int,
                             session: Session) -> int:
     stmt = delete(ExposureModel).where(
         ExposureModel._oid == asset_collection_oid)
+    dlt = session.execute(stmt).rowcount
+    session.commit()
+    return dlt
+
+
+def read_fragility_models(session: Session) -> list[FragilityModel]:
+    stmt = select(FragilityModel).order_by(FragilityModel._oid)
+    return session.execute(stmt).unique().scalars().all()
+
+
+def read_fragility_model(oid: int, session: Session) -> FragilityModel:
+    stmt = select(FragilityModel).where(FragilityModel._oid == oid)
+    return session.execute(stmt).unique().scalar()
+
+
+def delete_fragility_model(
+        fragility_model_oid: int,
+        session: Session) -> int:
+    stmt = delete(FragilityModel).where(
+        FragilityModel._oid == fragility_model_oid)
     dlt = session.execute(stmt).rowcount
     session.commit()
     return dlt

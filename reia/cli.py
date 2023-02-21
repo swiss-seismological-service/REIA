@@ -13,15 +13,16 @@ from reia.actions import (create_risk_scenario, dispatch_openquake_calculation,
 from reia.datamodel import EEarthquakeType
 from reia.db import crud, drop_db, init_db, session
 from reia.io import CalculationBranchSettings, ERiskType
-from reia.io.read import parse_exposure, parse_vulnerability
+from reia.io.read import parse_exposure, parse_fragility, parse_vulnerability
 from reia.io.write import (assemble_calculation_input, create_exposure_input,
-                           create_vulnerability_input)
+                           create_fragility_input, create_vulnerability_input)
 from settings import get_config
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()
 exposure = typer.Typer()
 vulnerability = typer.Typer()
+fragility = typer.Typer()
 calculation = typer.Typer()
 scenario = typer.Typer()
 
@@ -31,6 +32,8 @@ app.add_typer(exposure, name='exposure',
               help='Manage Exposure Models')
 app.add_typer(vulnerability, name='vulnerability',
               help='Manage Vulnerability Models')
+app.add_typer(fragility, name='fragility',
+              help='Manage Fragility Models')
 app.add_typer(calculation, name='calculation',
               help='Create or execute calculations')
 app.add_typer(scenario, name='scenario',
@@ -128,6 +131,79 @@ def create_exposure(id: int, filename: Path):
         typer.echo('Error occurred, file was not created.')
 
 
+@fragility.command('add')
+def add_fragility(fragility: Path, name: str):
+    '''
+    Add a fragility model.
+    '''
+
+    with open(fragility, 'r') as f:
+        model = parse_fragility(f)
+
+    model['name'] = name
+    # from pprint import pprint
+    # pprint(model)
+
+    fragility_model = crud.create_fragility_model(model, session)
+    typer.echo(
+        f'Created fragility model of type "{fragility_model._type}"'
+        f' with ID {fragility_model._oid}.')
+    session.remove()
+
+
+@fragility.command('delete')
+def delete_fragility(fragility_model_oid: int):
+    '''
+    Delete a fragility model.
+    '''
+    crud.delete_fragility_model(fragility_model_oid, session)
+    typer.echo(
+        f'Deleted fragility model with ID {fragility_model_oid}.')
+    session.remove()
+
+
+@fragility.command('list')
+def list_fragility():
+    '''
+    List all fragility models.
+    '''
+    fragility_models = crud.read_fragility_models(session)
+
+    typer.echo('List of existing fragility models:')
+    typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
+        'ID',
+        'Name',
+        'Type',
+        'Creationtime'))
+
+    for vm in fragility_models:
+        typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
+            vm._oid,
+            vm.name or "",
+            vm._type,
+            str(vm.creationinfo_creationtime)))
+    session.remove()
+
+
+@fragility.command('create_file')
+def create_fragility(id: int, filename: Path):
+    '''
+    Create input file for a fragility model.
+    '''
+    filename = filename.with_suffix('.xml')
+    file_pointer = create_fragility_input(id, session)
+    session.remove()
+
+    filename.parent.mkdir(exist_ok=True)
+    filename.open('w').write(file_pointer.getvalue())
+
+    if filename.exists():
+        typer.echo(
+            f'Successfully created file "{str(filename)}".')
+    else:
+        typer.echo('Error occurred, file was not created.')
+
+
 @vulnerability.command('add')
 def add_vulnerability(vulnerability: Path, name: str):
     '''
@@ -137,6 +213,7 @@ def add_vulnerability(vulnerability: Path, name: str):
     with open(vulnerability, 'r') as f:
         model = parse_vulnerability(f)
     model['name'] = name
+
     vulnerability_model = crud.create_vulnerability_model(model, session)
 
     typer.echo(
@@ -150,10 +227,9 @@ def delete_vulnerability(vulnerability_model_oid: int):
     '''
     Delete a vulnerability model.
     '''
-    deleted = crud.delete_vulnerability_model(vulnerability_model_oid, session)
+    crud.delete_vulnerability_model(vulnerability_model_oid, session)
     typer.echo(
-        f'Deleted {deleted} vulnerability models with '
-        f'ID {vulnerability_model_oid}.')
+        f'Deleted vulnerability model with ID {vulnerability_model_oid}.')
     session.remove()
 
 

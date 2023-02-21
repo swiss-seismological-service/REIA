@@ -1,5 +1,6 @@
 import configparser
 import os
+import re
 import xml.etree.ElementTree as ET
 from itertools import groupby
 from typing import TextIO, Tuple
@@ -83,6 +84,67 @@ def parse_exposure(file: TextIO) -> Tuple[dict, pd.DataFrame]:
     return model, assets
 
 
+def clean_array(text: str) -> str:
+    return re.sub("\\s\\s+", " ", text).strip()
+
+
+def parse_fragility(file: TextIO) -> dict:
+    model = {}
+    model['fragilityfunctions'] = []
+
+    tree = ET.iterparse(file)
+
+    for _, el in tree:
+        _, _, el.tag = el.tag.rpartition('}')
+
+    root = tree.root
+
+    for child in root:
+        model['assetcategory'] = child.attrib['assetCategory']
+        model['losscategory'] = child.attrib['lossCategory']
+        model['publicid'] = child.attrib['id']
+
+    model['description'] = root.find('fragilityModel/description').text
+    model['limitstates'] = root.find(
+        'fragilityModel/limitStates').text.strip().split(' ')
+
+    # read values for VulnerabilityFunctions
+    for vF in root.findall('fragilityModel/fragilityFunction'):
+        fun = {}
+        fun['taxonomy_concept'] = vF.attrib['id']
+        fun['format'] = vF.attrib['format']
+        fun['shape'] = vF.attrib.get('shape', None)
+
+        fun['intensitymeasuretype'] = vF.find('imls').attrib['imt']
+        fun['nodamagelimit'] = vF.find(
+            'imls').attrib.get('noDamageLimit', None)
+        fun['minintensitymeasurelevel'] = vF.find(
+            'imls').attrib.get('minIML', None)
+        fun['maxintensitymeasurelevel'] = vF.find(
+            'imls').attrib.get('maxIML', None)
+        fun['intensitymeasurelevels'] = clean_array(
+            vF.find('imls').text).split(' ')
+
+        fun['limitstates'] = []
+
+        for poe in vF.findall('poes'):
+            limit_state = {}
+            limit_state['name'] = poe.attrib['ls']
+
+            limit_state['poes'] = clean_array(poe.text).split()
+            fun['limitstates'].append(limit_state)
+
+        for params in vF.findall('params'):
+            limit_state = {}
+            limit_state['name'] = params.attrib['ls']
+            limit_state['mean'] = params.attrib['mean']
+            limit_state['stddev'] = params.attrib['stddev']
+
+        model['fragilityfunctions'].append(fun)
+
+    return model
+
+
 def parse_vulnerability(file: TextIO) -> dict:
     model = {}
     model['vulnerabilityfunctions'] = []
@@ -100,7 +162,8 @@ def parse_vulnerability(file: TextIO) -> dict:
         model['assetcategory'] = child.attrib['assetCategory']
         model['losscategory'] = child.attrib['lossCategory']
         model['publicid'] = child.attrib['id']
-    model['description'] = root.find('vulnerabilityModel/description').text
+    model['description'] = root.find(
+        'vulnerabilityModel/description').text.strip()
 
     # read values for VulnerabilityFunctions
     for vF in root.findall('vulnerabilityModel/vulnerabilityFunction'):
@@ -109,9 +172,9 @@ def parse_vulnerability(file: TextIO) -> dict:
         fun['distribution'] = vF.attrib['dist']
         fun['intensitymeasuretype'] = vF.find('imls').attrib['imt']
 
-        imls = vF.find('imls').text.split(' ')
-        meanLRs = vF.find('meanLRs').text.split(' ')
-        covLRs = vF.find('covLRs').text.split(' ')
+        imls = clean_array(vF.find('imls').text).split(' ')
+        meanLRs = clean_array(vF.find('meanLRs').text).split(' ')
+        covLRs = clean_array(vF.find('covLRs').text).split(' ')
 
         fun['lossratios'] = []
         for i, m, c in zip(imls, meanLRs, covLRs):
