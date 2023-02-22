@@ -20,11 +20,11 @@ from reia.datamodel import (AggregationTag, Asset,
                             EEarthquakeType, EStatus, ExposureModel,
                             FragilityFunction, FragilityModel, LimitState,
                             LossCalculation, LossCalculationBranch, LossRatio,
-                            NonstructuralFragilityModel,
+                            Mapping, NonstructuralFragilityModel,
                             NonstructuralVulnerabilityModel,
                             OccupantsVulnerabilityModel, RiskValue, Site,
                             StructuralFragilityModel,
-                            StructuralVulnerabilityModel,
+                            StructuralVulnerabilityModel, TaxonomyMap,
                             VulnerabilityFunction, VulnerabilityModel,
                             riskvalue_aggregationtag)
 from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
@@ -138,6 +138,43 @@ def create_fragility_model(
     session.commit()
 
     return fragility_model
+
+
+def create_taxonomy_map(
+        mapping: pd.DataFrame,
+        name: str,
+        session: Session) -> TaxonomyMap:
+    '''
+    Creates a TaxonomyMapping.
+    '''
+    taxonomy_map = TaxonomyMap(name=name)
+    taxonomy_map.mappings = list(
+        map(lambda x: Mapping(**x), mapping.to_dict(orient='records')))
+
+    session.add(taxonomy_map)
+    session.commit()
+
+    return taxonomy_map
+
+
+def read_taxonomymaps(session: Session) -> list[TaxonomyMap]:
+    stmt = select(TaxonomyMap).order_by(TaxonomyMap._oid)
+    return session.execute(stmt).unique().scalars().all()
+
+
+def read_taxonomymap(oid: int, session: Session) -> TaxonomyMap:
+    stmt = select(TaxonomyMap).where(TaxonomyMap._oid == oid)
+    return session.execute(stmt).unique().scalar()
+
+
+def delete_taxonomymap(
+        oid: int,
+        session: Session) -> int:
+    stmt = delete(TaxonomyMap).where(
+        TaxonomyMap._oid == oid)
+    dlt = session.execute(stmt).rowcount
+    session.commit()
+    return dlt
 
 
 def create_vulnerability_model(

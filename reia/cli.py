@@ -13,9 +13,11 @@ from reia.actions import (create_risk_scenario, dispatch_openquake_calculation,
 from reia.datamodel import EEarthquakeType
 from reia.db import crud, drop_db, init_db, session
 from reia.io import CalculationBranchSettings, ERiskType
-from reia.io.read import parse_exposure, parse_fragility, parse_vulnerability
+from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
+                          parse_vulnerability)
 from reia.io.write import (assemble_calculation_input, create_exposure_input,
-                           create_fragility_input, create_vulnerability_input)
+                           create_fragility_input, create_taxonomymap_input,
+                           create_vulnerability_input)
 from settings import get_config
 
 app = typer.Typer(add_completion=False)
@@ -23,6 +25,7 @@ db = typer.Typer()
 exposure = typer.Typer()
 vulnerability = typer.Typer()
 fragility = typer.Typer()
+taxonomymap = typer.Typer()
 calculation = typer.Typer()
 scenario = typer.Typer()
 
@@ -34,6 +37,8 @@ app.add_typer(vulnerability, name='vulnerability',
               help='Manage Vulnerability Models')
 app.add_typer(fragility, name='fragility',
               help='Manage Fragility Models')
+app.add_typer(taxonomymap, name='taxonomymap',
+              help='Manage Taxonomy Mappings')
 app.add_typer(calculation, name='calculation',
               help='Create or execute calculations')
 app.add_typer(scenario, name='scenario',
@@ -141,8 +146,6 @@ def add_fragility(fragility: Path, name: str):
         model = parse_fragility(f)
 
     model['name'] = name
-    # from pprint import pprint
-    # pprint(model)
 
     fragility_model = crud.create_fragility_model(model, session)
     typer.echo(
@@ -204,12 +207,76 @@ def create_fragility(id: int, filename: Path):
         typer.echo('Error occurred, file was not created.')
 
 
+@taxonomymap.command('add')
+def add_taxonomymap(map_file: Path, name: str):
+    '''
+    Add a taxonomy mapping model.
+    '''
+    with open(map_file, 'r') as f:
+        mapping = parse_taxonomy_map(f)
+
+    taxonomy_map = crud.create_taxonomy_map(mapping, name, session)
+    typer.echo(
+        f'Created taxonomy map with ID {taxonomy_map._oid}.')
+    session.remove()
+
+
+@taxonomymap.command('delete')
+def delete_taxonomymap(taxonomymap_oid: int):
+    '''
+    Delete a vulnerability model.
+    '''
+    crud.delete_taxonomymap(taxonomymap_oid, session)
+    typer.echo(
+        f'Deleted vulnerability model with ID {taxonomymap_oid}.')
+    session.remove()
+
+
+@taxonomymap.command('list')
+def list_taxonomymap():
+    '''
+    List all vulnerability models.
+    '''
+    taxonomy_maps = crud.read_taxonomymaps(session)
+
+    typer.echo('List of existing vulnerability models:')
+    typer.echo('{0:<10} {1:<25} {2}'.format(
+        'ID',
+        'Name',
+        'Creationtime'))
+
+    for tm in taxonomy_maps:
+        typer.echo('{0:<10} {1:<25} {2}'.format(
+            tm._oid,
+            tm.name or "",
+            str(tm.creationinfo_creationtime)))
+    session.remove()
+
+
+@taxonomymap.command('create_file')
+def create_taxonomymap(id: int, filename: Path):
+    '''
+    Create input file for a taxonomy mapping.
+    '''
+    filename = filename.with_suffix('.csv')
+    file_pointer = create_taxonomymap_input(id, session)
+    session.remove()
+
+    filename.parent.mkdir(exist_ok=True)
+    filename.open('w').write(file_pointer.getvalue())
+
+    if filename.exists():
+        typer.echo(
+            f'Successfully created file "{str(filename)}".')
+    else:
+        typer.echo('Error occurred, file was not created.')
+
+
 @vulnerability.command('add')
 def add_vulnerability(vulnerability: Path, name: str):
     '''
     Add a vulnerability model.
     '''
-
     with open(vulnerability, 'r') as f:
         model = parse_vulnerability(f)
     model['name'] = name

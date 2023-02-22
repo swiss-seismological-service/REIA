@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from reia.datamodel.asset import Asset
 from reia.db.crud import (read_asset_collection, read_fragility_model,
-                          read_vulnerability_model)
+                          read_taxonomymap, read_vulnerability_model)
 from reia.io import (ASSETS_COLS_MAPPING, LOSSCATEGORY_FRAGILITY_MAPPING,
                      LOSSCATEGORY_VULNERABILITY_MAPPING)
 from reia.utils import create_file_pointer
@@ -44,6 +44,34 @@ def create_fragility_input(
         data['fragilityfunctions'].append(vf_dict)
 
     return create_file_pointer(template_name, data=data)
+
+
+def create_taxonomymap_input(
+    oid: int,
+    session: Session,
+    name: str = 'taxonomy_mapping.csv') \
+        -> io.StringIO:
+    """
+    Create an in memory vulnerability xml file for OpenQuake.
+
+    :param vulnerability_model_oid: oid of the VulnerabilityModel to be used.
+    :param session: SQLAlchemy database session.
+    :param template_name: Template to be used for the vulnerability file.
+    :returns: Filepointer for exposure xml and one for csv list of assets.
+    """
+
+    taxonomy_map = read_taxonomymap(oid, session)
+
+    mappings = taxonomy_map.mappings
+    mappings = pd.DataFrame([vars(s) for s in mappings], columns=[
+        'taxonomy', 'conversion', 'weight'])
+
+    taxonomy_map_csv = io.StringIO()
+    mappings.to_csv(taxonomy_map_csv, index=False)
+    taxonomy_map_csv.seek(0)
+    taxonomy_map_csv.name = name
+
+    return taxonomy_map_csv
 
 
 def create_vulnerability_input(

@@ -88,6 +88,11 @@ def clean_array(text: str) -> str:
     return re.sub("\\s\\s+", " ", text).strip()
 
 
+def parse_taxonomy_map(file: TextIO) -> dict:
+    df = pd.read_csv(file)
+    return df
+
+
 def parse_fragility(file: TextIO) -> dict:
     model = {}
     model['fragilityfunctions'] = []
