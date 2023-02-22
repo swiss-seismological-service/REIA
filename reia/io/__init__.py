@@ -51,14 +51,16 @@ VULNERABILITY_FK_MAPPING = {
     'occupants_vulnerability_file': '_occupantsvulnerabilitymodel_oid',
     'nonstructural_vulnerability_file': '_nonstructuralvulnerabilitymodel_oid',
     'business_interruption_vulnerability_file':
-    '_businessinterruptionvulnerabilitymodel_oid'}
+    '_businessinterruptionvulnerabilitymodel_oid',
+    'taxonomy_mapping_csv': '_taxonomymap_oid'}
 
 FRAGILITY_FK_MAPPING = {
     'structural_fragility_file': '_structuralfragilitymodel_oid',
     'contents_fragility_file': '_contentsfragilitymodel_oid',
     'nonstructural_fragility_file': '_nonstructuralfragilitymodel_oid',
     'business_interruption_fragility_file':
-    '_businessinterruptionfragilitymodel_oid'}
+    '_businessinterruptionfragilitymodel_oid',
+    'taxonomy_mapping_csv': '_taxonomymap_oid'}
 
 
 @dataclass

@@ -2,7 +2,7 @@
 <nrml xmlns="http://openquake.org/xmlns/nrml/0.5">
    <fragilityModel assetCategory="{{ data.assetcategory }}" id="{{ data.publicid }}" lossCategory="{{ data._type }}">
       <description>{{ data.description}}</description>
-      <limitstates>{% for lim in data.limitstates -%}{{lim+" "}}{%- endfor %}</limitstates>
+      <limitStates>{% for lim in data.limitstates -%}{{lim+" "}}{%- endfor %}</limitStates>
       {% for fun in data.fragilityfunctions %}
       <fragilityFunction format="{{ fun.format }}" id="{{ fun.taxonomy_concept }}">
          <imls imt="{{ fun.intensitymeasuretype }}">{% for iml in fun.intensitymeasurelevels -%}{{"%.6f"|format(iml)|string+" "}}{%- endfor %}</imls>

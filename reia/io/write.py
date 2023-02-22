@@ -187,11 +187,26 @@ def assemble_calculation_input(job: configparser.ConfigParser,
 
     calculation_files.extend([exposure_xml, exposure_csv])
 
-    for k, v in working_job['vulnerability'].items():
-        xml = create_vulnerability_input(v, session)
-        xml.name = "{}.xml".format(k.replace('_file', ''))
-        working_job['vulnerability'][k] = xml.name
-        calculation_files.append(xml)
+    if 'vulnerability' in working_job.keys():
+        for k, v in working_job['vulnerability'].items():
+            if k == 'taxonomy_mapping_csv':
+                file = create_taxonomymap_input(v, session)
+                file.name = "{}.csv".format(k.replace('_file', ''))
+            else:
+                file = create_vulnerability_input(v, session)
+                file.name = "{}.xml".format(k.replace('_file', ''))
+            working_job['vulnerability'][k] = file.name
+            calculation_files.append(file)
+
+    elif 'fragility' in working_job.keys():
+        for k, v in working_job['fragility'].items():
+            if k == 'taxonomy_mapping_csv':
+                file = create_taxonomymap_input(v, session)
+            else:
+                file = create_fragility_input(v, session)
+                file.name = "{}.xml".format(k.replace('_file', ''))
+            working_job['fragility'][k] = file.name
+            calculation_files.append(file)
 
     for k, v in working_job['hazard'].items():
         with open(v, 'r') as f:
