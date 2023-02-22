@@ -19,7 +19,7 @@ LOSSCATEGORY_VULNERABILITY_MAPPING = {
     'structural': StructuralVulnerabilityModel,
     'nonstructural': NonstructuralVulnerabilityModel,
     'contents': ContentsVulnerabilityModel,
-    'businessinterruption': BusinessInterruptionVulnerabilityModel,
+    'business_interruption': BusinessInterruptionVulnerabilityModel,
     'occupants': OccupantsVulnerabilityModel}
 
 LOSSCATEGORY_FRAGILITY_MAPPING = {

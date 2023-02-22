@@ -94,7 +94,7 @@ def create_vulnerability_input(
     data = vulnerability_model._asdict()
     data['_type'] = next((k for k, v in
                           LOSSCATEGORY_VULNERABILITY_MAPPING.items(
-                          ) if v.__name__.lower() == data['_type']))
+                          ) if k == data['_type'].value))
     data['vulnerabilityfunctions'] = []
 
     for vf in vulnerability_model.vulnerabilityfunctions:
