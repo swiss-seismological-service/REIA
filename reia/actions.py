@@ -126,7 +126,7 @@ def save_openquake_results(calculationbranch: CalculationBranch,
     oq_parameter_inputs = dstore['oqparam']
 
     aggregation_tags = {}
-    for type in oq_parameter_inputs.aggregate_by[0]:
+    for type in [it for sub in oq_parameter_inputs.aggregate_by for it in sub]:
         type_tags = crud.read_aggregationtags(type, session)
         aggregation_tags.update({tag.name: tag for tag in type_tags})
 

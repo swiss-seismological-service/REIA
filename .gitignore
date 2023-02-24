@@ -5,6 +5,7 @@ dist/
 test.py
 oq_outputs/
 test_output/
+test_model/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

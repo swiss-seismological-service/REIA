@@ -515,19 +515,23 @@ def add_scenario(config: typer.FileText):
             {'type': EEarthquakeType.SCENARIO, 'originid': config['originid']},
             session)
 
-        LOGGER.info('Creating risk scenarios....')
-        create_risk_scenario(earthquake_oid,
-                             ERiskType.LOSS,
-                             aggregation_tags,
-                             config,
-                             session)
+        if ERiskType.LOSS.name.lower(
+        ) in config and config[ERiskType.LOSS.name.lower()]:
+            LOGGER.info('Creating risk scenarios....')
+            create_risk_scenario(earthquake_oid,
+                                 ERiskType.LOSS,
+                                 aggregation_tags,
+                                 config,
+                                 session)
 
-        LOGGER.info('Creating damage scenarios....')
-        create_risk_scenario(earthquake_oid,
-                             ERiskType.DAMAGE,
-                             aggregation_tags,
-                             config,
-                             session)
+        if ERiskType.DAMAGE.name.lower(
+        ) in config and config[ERiskType.DAMAGE.name.lower()]:
+            LOGGER.info('Creating damage scenarios....')
+            create_risk_scenario(earthquake_oid,
+                                 ERiskType.DAMAGE,
+                                 aggregation_tags,
+                                 config,
+                                 session)
 
         LOGGER.info(
             'Saving the scenario took '
