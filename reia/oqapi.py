@@ -8,9 +8,17 @@ from openquake.calculators.extract import WebExtractor
 from openquake.commonlib import datastore, logs
 from openquake.engine import engine
 from openquake.server import dbserver
+
 from settings import get_config
 
 config = get_config()
+
+
+def oqapi_auth_session() -> requests.Session:
+    session = requests.Session()
+    session.post(f'{config.OQ_API_SERVER}/accounts/ajax_login/',
+                 data=config.OQ_API_AUTH)
+    return session
 
 
 def oqapi_send_calculation(*args: io.StringIO):
@@ -20,14 +28,15 @@ def oqapi_send_calculation(*args: io.StringIO):
 
     files = {f'input_model_{i+1}': v for i, v in enumerate(args)}
     files['job_config'] = job_config
-
-    response = requests.post(
+    session = oqapi_auth_session()
+    response = session.post(
         f'{config.OQ_API_SERVER}/v1/calc/run', files=files)
     return response
 
 
 def oqapi_get_job_status(job_id: int) -> requests.Response:
-    return requests.get(f'{config.OQ_API_SERVER}/v1/calc/{job_id}/status')
+    session = oqapi_auth_session()
+    return session.get(f'{config.OQ_API_SERVER}/v1/calc/{job_id}/status')
 
 
 def oqapi_get_calculation_result(job_id: int) -> datastore.DataStore:
@@ -59,7 +68,12 @@ def oqapi_import_remote_calculation(calc_id: int | str):
             sys.exit('There is already a job #%d in the local db' % calc_id)
     if remote:
         datadir = datastore.get_datadir()
-        webex = WebExtractor(calc_id, config.OQ_API_SERVER)
+        auth = config.OQ_API_AUTH
+        webex = WebExtractor(
+            calc_id,
+            config.OQ_API_SERVER,
+            auth['username'],
+            auth['password'])
         hc_id = webex.oqparam.hazard_calculation_id
         if hc_id:
             sys.exit('The job has a parent (#%d) and cannot be '

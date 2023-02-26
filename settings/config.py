@@ -8,6 +8,9 @@ class Config(object):
                    (0.7, 'settings/oq_settings_sion.ini')]
     OQ_API_SERVER = 'http://localhost:8800'
     SCENARIO_DATA_FOLDER = os.getenv('SCENARIO_DATA_FOLDER')
+    OQ_API_AUTH = dict(
+        username=os.getenv('OQ_USER'),
+        password=os.getenv('OQ_PASSWORD'))
 
 
 class DevelopmentConfig(Config):
@@ -22,4 +25,4 @@ class ProductionConfig(Config):
         f"postgresql+psycopg2://{os.getenv('POSTGRES_USER')}:" \
         f"{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}" \
         f":{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DB')}"
-    OQ_API_SERVER = 'http://localhost:8800'
+    OQ_API_SERVER = os.getenv('OQ_HOST')
