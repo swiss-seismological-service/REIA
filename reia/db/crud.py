@@ -16,14 +16,13 @@ from reia.datamodel import (AggregationTag, Asset,
                             Calculation, CalculationBranch,
                             ContentsFragilityModel, ContentsVulnerabilityModel,
                             CostType, DamageCalculation,
-                            DamageCalculationBranch, EarthquakeInformation,
-                            EEarthquakeType, EStatus, ExposureModel,
-                            FragilityFunction, FragilityModel, LimitState,
-                            LossCalculation, LossCalculationBranch, LossRatio,
-                            Mapping, NonstructuralFragilityModel,
+                            DamageCalculationBranch, EEarthquakeType, EStatus,
+                            ExposureModel, FragilityFunction, FragilityModel,
+                            LimitState, LossCalculation, LossCalculationBranch,
+                            LossRatio, Mapping, NonstructuralFragilityModel,
                             NonstructuralVulnerabilityModel,
-                            OccupantsVulnerabilityModel, RiskValue, Site,
-                            StructuralFragilityModel,
+                            OccupantsVulnerabilityModel, RiskAssessment,
+                            RiskValue, Site, StructuralFragilityModel,
                             StructuralVulnerabilityModel, TaxonomyMap,
                             VulnerabilityFunction, VulnerabilityModel,
                             riskvalue_aggregationtag)
@@ -272,20 +271,20 @@ def delete_vulnerability_model(
     return dlt
 
 
-def create_or_update_earthquake_information(
-        earthquake: dict,
-        session: Session) -> EarthquakeInformation:
+# def create_or_update_earthquake_information(
+#         earthquake: dict,
+#         session: Session) -> EarthquakeInformation:
 
-    stmt = insert(EarthquakeInformation).values(**earthquake)
-    upsert_stmt = stmt.on_conflict_do_update(
-        constraint='originid_unique', set_=earthquake)
-    earthquake = session.scalars(
-        upsert_stmt.returning(
-            EarthquakeInformation._oid),
-        execution_options={
-            "populate_existing": True}).first()
-    session.commit()
-    return earthquake
+#     stmt = insert(EarthquakeInformation).values(**earthquake)
+#     upsert_stmt = stmt.on_conflict_do_update(
+#         constraint='originid_unique', set_=earthquake)
+#     earthquake = session.scalars(
+#         upsert_stmt.returning(
+#             EarthquakeInformation._oid),
+#         execution_options={
+#             "populate_existing": True}).first()
+#     session.commit()
+#     return earthquake
 
 
 def create_calculation(
@@ -474,3 +473,23 @@ def get_nextval(cursor, table: str, column: str):
         f"select nextval(pg_get_serial_sequence('{table}', '{column}'))")
     next = cursor.fetchone()[0]
     return next
+
+
+def delete_risk_assessment_model(
+        risk_assessment_oid: int,
+        session: Session) -> int:
+    stmt = delete(RiskAssessment).where(
+        RiskAssessment._oid == risk_assessment_oid)
+    dlt = session.execute(stmt).rowcount
+    session.commit()
+    return dlt
+
+
+def create_risk_assessment(
+        originid: dict,
+        session: Session) -> RiskAssessment:
+
+    risk_assessment = RiskAssessment(originid=originid)
+    session.add(risk_assessment)
+    session.commit()
+    return risk_assessment

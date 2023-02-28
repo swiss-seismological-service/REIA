@@ -28,6 +28,7 @@ fragility = typer.Typer()
 taxonomymap = typer.Typer()
 calculation = typer.Typer()
 scenario = typer.Typer()
+risk_assessment = typer.Typer()
 
 app.add_typer(db, name='db',
               help='Database Commands')
@@ -43,6 +44,8 @@ app.add_typer(calculation, name='calculation',
               help='Create or execute calculations')
 app.add_typer(scenario, name='scenario',
               help='Manage Scenario Data')
+app.add_typer(risk_assessment, name='risk-assessment',
+              help='Manage Risk Assessments')
 
 
 @db.command('drop')
@@ -543,3 +546,28 @@ def add_scenario(config: typer.FileText):
     LOGGER.info(
         'Saving all results took '
         f'{int((time.perf_counter()-start)/60/60)} hours.')
+
+
+@risk_assessment.command('add')
+def add_risk_assessment(originid: str):
+    '''
+    add a risk_assessment calculation
+    '''
+    added = crud.create_risk_assessment(originid, session)
+
+    typer.echo(
+        f'addd {added} risk_assessment calculation with '
+        f'ID {originid}.')
+    session.remove()
+
+
+@risk_assessment.command('delete')
+def delete_risk_assessment(risk_assessment_oid: int):
+    '''
+    Delete a risk_assessment calculation
+    '''
+    deleted = crud.delete_risk_assessment(risk_assessment_oid, session)
+    typer.echo(
+        f'Deleted {deleted} risk_assessment calculation with '
+        f'ID {risk_assessment_oid}.')
+    session.remove()
