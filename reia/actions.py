@@ -1,8 +1,10 @@
 import logging
 import time
 from configparser import ConfigParser
+from typing import Tuple
 
 from openquake.commonlib.datastore import read
+from pandas import DataFrame
 from requests import Response
 from sqlalchemy.orm import Session
 
@@ -18,11 +20,10 @@ from reia.oqapi import (oqapi_get_calculation_result, oqapi_get_job_status,
 LOGGER = logging.getLogger(__name__)
 
 
-def create_risk_scenario(earthquake_oid: int,
-                         risk_type: ERiskType,
-                         aggregation_tags: list,
-                         config: dict,
-                         session: Session):
+def create_scenario_calculation(risk_type: ERiskType,
+                                aggregation_tags: list,
+                                config: dict,
+                                session: Session):
 
     assert sum([loss['weight']
                for loss in config[risk_type.name.lower()]]) == 1
@@ -30,7 +31,6 @@ def create_risk_scenario(earthquake_oid: int,
     calculation = crud.create_calculation(
         {'aggregateby': ['Canton;CantonGemeinde'],
          'status': EStatus.CREATED,
-         '_earthquakeinformation_oid': earthquake_oid,
          'calculation_mode': risk_type.value,
          'description': config["scenario_name"]},
         session)
@@ -74,6 +74,8 @@ def create_risk_scenario(earthquake_oid: int,
         connection.close()
         raise e
     connection.close()
+
+    return calculation
 
 
 def dispatch_openquake_calculation(
@@ -148,7 +150,6 @@ def save_openquake_results(calculationbranch: CalculationBranch,
 
 def run_openquake_calculations(
         branch_settings: list[CalculationBranchSettings],
-        earthquake_oid: int,
         session: Session):
 
     # validate that required inputs are set and compatible with each other
@@ -156,7 +157,6 @@ def run_openquake_calculations(
 
     # parse information to separate dicts
     calculation_dict, branches_dicts = parse_calculation_input(branch_settings)
-    calculation_dict['_earthquakeinformation_oid'] = earthquake_oid
 
     # create the calculation and the branches on the db
     calculation = crud.create_calculation(calculation_dict, session)
@@ -197,3 +197,14 @@ def run_openquake_calculations(
                     e, KeyboardInterrupt) else EStatus.FAILED
                 session.commit()
         raise e
+
+
+def read_gmfs(dstore: str) -> Tuple[DataFrame, DataFrame]:
+    store = read(dstore)
+
+    site_collection = store.read_df('sitecol')[['sids', 'lon', 'lat']]
+    gmf_data = store.read_df('gmf_data')
+
+    site_collection.rename(columns={'sids': 'site_id'}, inplace=True)
+
+    return (gmf_data, site_collection)

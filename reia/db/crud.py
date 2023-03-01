@@ -10,41 +10,37 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from reia.datamodel import (AggregationTag, Asset,
-                            BusinessInterruptionFragilityModel,
-                            BusinessInterruptionVulnerabilityModel,
-                            Calculation, CalculationBranch,
-                            ContentsFragilityModel, ContentsVulnerabilityModel,
-                            CostType, DamageCalculation,
-                            DamageCalculationBranch, EEarthquakeType, EStatus,
-                            ExposureModel, FragilityFunction, FragilityModel,
-                            LimitState, LossCalculation, LossCalculationBranch,
-                            LossRatio, Mapping, NonstructuralFragilityModel,
-                            NonstructuralVulnerabilityModel,
-                            OccupantsVulnerabilityModel, RiskAssessment,
-                            RiskValue, Site, StructuralFragilityModel,
-                            StructuralVulnerabilityModel, TaxonomyMap,
-                            VulnerabilityFunction, VulnerabilityModel,
-                            riskvalue_aggregationtag)
+import reia.datamodel as dm
 from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
                      CALCULATION_MAPPING, LOSSCATEGORY_FRAGILITY_MAPPING,
                      LOSSCATEGORY_VULNERABILITY_MAPPING)
 from reia.utils import aggregationtags_from_assets, sites_from_assets
 
+#    EXAMPLE UPSERT
+#     stmt = insert(dm.EarthquakeInformation).values(**earthquake)
+#     upsert_stmt = stmt.on_conflict_do_update(
+#         constraint='originid_unique', set_=earthquake)
+#     earthquake = session.scalars(
+#         upsert_stmt.returning(
+#             dm.EarthquakeInformation._oid),
+#         execution_options={
+#             "populate_existing": True}).first()
+#     session.commit()
+
 
 def create_assets(assets: pd.DataFrame,
                   exposure_model_oid: int,
-                  session: Session) -> list[Asset]:
+                  session: Session) -> list[dm.Asset]:
     """
     Extract Sites and AggregationTags from Assets, saves them in DB
-    as children of the ExposureModel.
+    as children of the dm.ExposureModel.
     """
-    # get AggregationTag types
+    # get dm.AggregationTag types
     aggregation_tags = [
         x for x in assets.columns if x not in list(
             ASSETS_COLS_MAPPING.values()) + ['longitude', 'latitude']]
 
-    # assign ExposureModel to assets
+    # assign dm.ExposureModel to assets
     assets['_exposuremodel_oid'] = exposure_model_oid
     assoc_table = pd.DataFrame(
         {'aggregationtags': assets.apply(lambda _: [], axis=1)})
@@ -57,7 +53,7 @@ def create_assets(assets: pd.DataFrame,
     session.flush()
     assets['_site_oid'] = assets['_site_oid'].map(lambda x: sites[x]._oid)
 
-    # create AggregationTag objects and assign them to assets
+    # create dm.AggregationTag objects and assign them to assets
     for tag in aggregation_tags:
         existing_tags = read_aggregationtags(tag, session)
         tags_of_type, assoc_table['aggregationtags_list_index'] = \
@@ -69,12 +65,12 @@ def create_assets(assets: pd.DataFrame,
 
     session.commit()
 
-    # create Asset objects from DataFrame
+    # create dm.Asset objects from DataFrame
     valid_cols = list(ASSETS_COLS_MAPPING.values()) + \
         ['_site_oid', 'aggregationtags', '_exposuremodel_oid']
 
-    assoc_table['asset'] = list(session.scalars(insert(Asset).returning(
-        Asset._oid), assets.filter(valid_cols).to_dict('records')).all())
+    assoc_table['asset'] = list(session.scalars(insert(dm.Asset).returning(
+        dm.Asset._oid), assets.filter(valid_cols).to_dict('records')).all())
 
     assoc_table = assoc_table.explode('aggregationtags', ignore_index=True)
     assoc_table['aggregationtag'] = assoc_table['aggregationtags'].map(
@@ -88,24 +84,24 @@ def create_assets(assets: pd.DataFrame,
 
     copy_raw(assoc_table, 'loss_assoc_asset_aggregationtag')
 
-    statement = select(Asset).where(
-        Asset._exposuremodel_oid == exposure_model_oid)
+    statement = select(dm.Asset).where(
+        dm.Asset._exposuremodel_oid == exposure_model_oid)
 
     return session.execute(statement).unique().scalars().all()
 
 
 def create_asset_collection(exposure: dict,
-                            session: Session) -> ExposureModel:
+                            session: Session) -> dm.ExposureModel:
     """
-    Creates an ExposureModel and the respective CostTypes from a dict and
+    Creates an dm.ExposureModel and the respective CostTypes from a dict and
     saves it to the Database.
     """
 
     cost_types = exposure.pop('costtypes')
-    asset_collection = ExposureModel(**exposure)
+    asset_collection = dm.ExposureModel(**exposure)
 
     for ct in cost_types:
-        asset_collection.costtypes.append(CostType(**ct))
+        asset_collection.costtypes.append(dm.CostType(**ct))
 
     session.add(asset_collection)
     session.commit()
@@ -116,8 +112,8 @@ def create_asset_collection(exposure: dict,
 def create_fragility_model(
         model: dict,
         session: Session) \
-    -> StructuralFragilityModel | NonstructuralFragilityModel | \
-        BusinessInterruptionFragilityModel | ContentsFragilityModel:
+    -> dm.StructuralFragilityModel | dm.NonstructuralFragilityModel | \
+        dm.BusinessInterruptionFragilityModel | dm.ContentsFragilityModel:
     '''
     Creates a fragilitymodel of the right subtype from a dict containing
     all the data.
@@ -129,8 +125,9 @@ def create_fragility_model(
 
     for func in fragility_functions:
         limit = func.pop('limitstates')
-        function_obj = FragilityFunction(**func)
-        function_obj.limitstates = list(map(lambda x: LimitState(**x), limit))
+        function_obj = dm.FragilityFunction(**func)
+        function_obj.limitstates = list(
+            map(lambda x: dm.LimitState(**x), limit))
         fragility_model.fragilityfunctions.append(function_obj)
 
     session.add(fragility_model)
@@ -142,13 +139,13 @@ def create_fragility_model(
 def create_taxonomy_map(
         mapping: pd.DataFrame,
         name: str,
-        session: Session) -> TaxonomyMap:
+        session: Session) -> dm.TaxonomyMap:
     '''
     Creates a TaxonomyMapping.
     '''
-    taxonomy_map = TaxonomyMap(name=name)
+    taxonomy_map = dm.TaxonomyMap(name=name)
     taxonomy_map.mappings = list(
-        map(lambda x: Mapping(**x), mapping.to_dict(orient='records')))
+        map(lambda x: dm.Mapping(**x), mapping.to_dict(orient='records')))
 
     session.add(taxonomy_map)
     session.commit()
@@ -156,32 +153,33 @@ def create_taxonomy_map(
     return taxonomy_map
 
 
-def read_taxonomymaps(session: Session) -> list[TaxonomyMap]:
-    stmt = select(TaxonomyMap).order_by(TaxonomyMap._oid)
+def read_taxonomymaps(session: Session) -> list[dm.TaxonomyMap]:
+    stmt = select(dm.TaxonomyMap).order_by(dm.TaxonomyMap._oid)
     return session.execute(stmt).unique().scalars().all()
 
 
-def read_taxonomymap(oid: int, session: Session) -> TaxonomyMap:
-    stmt = select(TaxonomyMap).where(TaxonomyMap._oid == oid)
+def read_taxonomymap(oid: int, session: Session) -> dm.TaxonomyMap:
+    stmt = select(dm.TaxonomyMap).where(dm.TaxonomyMap._oid == oid)
     return session.execute(stmt).unique().scalar()
 
 
 def delete_taxonomymap(
         oid: int,
         session: Session) -> int:
-    stmt = delete(TaxonomyMap).where(
-        TaxonomyMap._oid == oid)
-    dlt = session.execute(stmt).rowcount
+    stmt = delete(dm.TaxonomyMap).where(
+        dm.TaxonomyMap._oid == oid)
+    session.execute(stmt)
     session.commit()
-    return dlt
 
 
 def create_vulnerability_model(
     model: dict,
     session: Session) \
-    -> StructuralVulnerabilityModel | \
-        OccupantsVulnerabilityModel | NonstructuralVulnerabilityModel | \
-        BusinessInterruptionVulnerabilityModel | ContentsVulnerabilityModel:
+    -> dm.StructuralVulnerabilityModel | \
+        dm.OccupantsVulnerabilityModel | \
+        dm.NonstructuralVulnerabilityModel | \
+        dm.BusinessInterruptionVulnerabilityModel | \
+        dm.ContentsVulnerabilityModel:
     """
     Creates a vulnerabilitymodel of the right subtype from a dict
     containing all the data.
@@ -195,8 +193,8 @@ def create_vulnerability_model(
 
     for func in vulnerability_functions:
         loss = func.pop('lossratios')
-        function_obj = VulnerabilityFunction(**func)
-        function_obj.lossratios = list(map(lambda x: LossRatio(**x),
+        function_obj = dm.VulnerabilityFunction(**func)
+        function_obj.lossratios = list(map(lambda x: dm.LossRatio(**x),
                                            loss))
         vulnerability_model.vulnerabilityfunctions.append(function_obj)
 
@@ -206,90 +204,75 @@ def create_vulnerability_model(
     return vulnerability_model
 
 
-def read_sites(asset_collection_oid: int, session: Session) -> list[Site]:
-    stmt = select(Site).where(
-        Site._exposuremodel_oid == asset_collection_oid)
+def read_sites(asset_collection_oid: int, session: Session) -> list[dm.Site]:
+    stmt = select(dm.Site).where(
+        dm.Site._exposuremodel_oid == asset_collection_oid)
     return session.execute(stmt).scalars().all()
 
 
-def read_asset_collections(session: Session) -> list[ExposureModel]:
-    stmt = select(ExposureModel).order_by(ExposureModel._oid)
+def read_asset_collections(session: Session) -> list[dm.ExposureModel]:
+    stmt = select(dm.ExposureModel).order_by(dm.ExposureModel._oid)
     return session.execute(stmt).unique().scalars().all()
 
 
-def read_asset_collection(oid, session: Session) -> ExposureModel:
-    stmt = select(ExposureModel).where(ExposureModel._oid == oid)
+def read_asset_collection(oid, session: Session) -> dm.ExposureModel:
+    stmt = select(dm.ExposureModel).where(dm.ExposureModel._oid == oid)
     return session.execute(stmt).unique().scalar()
 
 
 def delete_asset_collection(asset_collection_oid: int,
                             session: Session) -> int:
-    stmt = delete(ExposureModel).where(
-        ExposureModel._oid == asset_collection_oid)
-    dlt = session.execute(stmt).rowcount
+    stmt = delete(dm.ExposureModel).where(
+        dm.ExposureModel._oid == asset_collection_oid)
+    session.execute(stmt)
     session.commit()
-    return dlt
 
 
-def read_fragility_models(session: Session) -> list[FragilityModel]:
-    stmt = select(FragilityModel).order_by(FragilityModel._oid)
+def read_fragility_models(session: Session) -> list[dm.FragilityModel]:
+    stmt = select(dm.FragilityModel).order_by(dm.FragilityModel._oid)
     return session.execute(stmt).unique().scalars().all()
 
 
-def read_fragility_model(oid: int, session: Session) -> FragilityModel:
-    stmt = select(FragilityModel).where(FragilityModel._oid == oid)
+def read_fragility_model(oid: int, session: Session) -> dm.FragilityModel:
+    stmt = select(dm.FragilityModel).where(dm.FragilityModel._oid == oid)
     return session.execute(stmt).unique().scalar()
 
 
 def delete_fragility_model(
         fragility_model_oid: int,
         session: Session) -> int:
-    stmt = delete(FragilityModel).where(
-        FragilityModel._oid == fragility_model_oid)
-    dlt = session.execute(stmt).rowcount
+    stmt = delete(dm.FragilityModel).where(
+        dm.FragilityModel._oid == fragility_model_oid)
+    session.execute(stmt)
     session.commit()
-    return dlt
 
 
-def read_vulnerability_models(session: Session) -> list[VulnerabilityModel]:
-    stmt = select(VulnerabilityModel).order_by(VulnerabilityModel._oid)
+def read_vulnerability_models(session: Session) -> list[dm.VulnerabilityModel]:
+    stmt = select(dm.VulnerabilityModel).order_by(dm.VulnerabilityModel._oid)
     return session.execute(stmt).unique().scalars().all()
 
 
-def read_vulnerability_model(oid: int, session: Session) -> VulnerabilityModel:
-    stmt = select(VulnerabilityModel).where(VulnerabilityModel._oid == oid)
+def read_vulnerability_model(
+        oid: int,
+        session: Session) -> dm.VulnerabilityModel:
+    stmt = select(
+        dm.VulnerabilityModel).where(
+        dm.VulnerabilityModel._oid == oid)
     return session.execute(stmt).unique().scalar()
 
 
 def delete_vulnerability_model(
         vulnerability_model_oid: int,
         session: Session) -> int:
-    stmt = delete(VulnerabilityModel).where(
-        VulnerabilityModel._oid == vulnerability_model_oid)
-    dlt = session.execute(stmt).rowcount
+    stmt = delete(dm.VulnerabilityModel).where(
+        dm.VulnerabilityModel._oid == vulnerability_model_oid)
+    session.execute(stmt)
     session.commit()
-    return dlt
-
-
-# def create_or_update_earthquake_information(
-#         earthquake: dict,
-#         session: Session) -> EarthquakeInformation:
-
-#     stmt = insert(EarthquakeInformation).values(**earthquake)
-#     upsert_stmt = stmt.on_conflict_do_update(
-#         constraint='originid_unique', set_=earthquake)
-#     earthquake = session.scalars(
-#         upsert_stmt.returning(
-#             EarthquakeInformation._oid),
-#         execution_options={
-#             "populate_existing": True}).first()
-#     session.commit()
-#     return earthquake
 
 
 def create_calculation(
         job: dict,
-        session: Session) -> LossCalculation | DamageCalculation:
+        session: Session) -> dm.LossCalculation | dm.DamageCalculation:
 
     calculation = CALCULATION_MAPPING[job.pop('calculation_mode')]
     calculation = calculation(**job)
@@ -299,15 +282,15 @@ def create_calculation(
 
 
 def read_calculation_branch(oid: int,
-                            session: Session) -> CalculationBranch:
-    stmt = select(CalculationBranch).where(CalculationBranch._oid == oid)
+                            session: Session) -> dm.CalculationBranch:
+    stmt = select(dm.CalculationBranch).where(dm.CalculationBranch._oid == oid)
     return session.execute(stmt).unique().scalar()
 
 
 def create_calculation_branch(branch: dict,
                               session: Session,
                               calculation_oid: int = None) \
-        -> LossCalculationBranch | DamageCalculationBranch:
+        -> dm.LossCalculationBranch | dm.DamageCalculationBranch:
 
     if calculation_oid:
         branch['_calculation_oid'] = calculation_oid
@@ -323,56 +306,48 @@ def create_calculation_branch(branch: dict,
 
 
 def update_calculation_branch_status(calculation_oid: int,
-                                     status: EStatus,
-                                     session: Session) -> CalculationBranch:
+                                     status: dm.EStatus,
+                                     session: Session) -> dm.CalculationBranch:
     calculation = read_calculation_branch(calculation_oid, session)
     calculation.status = status
     session.commit()
     return calculation
 
 
-def read_calculation(oid: int, session: Session) -> Calculation:
-    stmt = select(Calculation).where(Calculation._oid == oid)
+def read_calculation(oid: int, session: Session) -> dm.Calculation:
+    stmt = select(dm.Calculation).where(dm.Calculation._oid == oid)
     return session.execute(stmt).unique().scalar()
 
 
 def update_calculation_status(calculation_oid: int,
-                              status: EStatus,
-                              session: Session) -> Calculation:
+                              status: dm.EStatus,
+                              session: Session) -> dm.Calculation:
     calculation = read_calculation(calculation_oid, session)
     calculation.status = status
     session.commit()
     return calculation
 
 
-def read_calculations(session: Session) -> list[Calculation]:
-    stmt = select(Calculation).order_by(Calculation._oid)
+def read_calculations(session: Session,
+                      type: dm.EEarthquakeType | None) -> list[dm.Calculation]:
+
+    stmt = select(dm.Calculation).order_by(dm.Calculation._oid)
+
+    if type:
+        stmt = stmt.where(dm.Calculation.riskassessment.has(
+            dm.RiskAssessment.type == type))
     return session.execute(stmt).unique().scalars().all()
 
 
-def delete_scenario_calculation(
-        calculation_oid: int,
-        session: Session) -> None:
-    stmt = delete(Calculation).where(
-        Calculation.earthquakeinformation.has(
-            EarthquakeInformation.type == EEarthquakeType.SCENARIO)).where(
-        Calculation._oid == calculation_oid)
-    dlt = session.execute(
-        stmt, execution_options={
-            "synchronize_session": 'fetch'}).rowcount
+def delete_calculation(calculation_oid: int,
+                       session: Session) -> None:
+    stmt = delete(dm.Calculation).where(dm.Calculation._oid == calculation_oid)
+    session.execute(stmt)
     session.commit()
-    return dlt
-
-
-def read_scenario_calculations(session: Session) -> list[Calculation]:
-    stmt = select(Calculation).join(EarthquakeInformation).where(
-        EarthquakeInformation.type == EEarthquakeType.SCENARIO) \
-        .order_by(Calculation._oid)
-    return session.execute(stmt).unique().scalars().all()
 
 
 def create_risk_values(risk_values: pd.DataFrame,
-                       aggregation_tags: list[AggregationTag],
+                       aggregation_tags: list[dm.AggregationTag],
                        connection):
 
     max_procs = int(os.getenv('MAX_PROCESSES', '1'))
@@ -382,16 +357,16 @@ def create_risk_values(risk_values: pd.DataFrame,
     # TODO: find solution so it works with threading
     if max_procs == 1:
         cursor.execute(
-            f'LOCK TABLE {RiskValue.__table__.name} IN EXCLUSIVE MODE;')
+            f'LOCK TABLE {dm.RiskValue.__table__.name} IN EXCLUSIVE MODE;')
 
     # create the index on the riskvalues
-    index0 = get_nextval(cursor, RiskValue.__table__.name, '_oid')
+    index0 = get_nextval(cursor, dm.RiskValue.__table__.name, '_oid')
 
     risk_values['_oid'] = range(index0, index0 + len(risk_values))
     risk_values['losscategory'] = risk_values['losscategory'].map(
         attrgetter('name'))
 
-    # build up many2many reference table riskvalue_aggregationtag
+    # build up many2many reference table dm.riskvalue_aggregationtag
     df_agg_val = pd.DataFrame(
         {'riskvalue': risk_values['_oid'],
          'aggregationtag': risk_values.pop('aggregationtags'),
@@ -406,11 +381,14 @@ def create_risk_values(risk_values: pd.DataFrame,
         aggregation_tags).map(attrgetter('_oid'))
 
     if max_procs > 1:
-        copy_pooled(risk_values, RiskValue.__table__.name, max_procs)
-        copy_pooled(df_agg_val, riskvalue_aggregationtag.name, max_procs)
+        copy_pooled(risk_values, dm.RiskValue.__table__.name, max_procs)
+        copy_pooled(df_agg_val, dm.riskvalue_aggregationtag.name, max_procs)
     else:
-        copy_from_dataframe(cursor, risk_values, RiskValue.__table__.name)
-        copy_from_dataframe(cursor, df_agg_val, riskvalue_aggregationtag.name)
+        copy_from_dataframe(cursor, risk_values, dm.RiskValue.__table__.name)
+        copy_from_dataframe(
+            cursor,
+            df_agg_val,
+            dm.riskvalue_aggregationtag.name)
     cursor.close()
 
 
@@ -444,8 +422,9 @@ def copy_raw(df, tablename):
     conn.close()
 
 
-def read_aggregationtags(type: str, session: Session) -> list[AggregationTag]:
-    statement = select(AggregationTag).where(AggregationTag.type == type)
+def read_aggregationtags(type: str,
+                         session: Session) -> list[dm.AggregationTag]:
+    statement = select(dm.AggregationTag).where(dm.AggregationTag.type == type)
     return session.execute(statement).unique().scalars().all()
 
 
@@ -475,21 +454,43 @@ def get_nextval(cursor, table: str, column: str):
     return next
 
 
-def delete_risk_assessment_model(
-        risk_assessment_oid: int,
-        session: Session) -> int:
-    stmt = delete(RiskAssessment).where(
-        RiskAssessment._oid == risk_assessment_oid)
-    dlt = session.execute(stmt).rowcount
+def delete_risk_assessment(risk_assessment_oid: int,
+                           session: Session) -> int:
+    stmt = delete(dm.RiskAssessment).where(
+        dm.RiskAssessment._oid == risk_assessment_oid)
+
+    session.execute(stmt)
     session.commit()
-    return dlt
 
 
-def create_risk_assessment(
-        originid: dict,
-        session: Session) -> RiskAssessment:
+def create_risk_assessment(originid: str,
+                           losscalculation_oid: int,
+                           damagecalculation_oid: int,
+                           session: Session,
+                           **kwargs
+                           ) -> dm.RiskAssessment:
 
-    risk_assessment = RiskAssessment(originid=originid)
+    risk_assessment = dm.RiskAssessment(
+        originid=originid,
+        _losscalculation_oid=losscalculation_oid,
+        _damagecalculation_oid=damagecalculation_oid,
+        **kwargs)
     session.add(risk_assessment)
     session.commit()
+
     return risk_assessment
+
+
+def read_risk_assessments(
+        type: dm.EEarthquakeType | None,
+        session: Session) -> list[dm.RiskAssessment]:
+
+    stmt = select(dm.RiskAssessment)
+    if type:
+        stmt = stmt.where(dm.RiskAssessment.type == type)
+    return session.execute(stmt).unique().scalars().all()
+
+
+def read_risk_assessment(oid: int, session: Session) -> dm.RiskAssessment:
+    stmt = select(dm.RiskAssessment).where(dm.RiskAssessment._oid == oid)
+    return session.execute(stmt).unique().scalar()

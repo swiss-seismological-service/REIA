@@ -5,10 +5,12 @@ import os
 import time
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
+from typing import Optional
 
 import typer
 
-from reia.actions import (create_risk_scenario, dispatch_openquake_calculation,
+from reia.actions import (create_scenario_calculation,
+                          dispatch_openquake_calculation, read_gmfs,
                           run_openquake_calculations)
 from reia.datamodel import EEarthquakeType
 from reia.db import crud, drop_db, init_db, session
@@ -22,6 +24,7 @@ from settings import get_config
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()
+gmfs = typer.Typer()
 exposure = typer.Typer()
 vulnerability = typer.Typer()
 fragility = typer.Typer()
@@ -32,6 +35,7 @@ risk_assessment = typer.Typer()
 
 app.add_typer(db, name='db',
               help='Database Commands')
+app.add_typer(gmfs, name='gmfs', help='Prepare gmf files')
 app.add_typer(exposure, name='exposure',
               help='Manage Exposure Models')
 app.add_typer(vulnerability, name='vulnerability',
@@ -66,6 +70,17 @@ def initialize_database():
     typer.echo('Tables created.')
 
 
+@gmfs.command('from-dstore')
+def export_gmfs_from_dstore(dstore: Path, directory: Path):
+    gmf_data, site_collection = read_gmfs(str(dstore))
+
+    with open(Path(directory, 'gmfs.csv'), 'w') as f:
+        gmf_data.to_csv(f, index=False)
+
+    with open(Path(directory, 'sites.csv'), 'w') as f:
+        site_collection.to_csv(f, index=False)
+
+
 @exposure.command('add')
 def add_exposure(exposure: Path, name: str):
     '''
@@ -91,9 +106,9 @@ def delete_exposure(asset_collection_oid: int):
     '''
     Delete an exposure model.
     '''
-    deleted = crud.delete_asset_collection(asset_collection_oid, session)
+    crud.delete_asset_collection(asset_collection_oid, session)
     typer.echo(
-        f'Deleted {deleted} asset collections with ID {asset_collection_oid}.')
+        f'Deleted exposure model with ID {asset_collection_oid}.')
     session.remove()
 
 
@@ -163,8 +178,7 @@ def delete_fragility(fragility_model_oid: int):
     Delete a fragility model.
     '''
     crud.delete_fragility_model(fragility_model_oid, session)
-    typer.echo(
-        f'Deleted fragility model with ID {fragility_model_oid}.')
+    typer.echo(f'Deleted fragility model with ID {fragility_model_oid}.')
     session.remove()
 
 
@@ -231,7 +245,7 @@ def delete_taxonomymap(taxonomymap_oid: int):
     '''
     crud.delete_taxonomymap(taxonomymap_oid, session)
     typer.echo(
-        f'Deleted vulnerability model with ID {taxonomymap_oid}.')
+        f'Deleted taxonomy map with ID {taxonomymap_oid}.')
     session.remove()
 
 
@@ -385,7 +399,6 @@ def run_test_calculation(settings_file: Path):
 
 @calculation.command('run')
 def run_calculation(
-        earthquake_file: typer.FileText,
         settings: list[str] = typer.Option([]),
         weights: list[float] = typer.Option([])):
     '''
@@ -408,21 +421,17 @@ def run_calculation(
         job_file.read(Path(s[1]))
         branch_settings.append(CalculationBranchSettings(s[0], job_file))
 
-    # create or update earthquake
-    earthquake_oid = crud.create_or_update_earthquake_information(
-        json.loads(earthquake_file.read()), session)
-
-    run_openquake_calculations(branch_settings, earthquake_oid, session)
+    run_openquake_calculations(branch_settings, session)
 
     session.remove()
 
 
 @calculation.command('list')
-def list_calculations():
+def list_calculations(eqtype: Optional[EEarthquakeType] = typer.Option(None)):
     '''
     List all calculations.
     '''
-    calculations = crud.read_calculations(session)
+    calculations = crud.read_calculations(session, eqtype)
 
     typer.echo('List of existing calculations:')
     typer.echo('{0:<10} {1:<25} {2:<25} {3:<30} {4}'.format(
@@ -442,48 +451,21 @@ def list_calculations():
     session.remove()
 
 
-@scenario.command('list')
-def list_scenario():
+@calculation.command('delete')
+def delete_calculation(calculation_oid: int):
     '''
-    List all scenarios.
+    Delete a calculation.
     '''
-    scenarios = crud.read_scenario_calculations(session)
-
-    typer.echo('List of existing scenarios:')
-    typer.echo('{0:<10} {1:<25} {2:<25} {3:<30} {4}'.format(
-        'ID',
-        'Status',
-        'Type',
-        'Created',
-        'Description'))
-
-    for sc in scenarios:
-        typer.echo('{0:<10} {1:<25} {2:<25} {3:<30} {4}'.format(
-            sc._oid,
-            sc.status,
-            sc._type,
-            str(sc.creationinfo_creationtime),
-            sc.description))
-
-    session.remove()
-
-
-@scenario.command('delete')
-def delete_scenario(scenario_oid: int):
-    '''
-    Delete a scenario calculation
-    '''
-    deleted = crud.delete_scenario_calculation(scenario_oid, session)
+    crud.delete_calculation(calculation_oid, session)
     typer.echo(
-        f'Deleted {deleted} scenario calculation with '
-        f'ID {scenario_oid}.')
+        f'Deleted calculation with ID {calculation_oid}.')
     session.remove()
 
 
 @scenario.command('add')
 def add_scenario(config: typer.FileText):
     '''
-    Add scenario data.
+    Add scenario.
     '''
 
     scenario_configs = json.loads(config.read())
@@ -514,27 +496,24 @@ def add_scenario(config: typer.FileText):
     for config in scenario_configs:
         start_scenario = time.perf_counter()
         LOGGER.info(f'Starting to parse scenario {config["scenario_name"]}.')
-        earthquake_oid = crud.create_or_update_earthquake_information(
-            {'type': EEarthquakeType.SCENARIO, 'originid': config['originid']},
-            session)
 
-        if ERiskType.LOSS.name.lower(
-        ) in config and config[ERiskType.LOSS.name.lower()]:
-            LOGGER.info('Creating risk scenarios....')
-            create_risk_scenario(earthquake_oid,
-                                 ERiskType.LOSS,
-                                 aggregation_tags,
-                                 config,
-                                 session)
+        LOGGER.info('Creating risk scenarios....')
+        loss_calculation = create_scenario_calculation(ERiskType.LOSS,
+                                                       aggregation_tags,
+                                                       config,
+                                                       session)
 
-        if ERiskType.DAMAGE.name.lower(
-        ) in config and config[ERiskType.DAMAGE.name.lower()]:
-            LOGGER.info('Creating damage scenarios....')
-            create_risk_scenario(earthquake_oid,
-                                 ERiskType.DAMAGE,
-                                 aggregation_tags,
-                                 config,
-                                 session)
+        LOGGER.info('Creating damage scenarios....')
+        damage_calculation = create_scenario_calculation(ERiskType.DAMAGE,
+                                                         aggregation_tags,
+                                                         config,
+                                                         session)
+
+        crud.create_risk_assessment(config['originid'],
+                                    loss_calculation._oid,
+                                    damage_calculation._oid,
+                                    session,
+                                    type=EEarthquakeType.SCENARIO)
 
         LOGGER.info(
             'Saving the scenario took '
@@ -549,25 +528,48 @@ def add_scenario(config: typer.FileText):
 
 
 @risk_assessment.command('add')
-def add_risk_assessment(originid: str):
+def add_risk_assessment(originid: str, loss_id: int, damage_id: int):
     '''
-    add a risk_assessment calculation
+    Add a risk assessment.
     '''
-    added = crud.create_risk_assessment(originid, session)
+    added = crud.create_risk_assessment(
+        originid, loss_id, damage_id, session)
 
     typer.echo(
-        f'addd {added} risk_assessment calculation with '
-        f'ID {originid}.')
+        f'added risk_assessment for {added.originid} with '
+        f'ID {added._oid}.')
     session.remove()
 
 
 @risk_assessment.command('delete')
 def delete_risk_assessment(risk_assessment_oid: int):
     '''
-    Delete a risk_assessment calculation
+    Delete a risk assessment.
     '''
-    deleted = crud.delete_risk_assessment(risk_assessment_oid, session)
-    typer.echo(
-        f'Deleted {deleted} risk_assessment calculation with '
-        f'ID {risk_assessment_oid}.')
+    crud.delete_risk_assessment(risk_assessment_oid, session)
+    typer.echo(f'Deleted risk_assessment with ID {risk_assessment_oid}.')
+    session.remove()
+
+
+@risk_assessment.command('list')
+def list_risk_assessment():
+    '''
+    List risk assessments.
+    '''
+    risk_assessments = crud.read_risk_assessments(session)
+
+    typer.echo('List of existing risk assessments:')
+    typer.echo('{0:<10} {1:<25} {2:<25} {3}'.format(
+        'ID',
+        'Status',
+        'Type',
+        'Created'))
+
+    for c in risk_assessments:
+        typer.echo('{0:<10} {1:<25} {2:<25} {3}'.format(
+            c._oid,
+            c.status,
+            c.type,
+            str(c.creationinfo_creationtime)))
+    session.remove()
     session.remove()
