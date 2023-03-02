@@ -464,16 +464,12 @@ def delete_risk_assessment(risk_assessment_oid: int,
 
 
 def create_risk_assessment(originid: str,
-                           losscalculation_oid: int,
-                           damagecalculation_oid: int,
                            session: Session,
                            **kwargs
                            ) -> dm.RiskAssessment:
 
     risk_assessment = dm.RiskAssessment(
         originid=originid,
-        _losscalculation_oid=losscalculation_oid,
-        _damagecalculation_oid=damagecalculation_oid,
         **kwargs)
     session.add(risk_assessment)
     session.commit()
@@ -482,8 +478,8 @@ def create_risk_assessment(originid: str,
 
 
 def read_risk_assessments(
-        type: dm.EEarthquakeType | None,
-        session: Session) -> list[dm.RiskAssessment]:
+        session: Session,
+        type: dm.EEarthquakeType | None = None) -> list[dm.RiskAssessment]:
 
     stmt = select(dm.RiskAssessment)
     if type:
@@ -494,3 +490,12 @@ def read_risk_assessments(
 def read_risk_assessment(oid: int, session: Session) -> dm.RiskAssessment:
     stmt = select(dm.RiskAssessment).where(dm.RiskAssessment._oid == oid)
     return session.execute(stmt).unique().scalar()
+
+
+def update_risk_assessment_status(riskassessment_oid: int,
+                                  status: dm.EStatus,
+                                  session: Session) -> dm.Calculation:
+    risk_assessment = read_risk_assessment(riskassessment_oid, session)
+    risk_assessment.status = status
+    session.commit()
+    return risk_assessment

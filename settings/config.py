@@ -3,11 +3,7 @@ import os
 
 class Config(object):
     """ Base Configuration """
-    SECRET_KEY = os.getenv('SECRET_KEY', default='')
-    OQ_SETTINGS = [(0.3, 'settings/oq_settings.ini'),
-                   (0.7, 'settings/oq_settings_sion.ini')]
     OQ_API_SERVER = 'http://localhost:8800'
-    SCENARIO_DATA_FOLDER = os.getenv('SCENARIO_DATA_FOLDER')
     OQ_API_AUTH = dict(
         username=os.getenv('OQ_USER'),
         password=os.getenv('OQ_PASSWORD'))

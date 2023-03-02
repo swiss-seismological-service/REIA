@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import time
+import traceback
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from typing import Optional
@@ -12,7 +13,7 @@ import typer
 from reia.actions import (create_scenario_calculation,
                           dispatch_openquake_calculation, read_gmfs,
                           run_openquake_calculations)
-from reia.datamodel import EEarthquakeType
+from reia.datamodel import EEarthquakeType, EStatus
 from reia.db import crud, drop_db, init_db, session
 from reia.io import CalculationBranchSettings, ERiskType
 from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
@@ -20,7 +21,6 @@ from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
 from reia.io.write import (assemble_calculation_input, create_exposure_input,
                            create_fragility_input, create_taxonomymap_input,
                            create_vulnerability_input)
-from settings import get_config
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()
@@ -399,12 +399,11 @@ def run_test_calculation(settings_file: Path):
 
 @calculation.command('run')
 def run_calculation(
-        settings: list[str] = typer.Option([]),
-        weights: list[float] = typer.Option([])):
+        settings: list[str] = typer.Option(...),
+        weights: list[float] = typer.Option(...)):
     '''
     Run an OpenQuake calculation.
     '''
-
     # console input validation
     if settings and not len(settings) == len(weights):
         typer.echo('Error: Number of setting files and weights provided '
@@ -412,8 +411,7 @@ def run_calculation(
         raise typer.Exit(code=1)
 
     # input parsing
-    settings = zip(weights, settings) if settings \
-        else get_config().OQ_SETTINGS
+    settings = zip(weights, settings)
 
     branch_settings = []
     for s in settings:
@@ -444,8 +442,8 @@ def list_calculations(eqtype: Optional[EEarthquakeType] = typer.Option(None)):
     for c in calculations:
         typer.echo('{0:<10} {1:<25} {2:<25} {3:<30} {4}'.format(
             c._oid,
-            c.status,
-            c._type,
+            c.status.name,
+            c._type.name,
             str(c.creationinfo_creationtime),
             c.description))
     session.remove()
@@ -509,11 +507,13 @@ def add_scenario(config: typer.FileText):
                                                          config,
                                                          session)
 
-        crud.create_risk_assessment(config['originid'],
-                                    loss_calculation._oid,
-                                    damage_calculation._oid,
-                                    session,
-                                    type=EEarthquakeType.SCENARIO)
+        crud.create_risk_assessment(
+            config['originid'],
+            session,
+            _losscalculation_oid=loss_calculation._oid,
+            _damagecalculation_oid=damage_calculation._oid,
+            type=EEarthquakeType.SCENARIO,
+            status=EStatus.COMPLETE)
 
         LOGGER.info(
             'Saving the scenario took '
@@ -533,7 +533,10 @@ def add_risk_assessment(originid: str, loss_id: int, damage_id: int):
     Add a risk assessment.
     '''
     added = crud.create_risk_assessment(
-        originid, loss_id, damage_id, session)
+        originid,
+        session,
+        _losscalculation_oid=loss_id,
+        _damagecalculation_oid=damage_id)
 
     typer.echo(
         f'added risk_assessment for {added.originid} with '
@@ -568,8 +571,51 @@ def list_risk_assessment():
     for c in risk_assessments:
         typer.echo('{0:<10} {1:<25} {2:<25} {3}'.format(
             c._oid,
-            c.status,
-            c.type,
+            c.status.name,
+            c.type.name,
             str(c.creationinfo_creationtime)))
     session.remove()
-    session.remove()
+
+
+@risk_assessment.command('run')
+def run_risk_assessment(
+        originid: str,
+        loss: str = typer.Option(...),
+        damage: str = typer.Option(...)):
+    '''
+    Run a risk assessment.
+    '''
+    typer.echo('Running risk assessment:')
+    typer.echo('Starting loss calculations...')
+
+    risk_assessment = crud.create_risk_assessment(
+        originid, session, type=EEarthquakeType.NATURAL,
+        status=EStatus.CREATED)
+    try:
+        job_file_loss = configparser.ConfigParser()
+        job_file_loss.read(Path(loss))
+        loss_branch = CalculationBranchSettings(1, job_file_loss)
+        risk_assessment = crud.update_risk_assessment_status(
+            risk_assessment._oid, EStatus.EXECUTING, session)
+        losscalculation = run_openquake_calculations([loss_branch], session)
+
+        risk_assessment._losscalculation_oid = losscalculation._oid
+
+        typer.echo('Starting damage calculations...')
+        job_file_damage = configparser.ConfigParser()
+        job_file_damage.read(Path(damage))
+        damage_branch = CalculationBranchSettings(1, job_file_damage)
+        damagecalculation = run_openquake_calculations(
+            [damage_branch], session)
+
+        risk_assessment._damagecalculation_oid = damagecalculation._oid
+        risk_assessment.status = EStatus(
+            min(losscalculation.status.value, damagecalculation.status.value))
+    except BaseException as e:
+        risk_assessment.status = EStatus.ABORTED if isinstance(
+            e, KeyboardInterrupt) else EStatus.FAILED
+        traceback.print_exc()
+    finally:
+        session.commit()
+        session.remove()
+        typer.echo('Done.')

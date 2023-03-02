@@ -189,6 +189,8 @@ def run_openquake_calculations(
 
         crud.update_calculation_status(calculation._oid, status, session)
 
+        return calculation
+
     except BaseException as e:
         session.rollback()
         for el in session.identity_map.values():

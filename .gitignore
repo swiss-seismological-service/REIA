@@ -6,6 +6,7 @@ test.py
 oq_outputs/
 test_output/
 test_model/
+init.sh
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
