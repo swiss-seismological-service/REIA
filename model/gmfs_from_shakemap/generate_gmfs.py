@@ -1,49 +1,84 @@
 import csv
-from openquake.hazardlib.shakemap.maps import get_sitecol_shakemap
+import time
+
+import numpy as np
+import pandas as pd
+from openquake.hazardlib import geo
 from openquake.hazardlib.shakemap.gmfs import to_gmfs
+from openquake.hazardlib.shakemap.maps import get_sitecol_shakemap
+from openquake.hazardlib.shakemap.parsers import FIELDMAP, get_array
 from openquake.hazardlib.site import SiteCollection
 from openquake.risklib.asset import Exposure
+from scipy.stats import truncnorm
 
-exposure_xml = ['../exposure.xml']
+OMP_NUM_THREADS = 4
+ALLOW_THREADS = 4
+exposure_xml = [
+    'test_model/Exposure/SAM/Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml']
 
 mesh, assets_by_site = Exposure.read(
     exposure_xml, check_dupl=False).get_mesh_assets_by_site()
-sitecol = SiteCollection.from_points(
+full_sitecol = SiteCollection.from_points(
     mesh.lons, mesh.lats)
 
+psa03 = pd.read_csv('test_model/psa03_withampli.csv', delimiter=",")
+psa06 = pd.read_csv('test_model/psa06_withampli.csv', delimiter=",")
+gmfs = psa03.merge(psa06, on=['lat', 'lon'], how='inner').dropna()
 
-uridict = {"grid_url": "grid.xml",
-           "uncertainty_url": "uncertainty.xml"}
+gmfs['psa06'] = gmfs['psa06'] / 9.80665
+gmfs['psa03'] = gmfs['psa03'] / 9.80665
+gmfs = gmfs[(gmfs['psa06'] > 0.05) & (gmfs['psa03'] > 0.1)]
 
-_, shkmp, discarded = get_sitecol_shakemap(
-    'usgs_xml', uridict, ['MMI'], sitecol)
+gmfs = gmfs.to_records(index=False)
 
-gmf_dict = {'kind': 'mmi'}
+sitecol, gmfs, discarded = geo.utils.assoc(gmfs, full_sitecol, 1.32, 'filter')
 
-gmfs = to_gmfs(shkmp, gmf_dict, False, 99, 100, 42, ['MMI'])
 
-# print(gmfs[1].shape)
+imts = ['psa03', 'psa06']
+stds = ['lnpsa03_uncertainty', 'lnpsa06_uncertainty']
 
-with open('../sites_gen.csv', 'w') as f:
+# assign iterators
+M = len(imts)       # Number of imts
+N = len(gmfs)       # number of sites
+
+num_gmfs = 500
+
+start = time.perf_counter()
+
+# generate standard normal random variables of shape (M*N, E)
+Z = truncnorm.rvs(-2, 2, loc=0, scale=1,
+                  size=(M * N, num_gmfs), random_state=41)
+print(time.perf_counter() - start)
+
+# build array of mean values of shape (M*N, E)
+mu = np.array([np.ones(num_gmfs) * gmfs[str(imt)][j]
+               for imt in imts for j in range(N)])
+
+sig = np.array([gmfs[std] for std in stds]).flatten()
+
+gmfs = np.exp((Z.T * sig).T + np.log(mu))
+
+gmfs = gmfs.reshape((M, N, num_gmfs)).transpose(1, 2, 0)
+
+with open('sites_gen.csv', 'w') as f:
     writer = csv.writer(f)
 
     # write the header
     writer.writerow(['site_id', 'lon', 'lat'])
 
-    for site in sitecol:
+    for site in full_sitecol:
         # write the data
-        if site.id == 18084:
-            print(site)
         writer.writerow([site.id,
                          round(site.location.longitude, 5),
                          round(site.location.latitude, 5)])
 
-with open('../gmfs_gen.csv', 'w') as f:
+
+with open('gmfs_gen.csv', 'w') as f:
     writer = csv.writer(f)
 
     # write the header
-    writer.writerow(['eid', 'sid', 'gmv_MMI'])
+    writer.writerow(['sid', 'eid', 'gmv_SA(0.3)', 'gmv_SA(0.6)'])
 
-    for i, samples in enumerate(gmfs[1]):
-        for j, val in enumerate(samples):
-            writer.writerow([j, i, round(val[0], 5)])
+    for sid, samples in zip(sitecol.sids, gmfs):
+        for eid, val in enumerate(samples):
+            writer.writerow([sid, eid, round(val[0], 5), round(val[1], 5)])
