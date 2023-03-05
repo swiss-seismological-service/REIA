@@ -6,7 +6,6 @@ test.py
 oq_outputs/
 test_output/
 test_model/
-init.sh
 *_gen.csv
 
 # Byte-compiled / optimized / DLL files

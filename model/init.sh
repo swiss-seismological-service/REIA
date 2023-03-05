@@ -1,0 +1,15 @@
+#!/bin/bash
+
+source env/bin/activate
+reia exposure add test_model/Exposure/SAM/Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml ermch_exposure
+
+reia vulnerability add test_model/Vulnerability/SAM/structural_vulnerability_model_mechanical_fragility_extrapo_complete_supp_T0306_v4_2_BT_agg1-4-20-85.xml ermch_structural
+reia vulnerability add test_model/Vulnerability/SAM/content_vulnerability_model_mechanical_fragility_extrapo_complete_supp_T0306_v4_2_BT_agg1-4-20-85.xml ermch_contents
+reia vulnerability add test_model/Vulnerability/SAM/fatality_vulnerability_model_mechanical_fragility_extrapo_complete_supp_T0306_v4_2_mean_agg1-4-20-85.xml ermch_occupants
+reia vulnerability add test_model/Vulnerability/SAM/injury_vulnerability_model_mechanical_fragility_extrapo_complete_supp_T0306_v4_2_mean_agg1-4-20-85.xml ermch_nonstructural
+reia vulnerability add test_model/Vulnerability/SAM/displaced_vulnerability_model_mechanical_fragility_extrapo_complete_supp_T0306_v4_2_meanagg1-4-20-85.xml ermch_business
+
+reia fragility add test_model/Fragility/SAM/mechanical_fragility_extrapo_complete_supp_T0306_v4_2.xml erch_structural
+reia taxonomymap add test_model/Fragility/SAM/taxonomy_mapping.csv ermch_taxonomymap
+
+deactivate
