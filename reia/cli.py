@@ -16,6 +16,7 @@ from reia.actions import (create_scenario_calculation,
 from reia.datamodel import EEarthquakeType, EStatus
 from reia.db import crud, drop_db, init_db, session
 from reia.io import CalculationBranchSettings, ERiskType
+from reia.io.gmfs import sample_gmfs_from_csv, sample_gmfs_from_shakemap
 from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
                           parse_vulnerability)
 from reia.io.write import (assemble_calculation_input, create_exposure_input,
@@ -79,6 +80,27 @@ def export_gmfs_from_dstore(dstore: Path, directory: Path):
 
     with open(Path(directory, 'sites.csv'), 'w') as f:
         site_collection.to_csv(f, index=False)
+
+
+@gmfs.command('sample')
+def sample_gmfs(directory: Path):
+    exposure_xml = [
+        'test_model/Exposure/SAM/'
+        'Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml']
+    psa03 = Path(directory, 'psa03_withampli.csv')
+    psa06 = Path(directory, 'psa06_withampli.csv')
+    sample_gmfs_from_csv(exposure_xml, psa03, psa06)
+
+
+@gmfs.command('shakemap')
+def sample_shakemap(grid_xml: Path, uncertainty_xml: Path):
+    exposure_xml = [
+        'test_model/Exposure/SAM/'
+        'Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml']
+    sample_gmfs_from_shakemap(
+        exposure_xml,
+        str(grid_xml),
+        str(uncertainty_xml))
 
 
 @exposure.command('add')
