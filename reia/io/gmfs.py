@@ -25,7 +25,8 @@ def sample_gmfs_from_csv(exposure_xml: str,
 
     gmfs['psa06'] = gmfs['psa06'] / 9.80665
     gmfs['psa03'] = gmfs['psa03'] / 9.80665
-    gmfs = gmfs[(gmfs['psa06'] > 0.05) & (gmfs['psa03'] > 0.1)]
+    # gmfs = gmfs[(gmfs['psa06'] > 0.05) & (gmfs['psa03'] > 0.1)]
+    gmfs = gmfs[(gmfs['psa06'] > 0.0001) & (gmfs['psa03'] > 0.0005)]
 
     gmfs = gmfs.to_records(index=False)
 
