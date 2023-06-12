@@ -13,36 +13,71 @@ from scipy.stats import truncnorm
 def sample_gmfs_from_csv(exposure_xml: str,
                          psa03_csv: str,
                          psa06_csv: str):
+    """
+    Sample ground motion fields (GMFs) from CSV files.
 
-    mesh, assets_by_site = Exposure.read(
+    Parameters
+    ----------
+    exposure_xml : str
+        Path to the exposure XML file.
+    psa03_csv : str
+        Path to the CSV file containing the PSA03 values.
+    psa06_csv : str
+        Path to the CSV file containing the PSA06 values.
+
+    Returns
+    -------
+    None
+    """
+
+    # create a SiteCollection
+    mesh, _ = Exposure.read(
         exposure_xml, check_dupl=False).get_mesh_assets_by_site()
     full_sitecol = SiteCollection.from_points(
         mesh.lons, mesh.lats)
 
+    # read csv files and merge into one dataframe
     psa03 = pd.read_csv(psa03_csv, delimiter=",")
     psa06 = pd.read_csv(psa06_csv, delimiter=",")
     gmfs = psa03.merge(psa06, on=['lat', 'lon'], how='inner').dropna()
 
+    # unit conversion
     gmfs['psa06'] = gmfs['psa06'] / 9.80665
     gmfs['psa03'] = gmfs['psa03'] / 9.80665
-    # gmfs = gmfs[(gmfs['psa06'] > 0.05) & (gmfs['psa03'] > 0.1)]
-    gmfs = gmfs[(gmfs['psa06'] > 0.0001) & (gmfs['psa03'] > 0.0005)]
 
+    # filter out sites with low psa values
+    thresholds = [(0.05, 0.1), (0.005, 0.01),
+                  (0.0005, 0.001), (0.0001, 0.0005)]
+
+    # filter adaptively so that there are some sites left
+    for ts in thresholds:
+        df = gmfs[(gmfs['psa06'] > ts[0]) & (gmfs['psa03'] > ts[1])]
+        if not df.empty:
+            gmfs = df
+            print(ts)
+            break
+
+    # convert back to array
     gmfs = gmfs.to_records(index=False)
 
+    # associate gmfs back to sitecollection assoc_dist must be relative to
+    # resolution of gmf input to make sure that they get associated to the
+    # correct sites
+    # TODO: make assoc_dist dynamic
     sitecol, gmfs, discarded = geo.utils.assoc(
         gmfs, full_sitecol, 1.32, 'filter')
 
     imts = ['psa03', 'psa06']
     stds = ['lnpsa03_uncertainty', 'lnpsa06_uncertainty']
 
-    # assign iterators
+    # build up gmfs matrix for sampling
     M = len(imts)       # Number of imts
     N = len(gmfs)       # number of sites
 
     num_gmfs = 500
 
-    # generate standard normal random variables of shape (M*N, E)
+    # SAMPLING
+    # generate standard normal random variates of shape (M*N, E)
     Z = truncnorm.rvs(-2, 2, loc=0, scale=1,
                       size=(M * N, num_gmfs), random_state=41)
 
