@@ -14,6 +14,18 @@ from settings import get_config
 config = get_config()
 
 
+def oqapi_failed_for_zero_losses(job_id: int) -> bool:
+    session = oqapi_auth_session()
+    response = session.get(
+        f'{config.OQ_API_SERVER}/v1/calc/{job_id}/traceback')
+    response.raise_for_status()
+    response = response.json()
+    empty = 'SystemExit: The risk_by_event table is empty!'
+    if any(empty in r for r in response):
+        return True
+    return False
+
+
 def oqapi_auth_session() -> requests.Session:
     session = requests.Session()
     session.post(f'{config.OQ_API_SERVER}/accounts/ajax_login/',
