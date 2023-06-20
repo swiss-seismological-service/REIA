@@ -2,6 +2,7 @@ import ast
 import configparser
 import io
 import sys
+from pathlib import Path
 from typing import Any, TextIO, Tuple
 
 import pandas as pd
@@ -129,9 +130,13 @@ def flatten_config(file: TextIO) -> dict:
 def create_file_pointer(template_name: str, **kwargs) -> io.StringIO:
     """ create file pointer """
     sio = io.StringIO()
-    with open(template_name) as t:
+    with open(Path(get_project_root(), template_name)) as t:
         template = Template(t.read(), autoescape=select_autoescape())
     template.stream(**kwargs).dump(sio)
     sio.seek(0)
     sio.name = template_name.name
     return sio
+
+
+def get_project_root() -> Path:
+    return Path(__file__).parent.parent

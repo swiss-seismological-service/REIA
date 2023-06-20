@@ -85,7 +85,7 @@ def export_gmfs_from_dstore(dstore: Path, directory: Path):
 @gmfs.command('sample')
 def sample_gmfs(directory: Path):
     exposure_xml = [
-        'test_model/Exposure/SAM/'
+        '../test_model/Exposure/SAM/'
         'Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml']
     psa03 = Path(directory, 'psa03_withampli.csv')
     psa06 = Path(directory, 'psa06_withampli.csv')
@@ -95,7 +95,7 @@ def sample_gmfs(directory: Path):
 @gmfs.command('shakemap')
 def sample_shakemap(grid_xml: Path, uncertainty_xml: Path):
     exposure_xml = [
-        'test_model/Exposure/SAM/'
+        '../test_model/Exposure/SAM/'
         'Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml']
     sample_gmfs_from_shakemap(
         exposure_xml,
