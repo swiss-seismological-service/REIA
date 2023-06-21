@@ -85,7 +85,7 @@ class OQCalculationAPI(APIConnection):
         response = response.json()
 
         self.status = response['status']
-        self.mode = response['mode']
+        self.mode = response['calculation_mode']
         self.is_running = response['is_running']
         self.abortable = response['abortable']
 
