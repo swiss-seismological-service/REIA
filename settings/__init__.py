@@ -1,10 +1,11 @@
 import os
 
-from dotenv import load_dotenv
+import dotenv
 
 from reia.utils import import_string
 
-load_dotenv()  # load environment variables
+dotenv_file = dotenv.find_dotenv(usecwd=True)
+dotenv.load_dotenv(dotenv_file)
 
 
 def get_config():
