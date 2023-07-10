@@ -1,15 +1,12 @@
 import logging
 import time
 from configparser import ConfigParser
-from typing import Tuple
 
-from openquake.commonlib.datastore import read
-from pandas import DataFrame
 from requests import Response
 from sqlalchemy.orm import Session
 
 from reia.datamodel import CalculationBranch, EStatus
-from reia.db import crud, engine
+from reia.db import crud
 from reia.io import CalculationBranchSettings, ERiskType
 from reia.io.dstore import get_risk_from_dstore
 from reia.io.read import parse_calculation_input, validate_calculation_input
@@ -19,64 +16,6 @@ from reia.oqapi import (oqapi_failed_for_zero_losses,
                         oqapi_send_calculation)
 
 LOGGER = logging.getLogger(__name__)
-
-
-def create_scenario_calculation(risk_type: ERiskType,
-                                aggregation_tags: list,
-                                config: dict,
-                                session: Session):
-
-    assert sum([loss['weight']
-               for loss in config[risk_type.name.lower()]]) == 1
-
-    calculation = crud.create_calculation(
-        {'aggregateby': ['Canton;CantonGemeinde'],
-         'status': EStatus.CREATED,
-         'calculation_mode': risk_type.value,
-         'description': config["scenario_name"]},
-        session)
-
-    connection = engine.raw_connection()
-
-    try:
-        for loss_branch in config[risk_type.name.lower()]:
-            branch = crud.create_calculation_branch(
-                {'weight': loss_branch['weight'],
-                 'status': EStatus.CREATED,
-                 '_calculation_oid': calculation._oid,
-                 '_exposuremodel_oid': loss_branch['exposure'],
-                 'calculation_mode': risk_type.value},
-                session)
-            LOGGER.info(f'Parsing datastore {loss_branch["store"]}')
-
-            dstore_path = f'{config["folder"]}/{loss_branch["store"]}'
-            dstore = read(dstore_path)
-            df = get_risk_from_dstore(dstore, risk_type)
-
-            df['weight'] = df['weight'] * loss_branch['weight']
-            df['_calculation_oid'] = calculation._oid
-            df[f'_{risk_type.name.lower()}calculationbranch_oid'] = branch._oid
-            df['_type'] = risk_type.name
-            LOGGER.info('Saving risk values to database...')
-            crud.create_risk_values(df, aggregation_tags, connection)
-            crud.update_calculation_branch_status(
-                branch._oid, EStatus.COMPLETE, session)
-            LOGGER.info('Successfully saved risk values to database.')
-
-        crud.update_calculation_status(
-            calculation._oid, EStatus.COMPLETE, session)
-
-    except Exception as e:
-        crud.update_calculation_status(
-            calculation._oid, EStatus.FAILED, session)
-        if branch:
-            crud.update_calculation_branch_status(
-                branch._oid, EStatus.FAILED, session)
-        connection.close()
-        raise e
-    connection.close()
-
-    return calculation
 
 
 def dispatch_openquake_calculation(
@@ -203,14 +142,3 @@ def run_openquake_calculations(
                     e, KeyboardInterrupt) else EStatus.FAILED
                 session.commit()
         raise e
-
-
-def read_gmfs(dstore: str) -> Tuple[DataFrame, DataFrame]:
-    store = read(dstore)
-
-    site_collection = store.read_df('sitecol')[['sids', 'lon', 'lat']]
-    gmf_data = store.read_df('gmf_data')
-
-    site_collection.rename(columns={'sids': 'site_id'}, inplace=True)
-
-    return (gmf_data, site_collection)

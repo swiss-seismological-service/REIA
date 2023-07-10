@@ -1,22 +1,15 @@
 import configparser
-import json
-import logging
-import os
-import time
 import traceback
-from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from typing import Optional
 
 import typer
 
-from reia.actions import (create_scenario_calculation,
-                          dispatch_openquake_calculation, read_gmfs,
+from reia.actions import (dispatch_openquake_calculation,
                           run_openquake_calculations)
 from reia.datamodel import EEarthquakeType, EStatus
 from reia.db import crud, drop_db, init_db, session
-from reia.io import CalculationBranchSettings, ERiskType
-from reia.io.gmfs import sample_gmfs_from_csv, sample_gmfs_from_shakemap
+from reia.io import CalculationBranchSettings
 from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
                           parse_vulnerability)
 from reia.io.write import (assemble_calculation_input, create_exposure_input,
@@ -25,18 +18,15 @@ from reia.io.write import (assemble_calculation_input, create_exposure_input,
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()
-gmfs = typer.Typer()
 exposure = typer.Typer()
 vulnerability = typer.Typer()
 fragility = typer.Typer()
 taxonomymap = typer.Typer()
 calculation = typer.Typer()
-scenario = typer.Typer()
 risk_assessment = typer.Typer()
 
 app.add_typer(db, name='db',
               help='Database Commands')
-app.add_typer(gmfs, name='gmfs', help='Prepare gmf files')
 app.add_typer(exposure, name='exposure',
               help='Manage Exposure Models')
 app.add_typer(vulnerability, name='vulnerability',
@@ -47,8 +37,6 @@ app.add_typer(taxonomymap, name='taxonomymap',
               help='Manage Taxonomy Mappings')
 app.add_typer(calculation, name='calculation',
               help='Create or execute calculations')
-app.add_typer(scenario, name='scenario',
-              help='Manage Scenario Data')
 app.add_typer(risk_assessment, name='risk-assessment',
               help='Manage Risk Assessments')
 
@@ -69,38 +57,6 @@ def initialize_database():
     '''
     init_db()
     typer.echo('Tables created.')
-
-
-@gmfs.command('from-dstore')
-def export_gmfs_from_dstore(dstore: Path, directory: Path):
-    gmf_data, site_collection = read_gmfs(str(dstore))
-
-    with open(Path(directory, 'gmfs.csv'), 'w') as f:
-        gmf_data.to_csv(f, index=False)
-
-    with open(Path(directory, 'sites.csv'), 'w') as f:
-        site_collection.to_csv(f, index=False)
-
-
-@gmfs.command('sample')
-def sample_gmfs(directory: Path):
-    exposure_xml = [
-        '../test_model/Exposure/SAM/'
-        'Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml']
-    psa03 = Path(directory, 'psa03_withampli.csv')
-    psa06 = Path(directory, 'psa06_withampli.csv')
-    sample_gmfs_from_csv(exposure_xml, psa03, psa06)
-
-
-@gmfs.command('shakemap')
-def sample_shakemap(grid_xml: Path, uncertainty_xml: Path):
-    exposure_xml = [
-        '../test_model/Exposure/SAM/'
-        'Exposure_SAM_RF_2km_v04.4_CH_mp5_allOcc_Aggbl.xml']
-    sample_gmfs_from_shakemap(
-        exposure_xml,
-        str(grid_xml),
-        str(uncertainty_xml))
 
 
 @exposure.command('add')
@@ -480,73 +436,6 @@ def delete_calculation(calculation_oid: int):
     typer.echo(
         f'Deleted calculation with ID {calculation_oid}.')
     session.remove()
-
-
-@scenario.command('add')
-def add_scenario(config: typer.FileText):
-    '''
-    Add scenario.
-    '''
-
-    scenario_configs = json.loads(config.read())
-
-    os.makedirs('logs', exist_ok=True)
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - [%(filename)s.%(funcName)s] - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        handlers=[TimedRotatingFileHandler('logs/datapipe.log',
-                                           when='d',
-                                           interval=1,
-                                           backupCount=5),
-                  logging.StreamHandler()
-                  ]
-    )
-    LOGGER = logging.getLogger(__name__)
-
-    start = time.perf_counter()
-
-    aggregation_tags = {}
-
-    for type in ['Canton', 'CantonGemeinde']:
-        existing_tags = crud.read_aggregationtags(type, session)
-        aggregation_tags.update({t.name: t for t in existing_tags})
-
-    for config in scenario_configs:
-        start_scenario = time.perf_counter()
-        LOGGER.info(f'Starting to parse scenario {config["scenario_name"]}.')
-
-        LOGGER.info('Creating risk scenarios....')
-        loss_calculation = create_scenario_calculation(ERiskType.LOSS,
-                                                       aggregation_tags,
-                                                       config,
-                                                       session)
-
-        LOGGER.info('Creating damage scenarios....')
-        damage_calculation = create_scenario_calculation(ERiskType.DAMAGE,
-                                                         aggregation_tags,
-                                                         config,
-                                                         session)
-
-        crud.create_risk_assessment(
-            config['originid'],
-            session,
-            _losscalculation_oid=loss_calculation._oid,
-            _damagecalculation_oid=damage_calculation._oid,
-            type=EEarthquakeType.SCENARIO,
-            status=EStatus.COMPLETE)
-
-        LOGGER.info(
-            'Saving the scenario took '
-            f'{int((time.perf_counter()-start_scenario)/60)} minutes. Running '
-            f'for a total of {int((time.perf_counter()-start)/60/60)} hours.')
-
-    session.remove()
-
-    LOGGER.info(
-        'Saving all results took '
-        f'{int((time.perf_counter()-start)/60/60)} hours.')
 
 
 @risk_assessment.command('add')
