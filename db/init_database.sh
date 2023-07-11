@@ -10,5 +10,3 @@ psql -v ON_ERROR_STOP=1 --user "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
     GRANT ALL ON SCHEMA public TO $DB_USER;
     ALTER TABLE public.spatial_ref_sys OWNER TO $DB_USER;
 EOSQL
-
-psql -d $DB_NAME -U $DB_USER -f /etc/postgresql/municipalities.sql
