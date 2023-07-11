@@ -8,7 +8,7 @@ import typer
 from reia.actions import (dispatch_openquake_calculation,
                           run_openquake_calculations)
 from reia.datamodel import EEarthquakeType, EStatus
-from reia.db import crud, drop_db, init_db, session
+from reia.db import crud, drop_db, init_db, init_db_file, session
 from reia.io import CalculationBranchSettings
 from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
                           parse_vulnerability)
@@ -57,6 +57,11 @@ def initialize_database():
     '''
     init_db()
     typer.echo('Tables created.')
+
+
+@db.command('createall')
+def create_all_to_file():
+    init_db_file()
 
 
 @exposure.command('add')

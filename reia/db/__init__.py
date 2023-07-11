@@ -1,8 +1,9 @@
-from reia.datamodel.base import ORMBase
-from settings import get_config
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, create_mock_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.schema import MetaData
+
+from reia.datamodel.base import ORMBase
+from settings import get_config
 
 config = get_config()
 engine = create_engine(config.DB_CONNECTION_STRING, echo=False, future=True)
@@ -28,3 +29,13 @@ def drop_db():
     m = MetaData()
     m.reflect(engine)
     m.drop_all(engine)
+
+
+def dump(sql, *multiparams, **params):
+    with open('create_all.sql', 'a') as f:
+        f.write(str(sql.compile(dialect=engine.dialect)))
+
+
+def init_db_file():
+    mock_engine = create_mock_engine('postgresql+psycopg2://', dump)
+    ORMBase.metadata.create_all(bind=mock_engine)
