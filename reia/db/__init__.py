@@ -32,10 +32,11 @@ def drop_db():
 
 
 def dump(sql, *multiparams, **params):
-    with open('create_all.sql', 'a') as f:
-        f.write(str(sql.compile(dialect=engine.dialect)))
+    with open('create_database.sql', 'a') as f:
+        f.write(str(sql.compile(dialect=engine.dialect)) + ';')
 
 
 def init_db_file():
-    mock_engine = create_mock_engine('postgresql+psycopg2://', dump)
+    mock_engine = create_mock_engine(
+        'postgresql+psycopg2://', dump)
     ORMBase.metadata.create_all(bind=mock_engine)
