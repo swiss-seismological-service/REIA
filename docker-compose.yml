@@ -2,7 +2,7 @@ version: '3.9'
 services:
   db:
       container_name: ria-postgres
-      image: postgis/postgis:latest
+      build: .
       restart: unless-stopped
       env_file:
         - .env
@@ -16,9 +16,6 @@ services:
       shm_size: 1gb
       volumes:
         - pg_data:/var/lib/postgresql/data/
-        - ./db/init_database.sh:/docker-entrypoint-initdb.d/init_database.sh
-        - ./db/postgresql.conf:/etc/postgresql/postgresql.conf
-      command: postgres -c config_file=/etc/postgresql/postgresql.conf
       networks:
         - backend
   

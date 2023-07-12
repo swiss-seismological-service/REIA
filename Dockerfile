@@ -47,12 +47,13 @@ ENV DB_NAME="reia" \
 
 ADD ./db/postgresql.conf                                    /etc/postgresql/
 ADD ./db/init_database.sh                                   /docker-entrypoint-initdb.d/00_init_database.sh
-COPY --from=creator /app/create_database.sql                /docker-entrypoint-initdb.d/01_create_database.sql
-ADD ./db/functions/materialized_loss_buildings.sql          /docker-entrypoint-initdb.d/02_materialized_loss_buildings.sql
-ADD ./db/functions/trigger_refresh_materialized.sql         /docker-entrypoint-initdb.d/03_trigger_refresh_materialized.sql
-ADD ./db/functions/trigger_partition_aggregationtags.sql    /docker-entrypoint-initdb.d/04_trigger_partition_aggregationtags.sql
-ADD ./db/functions/trigger_partition_losstype.sql           /docker-entrypoint-initdb.d/05_trigger_partition_losstype.sql
-ADD ./db/functions/indexes.sql                              /docker-entrypoint-initdb.d/06_indexes.sql
+ADD ./db/init_functions.sh                                  /docker-entrypoint-initdb.d/01_init_functions.sh
+COPY --from=creator /app/create_database.sql                /etc/postgresql/
+ADD ./db/functions/materialized_loss_buildings.sql          /etc/postgresql/
+ADD ./db/functions/trigger_refresh_materialized.sql         /etc/postgresql/
+ADD ./db/functions/trigger_partition_aggregationtags.sql    /etc/postgresql/
+ADD ./db/functions/trigger_partition_losstype.sql           /etc/postgresql/
+ADD ./db/functions/indexes.sql                              /etc/postgresql/
 
 
 
