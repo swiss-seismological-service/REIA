@@ -6,4 +6,4 @@ psql -d $DB_NAME -U $DB_USER -f /etc/postgresql/create_database.sql \
                              -f /etc/postgresql/trigger_refresh_materialized.sql \
                              -f /etc/postgresql/trigger_partition_aggregationtags.sql \
                              -f /etc/postgresql/trigger_partition_losstype.sql \
-                             -f /etc/postgresql/indexes.sql \
+                             -f /etc/postgresql/indexes.sql

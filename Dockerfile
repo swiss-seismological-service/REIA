@@ -39,7 +39,7 @@ RUN pip install .
 RUN reia db createall
 
 
-FROM postgis/postgis:latest as ria-db
+FROM postgis/postgis:latest as reia-db
 
 ENV DB_NAME="reia" \
     DB_USER="admin" \
@@ -54,7 +54,5 @@ ADD ./db/functions/trigger_refresh_materialized.sql         /etc/postgresql/
 ADD ./db/functions/trigger_partition_aggregationtags.sql    /etc/postgresql/
 ADD ./db/functions/trigger_partition_losstype.sql           /etc/postgresql/
 ADD ./db/functions/indexes.sql                              /etc/postgresql/
-
-
 
 CMD ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
