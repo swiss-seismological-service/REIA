@@ -409,11 +409,11 @@ def copy_pooled(df, tablename, max_procs, max_entries=750000):
 
 def copy_raw(df, tablename):
     connect_text = \
-        f"dbname='{os.getenv('POSTGRES_DB')}' " \
-        f"user='{os.getenv('POSTGRES_USER')}' " \
+        f"dbname='{os.getenv('DB_NAME')}' " \
+        f"user='{os.getenv('DB_USER')}' " \
         f"host={os.getenv('POSTGRES_HOST')} " \
         f"port={os.getenv('POSTGRES_PORT')} " \
-        f"password='{os.getenv('POSTGRES_PASSWORD')}'"
+        f"password='{os.getenv('DB_PASSWORD')}'"
 
     conn = psycopg2.connect(connect_text)
     cursor = conn.cursor()
