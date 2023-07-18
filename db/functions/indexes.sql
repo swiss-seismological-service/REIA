@@ -9,7 +9,3 @@ CREATE INDEX idx_loss_calculation_status_type ON loss_calculation (status, _type
 
 CREATE INDEX idx_loss_riskvalue_oid ON loss_riskvalue (_oid);
 CREATE INDEX idx_loss_riskvalue_type ON loss_riskvalue (_type);
-
--- CREATE INDEX idx_municipalities_cantongeme ON municipalities (cantongeme);
--- CREATE INDEX idx_municipalities_gdektg ON municipalities (gdektg);
--- CREATE INDEX idx_municipalities_geom ON municipalities USING gist (geom);
