@@ -1,3 +1,5 @@
+import numpy as np
+from psycopg2.extensions import AsIs, register_adapter
 from sqlalchemy import create_engine, create_mock_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.schema import MetaData
@@ -40,3 +42,6 @@ def init_db_file():
     mock_engine = create_mock_engine(
         'postgresql+psycopg2://', dump)
     ORMBase.metadata.create_all(bind=mock_engine)
+
+
+register_adapter(np.int64, AsIs)
