@@ -1,5 +1,6 @@
-from sqlalchemy import ForeignKeyConstraint, Table, delete, event
-from sqlalchemy.orm import Session, relationship
+from geoalchemy2 import Geometry
+from sqlalchemy import ForeignKeyConstraint, Table
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql.schema import Column, ForeignKey
 from sqlalchemy.sql.sqltypes import BigInteger, Boolean, Float, Integer, String
 
@@ -47,6 +48,10 @@ class ExposureModel(ORMBase,
                          back_populates='exposuremodel',
                          passive_deletes=True,
                          cascade='all, delete-orphan')
+    aggregationtags = relationship('AggregationTag',
+                                   back_populates='exposuremodel',
+                                   passive_deletes=True,
+                                   cascade='all, delete-orphan')
 
 
 class CostType(ORMBase):
@@ -130,7 +135,10 @@ class Site(ORMBase):
 
 
 class AggregationTag(ORMBase):
-    _oid = Column(BigInteger, autoincrement=True, primary_key=True)
+    _oid = Column(
+        BigInteger,
+        autoincrement=True,
+        primary_key=True)
     type = Column(String, primary_key=True)
     name = Column(String)
 
@@ -142,32 +150,39 @@ class AggregationTag(ORMBase):
         'RiskValue', secondary=riskvalue_aggregationtag,
         back_populates='aggregationtags'
     )
+
+    geometries = relationship(
+        'AggregationGeometry',
+        back_populates='aggregationtag')
+
+    _exposuremodel_oid = Column(
+        BigInteger,
+        ForeignKey('loss_exposuremodel._oid', ondelete='CASCADE'))
+    exposuremodel = relationship(
+        'ExposureModel',
+        back_populates='aggregationtags')
+
     __table_args__ = {
         'postgresql_partition_by': 'LIST (type)',
     }
 
-# Make sure that Aggregationtags which don't have a parent anymore
-# (meaning neither referenced by a LossValue nor an Asset) are deleted
 
+class AggregationGeometry(ORMBase):
+    """Aggregation Geometry model"""
 
-@event.listens_for(Session, 'do_orm_execute', once=True)
-def delete_tag_orphans_execute(orm_execute_state):
-    if orm_execute_state.is_delete:
+    name = Column(String)
 
-        orm_execute_state.invoke_statement()
+    _aggregationtag_oid = Column(BigInteger)
+    _aggregationtype = Column(String)
+    aggregationtag = relationship(
+        'AggregationTag',
+        back_populates='geometries')
 
-        stmt = delete(AggregationTag).filter(
-            ~AggregationTag.riskvalues.any(),
-            ~AggregationTag.assets.any()).execution_options(
-            synchronize_session=False)
-        orm_execute_state.session.execute(stmt)
+    geometry = Column(Geometry('MULTIPOLYGON', srid=4326))
 
-
-@event.listens_for(Session, 'after_flush')
-def delete_tag_orphans_session(session, ctx):
-    if session.deleted:
-        session.query(AggregationTag).\
-            filter(
-            ~AggregationTag.riskvalues.any(),
-            ~AggregationTag.assets.any()).\
-            delete(synchronize_session=False)
+    __table_args__ = (
+        ForeignKeyConstraint(['_aggregationtag_oid', '_aggregationtype'],
+                             ['loss_aggregationtag._oid',
+                              'loss_aggregationtag.type'],
+                             ondelete='CASCADE'),
+    )

@@ -85,6 +85,7 @@ def aggregationtags_from_assets(
                     dataframe rows
     """
     existing_tags = {str(t.name): t for t in existing_tags}
+    exposuremodel_oid = assets['_exposuremodel_oid'].iloc[0]
     agg_groups = assets.groupby(aggregation_type)
 
     all_tags = []
@@ -95,7 +96,8 @@ def aggregationtags_from_assets(
         else:
             tag = AggregationTag(
                 type=aggregation_type,
-                name=name)
+                name=name,
+                _exposuremodel_oid=exposuremodel_oid)
         all_tags.append(tag)
     return all_tags, agg_groups.grouper.group_info[0]
 
