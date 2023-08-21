@@ -12,6 +12,7 @@ docutils==0.20.1
 exceptiongroup==1.1.2
 flake8==6.0.0
 fonttools==4.40.0
+geoalchemy2==0.14.1
 greenlet==2.0.2
 h5py==3.9.0
 idna==3.4
