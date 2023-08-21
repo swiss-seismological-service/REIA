@@ -25,8 +25,7 @@ riskvalue_aggregationtag = Table(
 
     Column('riskvalue', BigInteger),
     Column('losscategory', Enum(ELossCategory)),
-    Column('_calculation_oid', ForeignKey('loss_calculation._oid',
-                                          ondelete='SET NULL')),
+    Column('_calculation_oid', BigInteger),
 
     Column('aggregationtag', BigInteger),
     Column('aggregationtype', String),
