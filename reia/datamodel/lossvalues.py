@@ -25,7 +25,9 @@ riskvalue_aggregationtag = Table(
 
     Column('riskvalue', BigInteger),
     Column('losscategory', Enum(ELossCategory)),
-    Column('_calculation_oid', BigInteger),
+    # Column('_calculation_oid', BigInteger),
+    Column('_calculation_oid', ForeignKey('loss_calculation._oid',
+                                          ondelete='SET NULL')),
 
     Column('aggregationtag', BigInteger),
     Column('aggregationtype', String),
@@ -59,6 +61,11 @@ class RiskValue(ORMBase):
                                          ondelete='CASCADE'),
                               primary_key=True)
 
+    _calculationbranch_oid = Column(BigInteger,
+                                    ForeignKey(
+                                        'loss_calculationbranch._oid',
+                                        ondelete='SET NULL'))
+
     aggregationtags = relationship('AggregationTag',
                                    secondary=riskvalue_aggregationtag,
                                    back_populates='riskvalues',
@@ -79,10 +86,6 @@ class LossValue(RiskValue, RealQuantityMixin('loss', optional=True)):
     losscalculation = relationship('LossCalculation',
                                    back_populates='losses')
 
-    _losscalculationbranch_oid = Column(BigInteger,
-                                        ForeignKey(
-                                            'loss_losscalculationbranch._oid',
-                                            ondelete='SET NULL'))
     losscalculationbranch = relationship('LossCalculationBranch',
                                          back_populates='losses')
     __mapper_args__ = {
@@ -101,8 +104,6 @@ class DamageValue(RiskValue,
     damagecalculation = relationship('DamageCalculation',
                                      back_populates='damages')
 
-    _damagecalculationbranch_oid = Column(BigInteger, ForeignKey(
-        'loss_damagecalculationbranch._oid', ondelete='SET NULL'))
     damagecalculationbranch = relationship('DamageCalculationBranch',
                                            back_populates='damages')
     __mapper_args__ = {
