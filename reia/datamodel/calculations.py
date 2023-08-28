@@ -68,6 +68,10 @@ class CalculationBranch(ORMBase):
     status = Column(Enum(EStatus), nullable=False, default=EStatus.CREATED)
     weight = Column(Float())
 
+    _calculation_oid = Column(BigInteger,
+                              ForeignKey('loss_calculation._oid',
+                                         ondelete='CASCADE'))
+
     _exposuremodel_oid = Column(BigInteger,
                                 ForeignKey('loss_exposuremodel._oid',
                                            ondelete="RESTRICT"),
@@ -90,14 +94,8 @@ class CalculationBranch(ORMBase):
 
 
 class LossCalculationBranch(CalculationBranch):
-    __tablename__ = 'loss_losscalculationbranch'
+    __tablename__ = None
 
-    _oid = Column(BigInteger, ForeignKey('loss_calculationbranch._oid'),
-                  primary_key=True)
-
-    _calculation_oid = Column(BigInteger,
-                              ForeignKey('loss_calculation._oid',
-                                         ondelete='CASCADE'))
     losscalculation = relationship('LossCalculation',
                                    back_populates='losscalculationbranches')
 
@@ -156,17 +154,11 @@ class LossCalculationBranch(CalculationBranch):
 
 
 class DamageCalculationBranch(CalculationBranch):
-    __tablename__ = 'loss_damagecalculationbranch'
-
-    _oid = Column(BigInteger, ForeignKey('loss_calculationbranch._oid'),
-                  primary_key=True)
+    __tablename__ = None
 
     damages = relationship('DamageValue',
                            back_populates='damagecalculationbranch')
 
-    _calculation_oid = Column(BigInteger,
-                              ForeignKey('loss_calculation._oid',
-                                         ondelete='CASCADE'))
     damagecalculation = relationship(
         'DamageCalculation',
         back_populates='damagecalculationbranches')
