@@ -57,14 +57,12 @@ class RiskValue(ORMBase):
     weight = Column(Float)
 
     _calculation_oid = Column(BigInteger,
-                              ForeignKey('loss_calculation._oid',
-                                         ondelete='CASCADE'),
+                              ForeignKey('loss_calculation._oid'),
                               primary_key=True)
 
     _calculationbranch_oid = Column(BigInteger,
                                     ForeignKey(
-                                        'loss_calculationbranch._oid',
-                                        ondelete='SET NULL'))
+                                        'loss_calculationbranch._oid'))
 
     aggregationtags = relationship('AggregationTag',
                                    secondary=riskvalue_aggregationtag,
