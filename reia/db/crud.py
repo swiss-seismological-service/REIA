@@ -456,11 +456,52 @@ def get_nextval(cursor, table: str, column: str):
 
 def delete_risk_assessment(risk_assessment_oid: int,
                            session: Session) -> int:
-    stmt = delete(dm.RiskAssessment).where(
-        dm.RiskAssessment._oid == risk_assessment_oid)
 
-    session.execute(stmt)
-    session.commit()
+    connection = session.get_bind().raw_connection()
+    cursor = connection.cursor()
+
+    stmt = select(dm.RiskAssessment).where(
+        dm.RiskAssessment._oid == risk_assessment_oid)
+    riskassessment = session.execute(stmt).unique().scalar()
+
+    losscalculation_id = riskassessment._losscalculation_oid
+    damagecalculation_id = riskassessment._damagecalculation_oid
+
+    cursor.execute(
+        "DELETE FROM loss_riskassessment WHERE _oid = {};".format(
+            risk_assessment_oid))
+    rowcount = cursor.rowcount
+
+    if losscalculation_id:
+        loss_table = f'loss_riskvalue_{losscalculation_id}'
+        loss_assoc_table = f'loss_assoc_{losscalculation_id}'
+        cursor.execute(
+            "TRUNCATE TABLE {0} CASCADE;"
+            "ALTER TABLE loss_riskvalue DETACH PARTITION {0};"
+            "DROP TABLE {0};"
+            "TRUNCATE TABLE {1};"
+            "DROP TABLE {1};"
+            "DELETE FROM loss_calculation WHERE _oid = {2};".format(
+                loss_table, loss_assoc_table, losscalculation_id)
+        )
+
+    if damagecalculation_id:
+        damage_table = f'loss_riskvalue_{damagecalculation_id}'
+        damage_assoc_table = f'loss_assoc_{damagecalculation_id}'
+        cursor.execute(
+            "TRUNCATE TABLE {0} CASCADE;"
+            "ALTER TABLE loss_riskvalue DETACH PARTITION {0};"
+            "DROP TABLE {0};"
+            "TRUNCATE TABLE {1};"
+            "DROP TABLE {1};"
+            "DELETE FROM loss_calculation WHERE _oid = {2};".format(
+                damage_table, damage_assoc_table, damagecalculation_id)
+        )
+
+    connection.commit()
+    cursor.close()
+    connection.close()
+    return rowcount
 
 
 def create_risk_assessment(originid: str,
