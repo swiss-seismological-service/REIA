@@ -465,8 +465,8 @@ def delete_risk_assessment(risk_assessment_oid: int):
     '''
     Delete a risk assessment.
     '''
-    crud.delete_risk_assessment(risk_assessment_oid, session)
-    typer.echo(f'Deleted risk_assessment with ID {risk_assessment_oid}.')
+    rowcount = crud.delete_risk_assessment(risk_assessment_oid, session)
+    typer.echo(f'Deleted {rowcount} risk assessment.')
     session.remove()
 
 
