@@ -2,7 +2,8 @@ import os
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.schema import Column, MetaData
 from sqlalchemy.sql.sqltypes import BigInteger
 

@@ -81,8 +81,7 @@ def save_openquake_results(calculationbranch: CalculationBranch,
 
     df['weight'] = df['weight'] * calculationbranch.weight
     df['_calculation_oid'] = calculationbranch._calculation_oid
-    df[f'_{risk_type.name.lower()}calculationbranch_oid'] = \
-        calculationbranch._oid
+    df['_calculationbranch_oid'] = calculationbranch._oid
     df['_type'] = risk_type.name
 
     connection = session.get_bind().raw_connection()
