@@ -33,6 +33,7 @@ class OQCalculationAPI(APIConnection):
 
         self.url = f'{self.server}/v1/calc'
         self.files = {}
+        self.config = config
 
         self.id = None
         self.status = None
@@ -135,7 +136,7 @@ class OQCalculationAPI(APIConnection):
         # if id doesn not exist locally, try getting it on remote
         job = logs.dbcmd('get_job', self.id)
         if job is None:
-            oqapi_import_remote_calculation(self.id)
+            oqapi_import_remote_calculation(self.id, self.config)
 
         return datastore.read(self.id)
 

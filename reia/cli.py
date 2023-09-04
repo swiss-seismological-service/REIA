@@ -82,6 +82,7 @@ def add_exposure(exposure: Path, name: str):
     typer.echo(f'Created asset collection with ID {asset_collection._oid} and '
                f'{len(sites)} sites with {len(asset_objects)} assets.')
     session.remove()
+    return asset_collection._oid
 
 
 @exposure.command('delete')
@@ -153,6 +154,7 @@ def add_fragility(fragility: Path, name: str):
         f'Created fragility model of type "{fragility_model._type}"'
         f' with ID {fragility_model._oid}.')
     session.remove()
+    return fragility_model._oid
 
 
 @fragility.command('delete')
@@ -219,6 +221,7 @@ def add_taxonomymap(map_file: Path, name: str):
     typer.echo(
         f'Created taxonomy map with ID {taxonomy_map._oid}.')
     session.remove()
+    return taxonomy_map._oid
 
 
 @taxonomymap.command('delete')
@@ -287,6 +290,7 @@ def add_vulnerability(vulnerability: Path, name: str):
         f'Created vulnerability model of type "{vulnerability_model._type}"'
         f' with ID {vulnerability_model._oid}.')
     session.remove()
+    return vulnerability_model._oid
 
 
 @vulnerability.command('delete')

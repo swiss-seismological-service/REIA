@@ -6,19 +6,19 @@ from settings import get_config
 
 
 def test_api():
-    with open('reia/tests/data/exposure_model.xml', 'r') as f:
+    with open('reia/tests/data/oq_test/exposure_model.xml', 'r') as f:
         exposure = StringIO(f.read())
         exposure.name = 'exposure_model.xml'
-    with open('reia/tests/data/gmf_scenario.csv', 'r') as f:
+    with open('reia/tests/data/oq_test/gmf_scenario.csv', 'r') as f:
         gmf_scenario = StringIO(f.read())
         gmf_scenario.name = 'gmf_scenario.csv'
-    with open('reia/tests/data/job_risk.ini', 'r') as f:
+    with open('reia/tests/data/oq_test/job_risk.ini', 'r') as f:
         job_risk = StringIO(f.read())
         job_risk.name = 'job.ini'
-    with open('reia/tests/data/sites.csv', 'r') as f:
+    with open('reia/tests/data/oq_test/sites.csv', 'r') as f:
         sites = StringIO(f.read())
         sites.name = 'sites.csv'
-    with open('reia/tests/data/vulnerability.xml', 'r') as f:
+    with open('reia/tests/data/oq_test/vulnerability.xml', 'r') as f:
         vulnerability = StringIO(f.read())
         vulnerability.name = 'vulnerability.xml'
 
