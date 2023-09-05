@@ -36,7 +36,7 @@ def create_assets(assets: pd.DataFrame,
     as children of the dm.ExposureModel.
     """
     # get dm.AggregationTag types
-    aggregation_tags = [
+    aggregation_types = [
         x for x in assets.columns if x not in list(
             ASSETS_COLS_MAPPING.values()) + ['longitude', 'latitude']]
 
@@ -54,10 +54,11 @@ def create_assets(assets: pd.DataFrame,
     assets['_site_oid'] = assets['_site_oid'].map(lambda x: sites[x]._oid)
 
     # create dm.AggregationTag objects and assign them to assets
-    for tag in aggregation_tags:
-        existing_tags = read_aggregationtags(tag, session)
+    for tag_type in aggregation_types:
+        existing_tags = read_aggregationtags(
+            tag_type, exposure_model_oid, session)
         tags_of_type, assoc_table['aggregationtags_list_index'] = \
-            aggregationtags_from_assets(assets, tag, existing_tags)
+            aggregationtags_from_assets(assets, tag_type, existing_tags)
         session.add_all(list(tags_of_type))
         session.flush()
         assoc_table.apply(lambda x: x['aggregationtags'].append(
@@ -423,8 +424,11 @@ def copy_raw(df, tablename):
 
 
 def read_aggregationtags(type: str,
+                         exposuremodel_oid: int,
                          session: Session) -> list[dm.AggregationTag]:
-    statement = select(dm.AggregationTag).where(dm.AggregationTag.type == type)
+    statement = select(dm.AggregationTag).where(
+        (dm.AggregationTag.type == type)
+        & (dm.AggregationTag._exposuremodel_oid == exposuremodel_oid))
     return session.execute(statement).unique().scalars().all()
 
 

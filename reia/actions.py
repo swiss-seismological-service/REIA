@@ -72,7 +72,8 @@ def save_openquake_results(calculationbranch: CalculationBranch,
 
     aggregation_tags = {}
     for type in [it for sub in oq_parameter_inputs.aggregate_by for it in sub]:
-        type_tags = crud.read_aggregationtags(type, session)
+        type_tags = crud.read_aggregationtags(
+            type, calculationbranch._exposuremodel_oid, session)
         aggregation_tags.update({tag.name: tag for tag in type_tags})
 
     risk_type = ERiskType(oq_parameter_inputs.calculation_mode)
