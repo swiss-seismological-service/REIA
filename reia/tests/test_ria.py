@@ -149,7 +149,6 @@ def test_riskvalues(loss_calculation, damage_calculation):
     assert len(damages) == 26
 
 
-@pytest.mark.xfail(strict=True, reason='aggregationtags not correctly stored')
 def test_aggreagationtags(loss_calculation, damage_calculation, exposure):
     losses = loss_calculation.losses
     aggregationtags = set(
@@ -159,7 +158,6 @@ def test_aggreagationtags(loss_calculation, damage_calculation, exposure):
                for tag in aggregationtags)
 
 
-@pytest.mark.xfail(strict=True, reason='aggregationtags not correctly stored')
 def test_exposuremodel(exposure):
 
     assert exposure.name == 'test'
@@ -173,7 +171,6 @@ def test_exposuremodel(exposure):
     assert 'structural' in [cost.name for cost in exposure.costtypes]
 
 
-@pytest.mark.xfail(strict=True, reason='aggregationtags not correctly stored')
 def test_assets(exposure):
     assets = exposure.assets
     sites = exposure.sites
