@@ -461,7 +461,10 @@ def add_risk_assessment(originid: str, loss_id: int, damage_id: int):
     typer.echo(
         f'added risk_assessment for {added.originid} with '
         f'ID {added._oid}.')
+
     session.remove()
+
+    return added._oid
 
 
 @risk_assessment.command('delete')

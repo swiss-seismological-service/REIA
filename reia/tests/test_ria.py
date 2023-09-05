@@ -2,8 +2,8 @@ import configparser
 from pathlib import Path
 
 from reia.actions import run_openquake_calculations
-from reia.cli import (add_exposure, add_fragility, add_taxonomymap,
-                      add_vulnerability)
+from reia.cli import (add_exposure, add_fragility, add_risk_assessment,
+                      add_taxonomymap, add_vulnerability)
 from reia.db import session
 from reia.io import CalculationBranchSettings
 
@@ -47,7 +47,9 @@ def test_ria():
 
     damagecalculation = run_openquake_calculations(settings, session)
 
-    print(losscalculation._oid)
-    print(damagecalculation._oid)
+    riskassessment = add_risk_assessment(
+        'smi:ch.ethz.sed/test', losscalculation._oid, damagecalculation._oid)
+
+    print(riskassessment)
 
     session.remove()
