@@ -1,7 +1,6 @@
 import configparser
 
 from reia.io import CalculationBranchSettings
-from reia.tests.test_api import test_api
 from settings import get_config
 from settings.config import Config
 
