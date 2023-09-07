@@ -3,25 +3,15 @@ from pathlib import Path
 
 import pytest
 from numpy.testing import assert_almost_equal
-from sqlalchemy.orm import scoped_session, sessionmaker
 
 from reia.actions import run_openquake_calculations
 from reia.cli import (add_exposure, add_fragility, add_risk_assessment,
                       add_taxonomymap, add_vulnerability)
 from reia.datamodel import ECalculationType, EStatus
-from reia.db import crud, engine
+from reia.db import crud
 from reia.io import CalculationBranchSettings
 
 DATAFOLDER = Path(__file__).parent / 'data' / 'ria_test'
-
-
-@pytest.fixture(scope='module')
-def db_session():
-    session = scoped_session(sessionmaker(autocommit=False,
-                                          bind=engine,
-                                          future=True))
-    yield session
-    session.remove()
 
 
 @pytest.fixture(scope='module')
