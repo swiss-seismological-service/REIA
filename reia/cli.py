@@ -3,6 +3,7 @@ import traceback
 from pathlib import Path
 from typing import Optional
 
+import geopandas as gpd
 import typer
 
 from reia.actions import (dispatch_openquake_calculation,
@@ -136,6 +137,12 @@ def create_exposure(id: int, filename: Path):
             f'Successfully created file "{str(p_xml)}" and "{str(p_csv)}".')
     else:
         typer.echo('Error occurred, file was not created.')
+
+
+@exposure.command('create_geometries')
+def create_exposure_geometries(id: int, filename: Path):
+    gdf = gpd.read_file(filename)
+    typer.echo(gdf)
 
 
 @fragility.command('add')
