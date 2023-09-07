@@ -131,7 +131,6 @@ def test_calculationbranches(loss_calculation,
         damage_branch._businessinterruptionfragilitymodel_oid is None
 
 
-@pytest.mark.xfail(strict=True, reason='damage values are not stored sparse')
 def test_riskvalues(loss_calculation, damage_calculation):
     losses = loss_calculation.losses
     damages = damage_calculation.damages
@@ -187,3 +186,49 @@ def test_assets(exposure):
     assert len(aggregationtags) == 4
     assert all(tag._exposuremodel_oid == exposure._oid
                for tag in aggregationtags)
+
+
+def test_loss_results(loss_calculation):
+    losses = loss_calculation.losses
+
+    loss_canton = sum([ls.loss_value * ls.weight for ls in losses
+                       if ls.aggregationtags[0].type == 'Canton'])
+    loss_gemeinde = sum([ls.loss_value * ls.weight for ls in losses
+                         if ls.aggregationtags[0].type == 'CantonGemeinde'])
+    assert_almost_equal(loss_canton, 325.357, 2)
+    assert_almost_equal(loss_gemeinde, 325.357, 2)
+
+    loss_canton_gr = sum([ls.loss_value * ls.weight for ls in losses
+                          if ls.aggregationtags[0].type == 'Canton'
+                          and ls.aggregationtags[0].name == 'GR'])
+    assert_almost_equal(loss_canton_gr, 325.357, 2)
+
+
+def test_damage_results(damage_calculation):
+    damages = damage_calculation.damages
+
+    dg1_canton = sum([dg.dg1_value * dg.weight for dg in damages
+                      if dg.aggregationtags[0].type == 'Canton'])
+    dg1_gemeinde = sum([dg.dg1_value * dg.weight for dg in damages
+                        if dg.aggregationtags[0].type == 'CantonGemeinde'])
+
+    dg2_canton = sum([dg.dg2_value * dg.weight for dg in damages
+                      if dg.aggregationtags[0].type == 'Canton'])
+    dg3_canton = sum([dg.dg3_value * dg.weight for dg in damages
+                      if dg.aggregationtags[0].type == 'Canton'])
+    dg4_canton = sum([dg.dg4_value * dg.weight for dg in damages
+                      if dg.aggregationtags[0].type == 'Canton'])
+    dg5_canton = sum([dg.dg5_value * dg.weight for dg in damages
+                      if dg.aggregationtags[0].type == 'Canton'])
+
+    assert_almost_equal(dg1_canton, 2.73759E-03, 5)
+    assert_almost_equal(dg1_gemeinde, 2.73759E-03, 5)
+    assert_almost_equal(dg2_canton, 6.57239E-04, 5)
+    assert_almost_equal(dg3_canton, 1.19269E-04, 5)
+    assert_almost_equal(dg4_canton, 0.00273759E-03, 5)
+    assert_almost_equal(dg5_canton, 5.86482E-07, 5)
+
+    dg1_canton_gr = sum([dg.dg1_value * dg.weight for dg in damages
+                         if dg.aggregationtags[0].type == 'Canton'
+                         and dg.aggregationtags[0].name == 'GR'])
+    assert_almost_equal(dg1_canton_gr, 2.73759E-03, 5)
