@@ -110,6 +110,42 @@ def create_asset_collection(exposure: dict,
     return asset_collection
 
 
+def create_geometries(exposure_model_id: int,
+                      geometries: pd.DataFrame,
+                      session: Session) -> list[dm.AggregationGeometry]:
+    geometries['_exposuremodel_oid'] = exposure_model_id
+
+    stmt = select(dm.AggregationTag).where(
+        dm.AggregationTag._exposuremodel_oid == exposure_model_id).where(
+        dm.AggregationTag.type.in_(geometries['_aggregationtype'].unique()))
+
+    aggregationtags = session.execute(stmt).unique().scalars().all()
+
+    lookup = {tag.name: tag._oid for tag in aggregationtags}
+
+    geometries['_aggregationtag_oid'] = geometries['aggregationtag'] \
+        .map(lookup) \
+        .replace({np.NAN: None})
+
+    geometries.drop(columns=['aggregationtag'], inplace=True)
+
+    geometries = list(map(lambda x: dm.AggregationGeometry(
+        **x), geometries.to_dict(orient='records')))
+
+    session.add_all(geometries)
+    session.commit()
+
+
+def delete_geometries(exposure_model_id: int,
+                      aggregationtype: str,
+                      session: Session) -> None:
+    stmt = delete(dm.AggregationGeometry).where(
+        dm.AggregationGeometry._exposuremodel_oid == exposure_model_id).where(
+        dm.AggregationGeometry._aggregationtype == aggregationtype)
+    session.execute(stmt)
+    session.commit()
+
+
 def create_fragility_model(
         model: dict,
         session: Session) \

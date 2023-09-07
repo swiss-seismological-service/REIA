@@ -4,7 +4,11 @@ from pathlib import Path
 from typing import Optional
 
 import geopandas as gpd
+import pandas as pd
+import shapely
 import typer
+from shapely.geometry.multipolygon import MultiPolygon
+from shapely.geometry.polygon import Polygon
 
 from reia.actions import (dispatch_openquake_calculation,
                           run_openquake_calculations)
@@ -140,10 +144,28 @@ def create_exposure(id: int, filename: Path):
 
 
 @exposure.command('create_geometries')
-def add_exposure_geometries(id: int, filename: Path):
-    gdf = gpd.read_file(filename)
-    typer.echo(gdf)
-    return 1
+def add_exposure_geometries(exposure_id: int,
+                            aggregationtype: str,
+                            filename: Path):
+    gdf = pd.DataFrame(gpd.read_file(filename))
+
+    gdf['geometry'] = gdf['geometry'].apply(
+        lambda x: MultiPolygon([x]) if isinstance(x, Polygon) else x)
+    gdf['geometry'] = gdf['geometry'].apply(lambda x: shapely.force_2d(x).wkt)
+
+    gdf = gdf[['tag', 'geometry', 'name']]
+    gdf = gdf.rename(columns={'tag': 'aggregationtag'})
+    gdf['_aggregationtype'] = aggregationtype
+
+    crud.create_geometries(exposure_id, gdf, session)
+
+    session.remove()
+
+
+@exposure.command('delete_geometries')
+def delete_exposure_geometries(exposure_id: int, aggregationtype: str):
+    crud.delete_geometries(exposure_id, aggregationtype, session)
+    session.remove()
 
 
 @fragility.command('add')
