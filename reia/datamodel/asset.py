@@ -52,6 +52,10 @@ class ExposureModel(ORMBase,
                                    back_populates='exposuremodel',
                                    passive_deletes=True,
                                    cascade='all, delete-orphan')
+    aggregationgeometries = relationship('AggregationGeometry',
+                                         back_populates='exposuremodel',
+                                         passive_deletes=True,
+                                         cascade='all, delete-orphan')
 
 
 class CostType(ORMBase):
@@ -172,17 +176,24 @@ class AggregationGeometry(ORMBase):
 
     name = Column(String)
 
-    _aggregationtag_oid = Column(BigInteger)
+    _aggregationtag_oid = Column(BigInteger, nullable=True)
     _aggregationtype = Column(String)
+
     aggregationtag = relationship(
         'AggregationTag',
         back_populates='geometries')
+
+    _exposuremodel_oid = Column(
+        BigInteger,
+        ForeignKey('loss_exposuremodel._oid', ondelete='CASCADE'))
+    exposuremodel = relationship(
+        'ExposureModel',
+        back_populates='aggregationgeometries')
 
     geometry = Column(Geometry('MULTIPOLYGON', srid=4326))
 
     __table_args__ = (
         ForeignKeyConstraint(['_aggregationtag_oid', '_aggregationtype'],
                              ['loss_aggregationtag._oid',
-                              'loss_aggregationtag.type'],
-                             ondelete='CASCADE'),
+                              'loss_aggregationtag.type']),
     )
