@@ -3,8 +3,7 @@ from pathlib import Path
 import pytest
 
 from reia.cli import add_exposure, add_exposure_geometries
-
-# from reia.db import crud
+from reia.db import crud
 
 DATAFOLDER = Path(__file__).parent / 'data'
 
@@ -20,4 +19,12 @@ def exposure_with_geoms(db_session):
 
 
 def test_geometries(exposure_with_geoms, db_session):
-    assert True
+    exposure = crud.read_asset_collection(exposure_with_geoms, db_session)
+    assert len(exposure.aggregationgeometries) == 3
+    aggregationtags = exposure.aggregationtags
+    churwalden = next((a for a in aggregationtags if a.name == 'GR3911'), None)
+    assert churwalden is not None
+    assert len(churwalden.geometries) == 1
+    geometry = churwalden.geometries[0]
+    assert geometry.geometry.geometry_type == 'MULTIPOLYGON'
+    assert geometry.name == 'Churwalden'
