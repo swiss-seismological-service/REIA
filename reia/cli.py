@@ -140,9 +140,10 @@ def create_exposure(id: int, filename: Path):
 
 
 @exposure.command('create_geometries')
-def create_exposure_geometries(id: int, filename: Path):
+def add_exposure_geometries(id: int, filename: Path):
     gdf = gpd.read_file(filename)
     typer.echo(gdf)
+    return 1
 
 
 @fragility.command('add')
