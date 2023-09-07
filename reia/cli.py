@@ -9,6 +9,7 @@ import shapely
 import typer
 from shapely.geometry.multipolygon import MultiPolygon
 from shapely.geometry.polygon import Polygon
+from typing_extensions import Annotated
 
 from reia.actions import (dispatch_openquake_calculation,
                           run_openquake_calculations)
@@ -144,9 +145,23 @@ def create_exposure(id: int, filename: Path):
 
 
 @exposure.command('create_geometries')
-def add_exposure_geometries(exposure_id: int,
-                            aggregationtype: str,
-                            filename: Path):
+def add_exposure_geometries(
+        exposure_id:
+        Annotated[int, typer.Argument(help='ID of the exposure model')],
+        aggregationtype:
+        Annotated[str, typer.Argument(help='type of the aggregation')],
+        filename:
+        Annotated[Path, typer.Argument(help='path to the shapefile')]):
+    '''
+    Add geometries to an exposure model.
+
+    The geometries are added to the exposuremodel and connected to the
+    respective aggregationtag of the given aggregationtype.
+    Required columns in the shapefile are:\n
+    - tag: the aggregationtag\n
+    - name: the name of the geometry\n
+    - geometry: the geometry
+    '''
     gdf = pd.DataFrame(gpd.read_file(filename))
 
     gdf['geometry'] = gdf['geometry'].apply(
