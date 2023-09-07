@@ -1,9 +1,9 @@
 import os
 
-from reia.datamodel import ELossCategory
 from openquake.commonlib.datastore import DataStore
 from openquake.risklib.scientific import LOSSTYPE
 
+from reia.datamodel import ELossCategory
 from reia.io import RISK_COLUMNS_MAPPING, ERiskType
 
 
@@ -39,5 +39,12 @@ def get_risk_from_dstore(dstore: DataStore, risk_type: ERiskType):
 
     df['weight'] = df['eventid'].map(
         events['weight']) / dstore['oqparam'].number_of_ground_motion_fields
+
+    if risk_type == ERiskType.DAMAGE:
+        df = df[(df['dg1_value'] > 0)
+                | (df['dg2_value'] > 0)
+                | (df['dg3_value'] > 0)
+                | (df['dg4_value'] > 0)
+                | (df['dg5_value'] > 0)]
 
     return df
