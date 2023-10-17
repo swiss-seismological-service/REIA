@@ -7,15 +7,21 @@ from sqlalchemy.schema import MetaData
 from reia.datamodel.base import ORMBase
 from settings import get_config
 
-config = get_config()
-engine = create_engine(config.DB_CONNECTION_STRING, echo=False, future=True)
+try:
+    config = get_config()
+    engine = create_engine(
+        config.DB_CONNECTION_STRING,
+        echo=False,
+        future=True)
 
-session = scoped_session(sessionmaker(autocommit=False,
-                                      bind=engine,
-                                      future=True))
+    session = scoped_session(sessionmaker(autocommit=False,
+                                          bind=engine,
+                                          future=True))
 
-
-ORMBase.query = session.query_property()
+    ORMBase.query = session.query_property()
+except BaseException:
+    session = None
+    engine = None
 
 
 def init_db():
@@ -33,12 +39,11 @@ def drop_db():
     m.drop_all(engine)
 
 
-def dump(sql, *multiparams, **params):
-    with open('create_database.sql', 'a') as f:
-        f.write(str(sql.compile(dialect=engine.dialect)) + ';')
-
-
 def init_db_file():
+    def dump(sql, *multiparams, **params):
+        with open('create_database.sql', 'a') as f:
+            f.write(str(sql.compile(dialect=mock_engine.dialect)) + ';')
+
     mock_engine = create_mock_engine(
         'postgresql+psycopg2://', dump)
     ORMBase.metadata.create_all(bind=mock_engine)
