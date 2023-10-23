@@ -150,6 +150,9 @@ def add_exposure_geometries(
         Annotated[int, typer.Argument(help='ID of the exposure model')],
         aggregationtype:
         Annotated[str, typer.Argument(help='type of the aggregation')],
+        tag_column_name:
+        Annotated[str, typer.Argument(
+            help='name of the aggregation tag column')],
         filename:
         Annotated[Path, typer.Argument(help='path to the shapefile')]):
     '''
@@ -168,8 +171,8 @@ def add_exposure_geometries(
         lambda x: MultiPolygon([x]) if isinstance(x, Polygon) else x)
     gdf['geometry'] = gdf['geometry'].apply(lambda x: shapely.force_2d(x).wkt)
 
-    gdf = gdf[['tag', 'geometry', 'name']]
-    gdf = gdf.rename(columns={'tag': 'aggregationtag'})
+    gdf = gdf[[tag_column_name, 'geometry', 'name']]
+    gdf = gdf.rename(columns={tag_column_name: 'aggregationtag'})
     gdf['_aggregationtype'] = aggregationtype
 
     crud.create_geometries(exposure_id, gdf, session)
