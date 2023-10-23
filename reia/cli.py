@@ -9,6 +9,7 @@ import shapely
 import typer
 from shapely.geometry.multipolygon import MultiPolygon
 from shapely.geometry.polygon import Polygon
+from sqlalchemy import text
 from typing_extensions import Annotated
 
 from reia.actions import (dispatch_openquake_calculation,
@@ -87,6 +88,12 @@ def add_exposure(exposure: Path, name: str):
 
     typer.echo(f'Created asset collection with ID {asset_collection._oid} and '
                f'{len(sites)} sites with {len(asset_objects)} assets.')
+
+    session.execute(
+        text('REFRESH MATERIALIZED VIEW CONCURRENTLY '
+             'loss_buildings_per_municipality'))
+    session.commit()
+
     session.remove()
     return asset_collection._oid
 

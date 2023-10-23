@@ -9,3 +9,7 @@ FROM loss_asset
    JOIN loss_exposuremodel exposuremodel ON exposuremodel._oid = loss_asset._exposuremodel_oid AND tags_of_type.type::text = 'CantonGemeinde'::text
 GROUP BY tags_of_type.name, exposuremodel._oid
 ORDER BY tags_of_type.name;
+
+CREATE UNIQUE INDEX ON loss_buildings_per_municipality (_oid, name);
+CREATE INDEX idx_loss_buildings_per_municipality_name ON loss_buildings_per_municipality (name);
+CREATE INDEX idx_loss_buildings_per_municipality_oid ON loss_buildings_per_municipality (_oid);
