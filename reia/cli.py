@@ -88,14 +88,14 @@ def add_exposure(exposure: Path, name: str):
 
     typer.echo(f'Created asset collection with ID {asset_collection._oid} and '
                f'{len(sites)} sites with {len(asset_objects)} assets.')
-
+    asset_collection = asset_collection._oid
     session.execute(
         text('REFRESH MATERIALIZED VIEW CONCURRENTLY '
              'loss_buildings_per_municipality'))
     session.commit()
 
     session.remove()
-    return asset_collection._oid
+    return asset_collection
 
 
 @exposure.command('delete')
