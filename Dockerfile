@@ -39,7 +39,7 @@ RUN pip install .
 RUN reia db createall
 
 
-FROM postgis/postgis:latest as reia-db
+FROM postgis/postgis:16-3.4 as reia-db
 
 ENV DB_NAME="reia" \
     DB_USER="admin" \
