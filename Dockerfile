@@ -45,6 +45,7 @@ ENV DB_NAME="reia" \
     DB_USER="admin" \
     DB_PASSWORD="password"
 
+ADD ./db/pg_hba.conf                                        /etc/postgresql/
 ADD ./db/postgresql.conf                                    /etc/postgresql/
 ADD ./db/init_database.sh                                   /docker-entrypoint-initdb.d/00_init_database.sh
 ADD ./db/init_functions.sh                                  /docker-entrypoint-initdb.d/01_init_functions.sh
@@ -55,4 +56,4 @@ ADD ./db/functions/trigger_partition_aggregationtags.sql    /etc/postgresql/
 ADD ./db/functions/trigger_partition_losstype.sql           /etc/postgresql/
 ADD ./db/functions/indexes.sql                              /etc/postgresql/
 
-CMD ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+CMD ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "hba_file=/etc/postgresql/pg_hba.conf"]
