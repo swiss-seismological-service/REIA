@@ -523,7 +523,7 @@ def add_risk_assessment(originid: str, loss_id: int, damage_id: int):
 
 
 @risk_assessment.command('delete')
-def delete_risk_assessment(risk_assessment_oid: int):
+def delete_risk_assessment(risk_assessment_oid: str):
     '''
     Delete a risk assessment.
     '''
@@ -540,15 +540,15 @@ def list_risk_assessment():
     risk_assessments = crud.read_risk_assessments(session)
 
     typer.echo('List of existing risk assessments:')
-    typer.echo('{0:<10} {1:<25} {2:<25} {3}'.format(
+    typer.echo('{0:<40} {1:<20} {2:<15} {3}'.format(
         'ID',
         'Status',
         'Type',
         'Created'))
 
     for c in risk_assessments:
-        typer.echo('{0:<10} {1:<25} {2:<25} {3}'.format(
-            c._oid,
+        typer.echo('{0:<40} {1:<20} {2:<15} {3}'.format(
+            str(c._oid),
             c.status.name,
             c.type.name,
             str(c.creationinfo_creationtime)))

@@ -2,6 +2,7 @@ import os
 from io import StringIO
 from multiprocessing import Pool
 from operator import attrgetter
+from uuid import UUID
 
 import numpy as np
 import pandas as pd
@@ -494,7 +495,7 @@ def get_nextval(cursor, table: str, column: str):
     return next
 
 
-def delete_risk_assessment(risk_assessment_oid: int,
+def delete_risk_assessment(risk_assessment_oid: UUID,
                            session: Session) -> int:
 
     connection = session.get_bind().raw_connection()
@@ -504,12 +505,15 @@ def delete_risk_assessment(risk_assessment_oid: int,
         dm.RiskAssessment._oid == risk_assessment_oid)
     riskassessment = session.execute(stmt).unique().scalar()
 
+    if not riskassessment:
+        return 0
+
     losscalculation_id = riskassessment._losscalculation_oid
     damagecalculation_id = riskassessment._damagecalculation_oid
 
     cursor.execute(
         "DELETE FROM loss_riskassessment WHERE _oid = {};".format(
-            risk_assessment_oid))
+            f"'{str(risk_assessment_oid)}'"))
     rowcount = cursor.rowcount
 
     if losscalculation_id:
@@ -522,8 +526,9 @@ def delete_risk_assessment(risk_assessment_oid: int,
             "TRUNCATE TABLE {1};"
             "DROP TABLE {1};"
             "DELETE FROM loss_calculation WHERE _oid = {2};".format(
-                loss_table, loss_assoc_table, losscalculation_id)
-        )
+                loss_table,
+                loss_assoc_table,
+                losscalculation_id))
 
     if damagecalculation_id:
         damage_table = f'loss_riskvalue_{damagecalculation_id}'
@@ -568,12 +573,12 @@ def read_risk_assessments(
     return session.execute(stmt).unique().scalars().all()
 
 
-def read_risk_assessment(oid: int, session: Session) -> dm.RiskAssessment:
+def read_risk_assessment(oid: UUID, session: Session) -> dm.RiskAssessment:
     stmt = select(dm.RiskAssessment).where(dm.RiskAssessment._oid == oid)
     return session.execute(stmt).unique().scalar()
 
 
-def update_risk_assessment_status(riskassessment_oid: int,
+def update_risk_assessment_status(riskassessment_oid: UUID,
                                   status: dm.EStatus,
                                   session: Session) -> dm.Calculation:
     risk_assessment = read_risk_assessment(riskassessment_oid, session)

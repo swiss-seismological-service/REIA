@@ -1,5 +1,7 @@
 import enum
+import uuid
 
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.schema import Column, ForeignKey
@@ -31,6 +33,8 @@ class ECalculationType(str, enum.Enum):
 
 
 class RiskAssessment(ORMBase, CreationInfoMixin):
+
+    _oid = Column(UUID, primary_key=True, default=uuid.uuid4)
 
     originid = Column(String, nullable=False)
     status = Column(Enum(EStatus), nullable=False, default=EStatus.CREATED)
