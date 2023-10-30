@@ -14,8 +14,8 @@ def exposure_with_geoms(db_session):
     exposure_id = add_exposure(DATAFOLDER / 'ria_test'
                                / 'exposure_test.xml', 'test')
 
-    add_exposure_geometries(exposure_id, 'CantonGemeinde', DATAFOLDER
-                            / 'geometries' / 'municipalities.shp')
+    add_exposure_geometries(exposure_id, 'CantonGemeinde', 'tag',
+                            DATAFOLDER / 'geometries' / 'municipalities.shp')
     return exposure_id
 
 
