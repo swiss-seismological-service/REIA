@@ -1,0 +1,13 @@
+[flake8]
+select = E,F,W
+max-line-length = 80
+ignore = E402, W503
+exclude =
+  .git,
+  .tox,
+  .eggs,
+  .config,
+  *.egg-info,
+  __pycache__,
+  .pytest_cache,
+  env,

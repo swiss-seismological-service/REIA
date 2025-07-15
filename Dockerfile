@@ -1,9 +1,9 @@
-FROM python:3.10-slim as builder
+FROM python:3.10-slim AS builder
 
 WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential curl libpq-dev git\
@@ -15,12 +15,12 @@ COPY requirements.txt .
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
 
 
-FROM python:3.10-slim as creator
+FROM python:3.10-slim AS creator
 
 WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential curl libpq-dev git\
@@ -39,11 +39,7 @@ RUN pip install .
 RUN reia db createall
 
 
-FROM postgis/postgis:16-3.4 as reia-db
-
-ENV DB_NAME="reia" \
-    DB_USER="admin" \
-    DB_PASSWORD="password"
+FROM postgis/postgis:16-3.4 AS reia-db
 
 ADD ./db/pg_hba.conf                                        /etc/postgresql/
 ADD ./db/postgresql.conf                                    /etc/postgresql/

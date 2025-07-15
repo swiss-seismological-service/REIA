@@ -1,3 +1,42 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["reia*", "settings*"]
+# exclude = ["web"]
+
+[project]
+name = "reia"
+version = "0.1"
+description = ""
+readme = { file = "README.md", content-type = "text/markdown" }
+license = { text = "GNU AFFERO GENERAL PUBLIC LICENSE Version 3" }
+authors = [{ name = "Nicolas Schmid", email = "nicolas.schmid@sed.ethz.ch" }]
+classifiers = ["Programming Language :: Python :: 3"]
+requires-python = ">=3.10"
+dependencies = [
+    "fiona<1.10",
+    "geoalchemy2",
+    "geopandas",
+    "Jinja2",
+    "numpy<2",
+    "openquake.engine @ git+https://github.com/gem/oq-engine.git@engine-3.16",
+    "pandas<1.5",
+    "psycopg2",
+    "python-dotenv",
+    "requests",
+    "shapely>=2.0.0",
+    "sqlalchemy",
+    "typer",
+]
+
+[project.optional-dependencies]
+dev = ["flake8", "pytest", "pytest-cov", "pytest-env"]
+
+[project.scripts]
+reia = "reia.cli:app"
+
+[tool.setuptools.package-data]
+"*" = ["*.xml", "*.ini"]
