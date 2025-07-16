@@ -14,6 +14,7 @@ from reia.io.write import assemble_calculation_input
 from reia.oqapi import (oqapi_failed_for_zero_losses,
                         oqapi_get_calculation_result, oqapi_get_job_status,
                         oqapi_send_calculation)
+from reia.repositories.asset import AggregationTagRepository
 
 LOGGER = logging.getLogger(__name__)
 
@@ -72,8 +73,8 @@ def save_openquake_results(calculationbranch: CalculationBranch,
 
     aggregation_tags = {}
     for type in [it for sub in oq_parameter_inputs.aggregate_by for it in sub]:
-        type_tags = crud.read_aggregationtags(
-            type, calculationbranch._exposuremodel_oid, session)
+        type_tags = AggregationTagRepository.get_by_exposuremodel(
+            session, calculationbranch._exposuremodel_oid, type=type, return_orm=True)
         aggregation_tags.update({tag.name: tag for tag in type_tags})
 
     risk_type = ERiskType(oq_parameter_inputs.calculation_mode)

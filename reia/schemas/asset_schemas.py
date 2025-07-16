@@ -11,7 +11,7 @@ class CostType(Model):
     _exposuremodel_oid: Optional[int] = None
 
 
-class ExposureModel(Model, CreationInfoMixin):
+class ExposureModel(CreationInfoMixin):
     _oid: Optional[int] = None
     name: Optional[str] = None
     category: Optional[str] = None

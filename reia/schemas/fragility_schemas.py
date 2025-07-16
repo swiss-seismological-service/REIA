@@ -4,7 +4,7 @@ from reia.schemas.base import CreationInfoMixin, Model
 from reia.schemas.vulnerability_schemas import ELossCategory
 
 
-class FragilityModel(Model, CreationInfoMixin):
+class FragilityModel(CreationInfoMixin):
     _oid: Optional[int] = None
     name: Optional[str] = None
     description: Optional[str] = None
@@ -52,7 +52,7 @@ class LimitState(Model):
     _fragilityfunction_oid: Optional[int] = None
 
 
-class TaxonomyMap(Model, CreationInfoMixin):
+class TaxonomyMap(CreationInfoMixin):
     _oid: Optional[int] = None
     name: Optional[str] = None
 

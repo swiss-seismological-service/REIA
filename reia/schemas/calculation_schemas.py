@@ -25,7 +25,7 @@ class ECalculationType(str, enum.Enum):
     DAMAGE = 'damage'
 
 
-class RiskAssessment(Model, CreationInfoMixin):
+class RiskAssessment(CreationInfoMixin):
     _oid: Optional[uuid.UUID] = None
     originid: Optional[str] = None
     status: Optional[EStatus] = None
@@ -62,7 +62,7 @@ class DamageCalculationBranch(CalculationBranch):
     _businessinterruptionfragilitymodel_oid: Optional[int] = None
 
 
-class Calculation(Model, CreationInfoMixin):
+class Calculation(CreationInfoMixin):
     _oid: Optional[int] = None
     aggregateby: Optional[List[str]] = None
     status: Optional[EStatus] = None

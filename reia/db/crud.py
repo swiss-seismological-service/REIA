@@ -15,6 +15,7 @@ import reia.datamodel as dm
 from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
                      CALCULATION_MAPPING, LOSSCATEGORY_FRAGILITY_MAPPING,
                      LOSSCATEGORY_VULNERABILITY_MAPPING)
+from reia.repositories.asset import AggregationTagRepository
 from reia.utils import aggregationtags_from_assets, sites_from_assets
 
 #    EXAMPLE UPSERT
@@ -56,8 +57,8 @@ def create_assets(assets: pd.DataFrame,
 
     # create dm.AggregationTag objects and assign them to assets
     for tag_type in aggregation_types:
-        existing_tags = read_aggregationtags(
-            tag_type, exposure_model_oid, session)
+        existing_tags = AggregationTagRepository.get_by_exposuremodel(
+            session, exposure_model_oid, type=tag_type, return_orm=True)
         tags_of_type, assoc_table['aggregationtags_list_index'] = \
             aggregationtags_from_assets(assets, tag_type, existing_tags)
         session.add_all(list(tags_of_type))
@@ -458,15 +459,6 @@ def copy_raw(df, tablename):
     copy_from_dataframe(cursor, df, tablename)
     conn.commit()
     conn.close()
-
-
-def read_aggregationtags(type: str,
-                         exposuremodel_oid: int,
-                         session: Session) -> list[dm.AggregationTag]:
-    statement = select(dm.AggregationTag).where(
-        (dm.AggregationTag.type == type)
-        & (dm.AggregationTag._exposuremodel_oid == exposuremodel_oid))
-    return session.execute(statement).unique().scalars().all()
 
 
 def copy_from_dataframe(cursor, df: pd.DataFrame, table: str):
