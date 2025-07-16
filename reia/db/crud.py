@@ -367,24 +367,6 @@ def update_calculation_status(calculation_oid: int,
     return calculation
 
 
-def read_calculations(session: Session,
-                      type: dm.EEarthquakeType | None) -> list[dm.Calculation]:
-
-    stmt = select(dm.Calculation).order_by(dm.Calculation._oid)
-
-    if type:
-        stmt = stmt.where(dm.Calculation.riskassessment.has(
-            dm.RiskAssessment.type == type))
-    return session.execute(stmt).unique().scalars().all()
-
-
-def delete_calculation(calculation_oid: int,
-                       session: Session) -> None:
-    stmt = delete(dm.Calculation).where(dm.Calculation._oid == calculation_oid)
-    session.execute(stmt)
-    session.commit()
-
-
 def create_risk_values(risk_values: pd.DataFrame,
                        aggregation_tags: list[dm.AggregationTag],
                        connection):

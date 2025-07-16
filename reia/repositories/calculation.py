@@ -1,3 +1,6 @@
+from sqlalchemy import select, true
+from sqlalchemy.orm import Session
+
 from reia.datamodel.calculations import Calculation as CalculationORM
 from reia.datamodel.calculations import \
     CalculationBranch as CalculationBranchORM
@@ -13,7 +16,7 @@ from reia.repositories.base import repository_factory
 from reia.schemas.calculation_schemas import (Calculation, CalculationBranch,
                                               DamageCalculation,
                                               DamageCalculationBranch,
-                                              LossCalculation,
+                                              EEarthquakeType, LossCalculation,
                                               LossCalculationBranch,
                                               RiskAssessment)
 
@@ -40,7 +43,16 @@ class DamageCalculationBranchRepository(repository_factory(
 
 class CalculationRepository(repository_factory(
         Calculation, CalculationORM)):
-    pass
+    @classmethod
+    def get_all_by_type(
+            session: Session,
+            type: EEarthquakeType | None = None) -> list[Calculation]:
+
+        stmt = select(CalculationORM).where(
+            CalculationORM._earthquake_type == type if type else true()
+        )
+        result = session.execute(stmt).unique().scalars().all()
+        return [Calculation.model_validate(row) for row in result]
 
 
 class LossCalculationRepository(repository_factory(

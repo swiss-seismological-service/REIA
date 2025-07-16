@@ -22,6 +22,7 @@ from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
 from reia.io.write import (assemble_calculation_input, create_exposure_input,
                            create_fragility_input, create_taxonomymap_input,
                            create_vulnerability_input)
+from reia.repositories.calculation import CalculationRepository
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()
@@ -471,7 +472,8 @@ def list_calculations(eqtype: Optional[EEarthquakeType] = typer.Option(None)):
     '''
     List all calculations.
     '''
-    calculations = crud.read_calculations(session, eqtype)
+    calculations = CalculationRepository.get_all_by_type(
+        session, type=eqtype)
 
     typer.echo('List of existing calculations:')
     typer.echo('{0:<10} {1:<25} {2:<25} {3:<30} {4}'.format(
@@ -496,7 +498,7 @@ def delete_calculation(calculation_oid: int):
     '''
     Delete a calculation.
     '''
-    crud.delete_calculation(calculation_oid, session)
+    CalculationRepository.delete(session, calculation_oid)
     typer.echo(
         f'Deleted calculation with ID {calculation_oid}.')
     session.remove()

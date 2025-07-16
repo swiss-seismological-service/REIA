@@ -1,18 +1,20 @@
 from typing import List, Optional
 
+from pydantic import Field
 from reia.schemas.base import CreationInfoMixin, Model
 
 
 class CostType(Model):
-    _oid: Optional[int] = None
+    oid: Optional[int] = Field(default=None, alias='_oid')
     name: Optional[str] = None
     type: Optional[str] = None
     unit: Optional[str] = None
-    _exposuremodel_oid: Optional[int] = None
+    exposuremodel_oid: Optional[int] = Field(
+        default=None, alias='_exposuremodel_oid')
 
 
 class ExposureModel(CreationInfoMixin):
-    _oid: Optional[int] = None
+    oid: Optional[int] = Field(default=None, alias='_oid')
     name: Optional[str] = None
     category: Optional[str] = None
     description: Optional[str] = None
@@ -25,7 +27,7 @@ class ExposureModel(CreationInfoMixin):
 
 
 class Asset(Model):
-    _oid: Optional[int] = None
+    oid: Optional[int] = Field(default=None, alias='_oid')
     buildingcount: Optional[int] = None
     contentsvalue: Optional[float] = None
     structuralvalue: Optional[float] = None
@@ -35,26 +37,31 @@ class Asset(Model):
     transitoccupancy: Optional[float] = None
     businessinterruptionvalue: Optional[float] = None
     taxonomy: Optional[str] = None
-    _exposuremodel_oid: Optional[int] = None
-    _site_oid: Optional[int] = None
+    exposuremodel_oid: Optional[int] = Field(
+        default=None, alias='_exposuremodel_oid')
+    site_oid: Optional[int] = Field(default=None, alias='_site_oid')
 
 
 class Site(Model):
-    _oid: Optional[int] = None
+    oid: Optional[int] = Field(default=None, alias='_oid')
     longitude: Optional[float] = None
     latitude: Optional[float] = None
-    _exposuremodel_oid: Optional[int] = None
+    exposuremodel_oid: Optional[int] = Field(
+        default=None, alias='_exposuremodel_oid')
 
 
 class AggregationTag(Model):
-    _oid: Optional[int] = None
+    oid: Optional[int] = Field(default=None, alias='_oid')
     type: Optional[str] = None
     name: Optional[str] = None
-    _exposuremodel_oid: Optional[int] = None
+    exposuremodel_oid: Optional[int] = Field(
+        default=None, alias='_exposuremodel_oid')
 
 
 class AggregationGeometry(Model):
-    _oid: Optional[int] = None
+    oid: Optional[int] = Field(default=None, alias='_oid')
     name: Optional[str] = None
-    _aggregationtag_oid: Optional[int] = None
-    _exposuremodel_oid: Optional[int] = None
+    aggregationtag_oid: Optional[int] = Field(
+        default=None, alias='_aggregationtag_oid')
+    exposuremodel_oid: Optional[int] = Field(
+        default=None, alias='_exposuremodel_oid')

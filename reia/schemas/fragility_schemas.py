@@ -1,5 +1,7 @@
 from typing import List, Optional
 
+from pydantic import Field
+
 from reia.schemas.base import CreationInfoMixin, Model
 from reia.schemas.vulnerability_schemas import ELossCategory
 
@@ -31,8 +33,9 @@ class BusinessInterruptionFragilityModel(FragilityModel):
 
 
 class FragilityFunction(Model):
-    _oid: Optional[int] = None
-    _fragilitymodel_oid: Optional[int] = None
+    oid: Optional[int] = Field(default=None, alias='_oid')
+    fragilitymodel_oid: Optional[int] = Field(
+        default=None, alias='_fragilitymodel_oid')
     format: Optional[str] = None
     shape: Optional[str] = None
     nodamagelimit: Optional[float] = None
@@ -44,21 +47,23 @@ class FragilityFunction(Model):
 
 
 class LimitState(Model):
-    _oid: Optional[int] = None
+    oid: Optional[int] = Field(default=None, alias='_oid')
     name: Optional[str] = None
     mean: Optional[float] = None
     stddev: Optional[float] = None
     poes: Optional[List[float]] = None
-    _fragilityfunction_oid: Optional[int] = None
+    fragilityfunction_oid: Optional[int] = Field(
+        default=None, alias='_fragilityfunction_oid')
 
 
 class TaxonomyMap(CreationInfoMixin):
-    _oid: Optional[int] = None
+    oid: Optional[int] = Field(default=None, alias='_oid')
     name: Optional[str] = None
 
 
 class Mapping(Model):
-    _oid: Optional[int] = None
+    oid: Optional[int] = Field(default=None, alias='_oid')
     taxonomy: Optional[str] = None
     conversion: Optional[str] = None
-    _taxonomymap_oid: Optional[int] = None
+    taxonomymap_oid: Optional[int] = Field(
+        default=None, alias='_taxonomymap_oid')

@@ -2,6 +2,8 @@ import enum
 import uuid
 from typing import List, Optional
 
+from pydantic import Field
+
 from reia.schemas.base import CreationInfoMixin, Model
 
 
@@ -26,48 +28,62 @@ class ECalculationType(str, enum.Enum):
 
 
 class RiskAssessment(CreationInfoMixin):
-    _oid: Optional[uuid.UUID] = None
+    oid: Optional[uuid.UUID] = Field(default=None, alias='_oid')
     originid: Optional[str] = None
     status: Optional[EStatus] = None
     type: Optional[EEarthquakeType] = None
     preferred: Optional[bool] = None
     published: Optional[bool] = None
-    _losscalculation_oid: Optional[int] = None
-    _damagecalculation_oid: Optional[int] = None
+    losscalculation_oid: Optional[int] = Field(
+        default=None, alias='_losscalculation_oid')
+    damagecalculation_oid: Optional[int] = Field(
+        default=None, alias='_damagecalculation_oid')
 
 
 class CalculationBranch(Model):
-    _oid: Optional[int] = None
+    oid: Optional[int] = Field(default=None, alias='_oid')
     config: Optional[dict] = None
     status: Optional[EStatus] = None
     weight: Optional[float] = None
-    _calculation_oid: Optional[int] = None
-    _exposuremodel_oid: Optional[int] = None
-    _taxonomymap_oid: Optional[int] = None
-    _type: Optional[ECalculationType] = None
+    calculation_oid: Optional[int] = Field(
+        default=None, alias='_calculation_oid')
+    exposuremodel_oid: Optional[int] = Field(
+        default=None, alias='_exposuremodel_oid')
+    taxonomymap_oid: Optional[int] = Field(
+        default=None, alias='_taxonomymap_oid')
+    type: Optional[ECalculationType] = Field(default=None, alias='_type')
 
 
 class LossCalculationBranch(CalculationBranch):
-    _occupantsvulnerabilitymodel_oid: Optional[int] = None
-    _contentsvulnerabilitymodel_oid: Optional[int] = None
-    _structuralvulnerabilitymodel_oid: Optional[int] = None
-    _nonstructuralvulnerabilitymodel_oid: Optional[int] = None
-    _businessinterruptionvulnerabilitymodel_oid: Optional[int] = None
+    occupantsvulnerabilitymodel_oid: Optional[int] = Field(
+        default=None, alias='_occupantsvulnerabilitymodel_oid')
+    contentsvulnerabilitymodel_oid: Optional[int] = Field(
+        default=None, alias='_contentsvulnerabilitymodel_oid')
+    structuralvulnerabilitymodel_oid: Optional[int] = Field(
+        default=None, alias='_structuralvulnerabilitymodel_oid')
+    nonstructuralvulnerabilitymodel_oid: Optional[int] = Field(
+        default=None, alias='_nonstructuralvulnerabilitymodel_oid')
+    businessinterruptionvulnerabilitymodel_oid: Optional[int] = Field(
+        default=None, alias='_businessinterruptionvulnerabilitymodel_oid')
 
 
 class DamageCalculationBranch(CalculationBranch):
-    _contentsfragilitymodel_oid: Optional[int] = None
-    _structuralfragilitymodel_oid: Optional[int] = None
-    _nonstructuralfragilitymodel_oid: Optional[int] = None
-    _businessinterruptionfragilitymodel_oid: Optional[int] = None
+    contentsfragilitymodel_oid: Optional[int] = Field(
+        default=None, alias='_contentsfragilitymodel_oid')
+    structuralfragilitymodel_oid: Optional[int] = Field(
+        default=None, alias='_structuralfragilitymodel_oid')
+    nonstructuralfragilitymodel_oid: Optional[int] = Field(
+        default=None, alias='_nonstructuralfragilitymodel_oid')
+    businessinterruptionfragilitymodel_oid: Optional[int] = Field(
+        default=None, alias='_businessinterruptionfragilitymodel_oid')
 
 
 class Calculation(CreationInfoMixin):
-    _oid: Optional[int] = None
+    oid: Optional[int] = Field(default=None, alias='_oid')
     aggregateby: Optional[List[str]] = None
     status: Optional[EStatus] = None
     description: Optional[str] = None
-    _type: Optional[ECalculationType] = None
+    type: Optional[ECalculationType] = Field(default=None, alias='_type')
 
 
 class LossCalculation(Calculation):
