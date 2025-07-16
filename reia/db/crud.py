@@ -15,9 +15,11 @@ import reia.datamodel as dm
 from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
                      CALCULATION_MAPPING, LOSSCATEGORY_FRAGILITY_MAPPING,
                      LOSSCATEGORY_VULNERABILITY_MAPPING)
-from reia.repositories.asset import AggregationTagRepository
+from reia.repositories.asset import (AggregationTagRepository, AssetRepository,
+                                     SiteRepository)
 from reia.schemas import AggregationTag
-from reia.utils import aggregationtags_from_assets, sites_from_assets
+from reia.utils import (aggregationtags_from_assets, sites_from_assets,
+                        split_assets_and_tags)
 
 #    EXAMPLE UPSERT
 #     stmt = insert(dm.EarthquakeInformation).values(**earthquake)
@@ -33,17 +35,62 @@ from reia.utils import aggregationtags_from_assets, sites_from_assets
 
 def create_assets(assets: pd.DataFrame,
                   exposure_model_oid: int,
-                  session: Session) -> list[dm.Asset]:
-    """
-    Extract Sites and AggregationTags from Assets, saves them in DB
-    as children of the dm.ExposureModel.
-    """
-    # get dm.AggregationTag types
+                  session: Session) -> int:
+    # get AggregationTag types
     aggregation_types = [
         x for x in assets.columns if x not in list(
             ASSETS_COLS_MAPPING.values()) + ['longitude', 'latitude']]
 
-    # assign dm.ExposureModel to assets
+    # Asset columns
+    asset_cols = list(ASSETS_COLS_MAPPING.values()) + \
+        ['_site_oid', '_exposuremodel_oid']
+
+    # assign ExposureModel oid to assets
+    assets['_exposuremodel_oid'] = exposure_model_oid
+
+    # create Sites
+    sites, assets['_site_oid'] = sites_from_assets(assets)
+    sites['_exposuremodel_oid'] = exposure_model_oid
+    sites_oids = SiteRepository.insert_many(session, sites)
+
+    # assign site oids to assets
+    assets['_site_oid'] = assets['_site_oid'].map(lambda x: sites_oids[x])
+
+    # create AggregationTags
+    asset_df, tag_df, assoc_table = split_assets_and_tags(assets,
+                                                          asset_cols,
+                                                          aggregation_types)
+
+    tag_df['_exposuremodel_oid'] = exposure_model_oid
+    tags_oids = AggregationTagRepository.insert_many(session, tag_df)
+
+    assoc_table['aggregationtag'] = assoc_table['aggregationtag'].map(
+        lambda x: tags_oids[x])
+
+    assets_oids = AssetRepository.insert_many(session, asset_df)
+
+    assoc_table['asset'] = assoc_table['asset'].map(
+        lambda x: assets_oids[x])
+    session.commit()
+
+    copy_raw(assoc_table, 'loss_assoc_asset_aggregationtag')
+
+    return assets_oids
+
+
+def create_assets_2(assets: pd.DataFrame,
+                    exposure_model_oid: int,
+                    session: Session) -> list[dm.Asset]:
+    """
+    Extract Sites and AggregationTags from Assets, saves them in DB
+    as children of the dm.ExposureModel.
+    """
+    # get AggregationTag types
+    aggregation_types = [
+        x for x in assets.columns if x not in list(
+            ASSETS_COLS_MAPPING.values()) + ['longitude', 'latitude']]
+
+    # assign ExposureModel oid to assets
     assets['_exposuremodel_oid'] = exposure_model_oid
     assoc_table = pd.DataFrame(
         {'aggregationtags': assets.apply(lambda _: [], axis=1)})

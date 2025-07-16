@@ -86,7 +86,7 @@ asset_aggregationtag = Table(
 )
 
 
-class Asset(ClassificationMixin('taxonomy'), ORMBase):
+class Asset(ORMBase, ClassificationMixin('taxonomy')):
     '''Asset model'''
 
     buildingcount = Column(Integer, nullable=False)
@@ -168,6 +168,9 @@ class AggregationTag(ORMBase):
 
     __table_args__ = {
         'postgresql_partition_by': 'LIST (type)',
+        'unique_constraints': [
+            ('name', 'type', '_exposuremodel_oid')
+        ]
     }
 
 
