@@ -2,15 +2,15 @@ import os
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.schema import Column, MetaData
 from sqlalchemy.sql.sqltypes import BigInteger
 
 
-class Base(object):
-
-    @ declared_attr
+class ORMBase(DeclarativeBase, AsyncAttrs):
+    @declared_attr
     def __tablename__(cls):
         return f'loss_{cls.__name__.lower()}'
 
@@ -21,9 +21,6 @@ class Base(object):
         for key in self.__mapper__.c.keys():
             dict_[key] = getattr(self, key)
         return dict_
-
-
-ORMBase = declarative_base(cls=Base)
 
 
 def load_engine():
