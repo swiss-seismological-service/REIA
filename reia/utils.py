@@ -8,7 +8,8 @@ from typing import Any, TextIO, Tuple
 import pandas as pd
 from jinja2 import Template, select_autoescape
 
-from reia.datamodel.asset import AggregationTag, Site
+from reia.datamodel.asset import Site
+from reia.schemas import AggregationTag
 
 
 def import_string(import_name: str, silent: bool = False) -> Any:
@@ -73,10 +74,10 @@ def sites_from_assets(assets: pd.DataFrame) -> Tuple[list[Site], list[int]]:
     return all_sites, site_groups.grouper.group_info[0]
 
 
-def aggregationtags_from_assets(
-    assets: pd.DataFrame, aggregation_type: str,
-    existing_tags: list[AggregationTag]) -> \
-        Tuple[list[AggregationTag], list[int]]:
+def aggregationtags_from_assets(assets: pd.DataFrame,
+                                aggregation_type: str,
+                                existing_tags: list[AggregationTag]) \
+        -> Tuple[list[AggregationTag], list[int]]:
     """
     Extract aggregationtags from assets dataframe
 
@@ -97,7 +98,7 @@ def aggregationtags_from_assets(
             tag = AggregationTag(
                 type=aggregation_type,
                 name=name,
-                _exposuremodel_oid=exposuremodel_oid)
+                exposuremodel_oid=exposuremodel_oid)
         all_tags.append(tag)
     return all_tags, agg_groups.grouper.group_info[0]
 

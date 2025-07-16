@@ -16,6 +16,7 @@ from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
                      CALCULATION_MAPPING, LOSSCATEGORY_FRAGILITY_MAPPING,
                      LOSSCATEGORY_VULNERABILITY_MAPPING)
 from reia.repositories.asset import AggregationTagRepository
+from reia.schemas import AggregationTag
 from reia.utils import aggregationtags_from_assets, sites_from_assets
 
 #    EXAMPLE UPSERT
@@ -58,9 +59,11 @@ def create_assets(assets: pd.DataFrame,
     # create dm.AggregationTag objects and assign them to assets
     for tag_type in aggregation_types:
         existing_tags = AggregationTagRepository.get_by_exposuremodel(
-            session, exposure_model_oid, type=tag_type, return_orm=True)
+            session, exposure_model_oid, type=tag_type)
         tags_of_type, assoc_table['aggregationtags_list_index'] = \
             aggregationtags_from_assets(assets, tag_type, existing_tags)
+        tags_of_type = \
+            [dm.AggregationTag(**d.model_dump()) for d in tags_of_type]
         session.add_all(list(tags_of_type))
         session.flush()
         assoc_table.apply(lambda x: x['aggregationtags'].append(
@@ -368,7 +371,7 @@ def update_calculation_status(calculation_oid: int,
 
 
 def create_risk_values(risk_values: pd.DataFrame,
-                       aggregation_tags: list[dm.AggregationTag],
+                       aggregation_tags: dict[str, AggregationTag],
                        connection):
 
     max_procs = int(os.getenv('MAX_PROCESSES', '1'))
@@ -399,7 +402,7 @@ def create_risk_values(risk_values: pd.DataFrame,
     df_agg_val['aggregationtype'] = df_agg_val['aggregationtag'].map(
         aggregation_tags).map(attrgetter('type'))
     df_agg_val['aggregationtag'] = df_agg_val['aggregationtag'].map(
-        aggregation_tags).map(attrgetter('_oid'))
+        aggregation_tags).map(attrgetter('oid'))
 
     if max_procs > 1:
         copy_pooled(risk_values, dm.RiskValue.__table__.name, max_procs)

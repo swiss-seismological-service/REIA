@@ -9,7 +9,9 @@ class Model(BaseModel):
         extra='forbid',
         arbitrary_types_allowed=True,
         from_attributes=True,
-        protected_namespaces=()
+        protected_namespaces=(),
+        populate_by_name=True,
+        serialize_by_alias=True
     )
 
 
