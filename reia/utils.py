@@ -8,8 +8,6 @@ from typing import Any, TextIO, Tuple
 import pandas as pd
 from jinja2 import Template, select_autoescape
 
-from reia.schemas import AggregationTag
-
 
 def import_string(import_name: str, silent: bool = False) -> Any:
     """Imports an object based on a string.  This is useful if you want to
@@ -83,24 +81,21 @@ def split_assets_and_tags(df: pd.DataFrame,
     # First DataFrame: asset values only
     asset_df = df[asset_cols].copy()
 
-    # Melt the tag columns
+    # Melt the tag columns, preserving the original row index
     df = df.reset_index(drop=True)
-    tag_df = df[tag_cols].melt(
-        id_vars=None,
+    tag_df = df[tag_cols].reset_index().melt(
+        id_vars=['index'],
         value_vars=tag_cols,
         var_name='type',
         value_name='name'
-    )  # .rename(columns={'index': 'asset'})
-
-    tag_df['asset'] = tag_df.index // len(tag_cols)
+    ).rename(columns={'index': 'asset'})
 
     tag_df, mapping_df = normalize_tags(tag_df)
 
     return asset_df, tag_df, mapping_df
 
 
-def normalize_tags(
-        tag_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def normalize_tags(tag_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Use pd.factorize to normalize (type, name) pairs.
     Returns:
@@ -122,35 +117,6 @@ def normalize_tags(
     mapping_table.rename(columns={'type': 'aggregationtype'}, inplace=True)
 
     return tag_table, mapping_table
-
-
-def aggregationtags_from_assets(assets: pd.DataFrame,
-                                aggregation_type: str,
-                                existing_tags: list[AggregationTag]) \
-        -> Tuple[list[AggregationTag], list[int]]:
-    """
-    Extract aggregationtags from assets dataframe
-
-    :params assets: Dataframe of assets with 'aggregation_type' column
-    :returns:       lists of AggregationTag objects and group numbers for
-                    dataframe rows
-    """
-    existing_tags = {str(t.name): t for t in existing_tags}
-    exposuremodel_oid = assets['_exposuremodel_oid'].iloc[0]
-    agg_groups = assets.groupby(aggregation_type)
-
-    all_tags = []
-
-    for name, _ in agg_groups:
-        if str(name) in existing_tags:
-            tag = existing_tags[str(name)]
-        else:
-            tag = AggregationTag(
-                type=aggregation_type,
-                name=name,
-                exposuremodel_oid=exposuremodel_oid)
-        all_tags.append(tag)
-    return all_tags, agg_groups.grouper.group_info[0]
 
 
 def flatten_config(file: TextIO) -> dict:

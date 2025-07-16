@@ -1,5 +1,5 @@
 from geoalchemy2 import Geometry
-from sqlalchemy import ForeignKeyConstraint, Table
+from sqlalchemy import ForeignKeyConstraint, Table, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.schema import Column, ForeignKey
 from sqlalchemy.sql.sqltypes import BigInteger, Boolean, Float, Integer, String
@@ -166,12 +166,12 @@ class AggregationTag(ORMBase):
         'ExposureModel',
         back_populates='aggregationtags')
 
-    __table_args__ = {
-        'postgresql_partition_by': 'LIST (type)',
-        'unique_constraints': [
-            ('name', 'type', '_exposuremodel_oid')
-        ]
-    }
+    __table_args__ = (
+        UniqueConstraint('name', 'type', '_exposuremodel_oid'),
+        {
+            'postgresql_partition_by': 'LIST (type)',
+        }
+    )
 
 
 class AggregationGeometry(ORMBase):

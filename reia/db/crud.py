@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 import psycopg2
 from sqlalchemy import delete, select
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 import reia.datamodel as dm
@@ -18,8 +17,7 @@ from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
 from reia.repositories.asset import (AggregationTagRepository, AssetRepository,
                                      SiteRepository)
 from reia.schemas import AggregationTag
-from reia.utils import (aggregationtags_from_assets, sites_from_assets,
-                        split_assets_and_tags)
+from reia.utils import sites_from_assets, split_assets_and_tags
 
 #    EXAMPLE UPSERT
 #     stmt = insert(dm.EarthquakeInformation).values(**earthquake)
@@ -76,71 +74,6 @@ def create_assets(assets: pd.DataFrame,
     copy_raw(assoc_table, 'loss_assoc_asset_aggregationtag')
 
     return assets_oids
-
-
-def create_assets_2(assets: pd.DataFrame,
-                    exposure_model_oid: int,
-                    session: Session) -> list[dm.Asset]:
-    """
-    Extract Sites and AggregationTags from Assets, saves them in DB
-    as children of the dm.ExposureModel.
-    """
-    # get AggregationTag types
-    aggregation_types = [
-        x for x in assets.columns if x not in list(
-            ASSETS_COLS_MAPPING.values()) + ['longitude', 'latitude']]
-
-    # assign ExposureModel oid to assets
-    assets['_exposuremodel_oid'] = exposure_model_oid
-    assoc_table = pd.DataFrame(
-        {'aggregationtags': assets.apply(lambda _: [], axis=1)})
-
-    # create Sites objects and assign them to assets
-    sites, assets['_site_oid'] = sites_from_assets(assets)
-    for s in sites:
-        s._exposuremodel_oid = exposure_model_oid
-    session.add_all(sites)
-    session.flush()
-    assets['_site_oid'] = assets['_site_oid'].map(lambda x: sites[x]._oid)
-
-    # create dm.AggregationTag objects and assign them to assets
-    for tag_type in aggregation_types:
-        existing_tags = AggregationTagRepository.get_by_exposuremodel(
-            session, exposure_model_oid, type=tag_type)
-        tags_of_type, assoc_table['aggregationtags_list_index'] = \
-            aggregationtags_from_assets(assets, tag_type, existing_tags)
-        tags_of_type = \
-            [dm.AggregationTag(**d.model_dump()) for d in tags_of_type]
-        session.add_all(list(tags_of_type))
-        session.flush()
-        assoc_table.apply(lambda x: x['aggregationtags'].append(
-            tags_of_type[x['aggregationtags_list_index']]), axis=1)
-
-    session.commit()
-
-    # create dm.Asset objects from DataFrame
-    valid_cols = list(ASSETS_COLS_MAPPING.values()) + \
-        ['_site_oid', 'aggregationtags', '_exposuremodel_oid']
-
-    assoc_table['asset'] = list(session.scalars(insert(dm.Asset).returning(
-        dm.Asset._oid), assets.filter(valid_cols).to_dict('records')).all())
-
-    assoc_table = assoc_table.explode('aggregationtags', ignore_index=True)
-    assoc_table['aggregationtag'] = assoc_table['aggregationtags'].map(
-        attrgetter('_oid'))
-    assoc_table['aggregationtype'] = assoc_table['aggregationtags'].map(
-        attrgetter('type'))
-    assoc_table = assoc_table.drop(
-        ['aggregationtags', 'aggregationtags_list_index'], axis=1)
-
-    session.commit()
-
-    copy_raw(assoc_table, 'loss_assoc_asset_aggregationtag')
-
-    statement = select(dm.Asset).where(
-        dm.Asset._exposuremodel_oid == exposure_model_oid)
-
-    return session.execute(statement).unique().scalars().all()
 
 
 def create_asset_collection(exposure: dict,
