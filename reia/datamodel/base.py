@@ -36,8 +36,8 @@ def load_engine():
 
 
 def init_db():
-    """
-    Initializes the Database.
+    """Initializes the Database.
+
     All DB modules need to be imported when calling this function.
     """
     engine = load_engine()
@@ -45,7 +45,7 @@ def init_db():
 
 
 def drop_db():
-    """Drops all database Tables but leaves the DB itself in place"""
+    """Drops all database Tables but leaves the DB itself in place."""
 
     engine = load_engine()
     m = MetaData()

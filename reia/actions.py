@@ -22,12 +22,14 @@ LOGGER = logging.getLogger(__name__)
 def dispatch_openquake_calculation(
         job_file: ConfigParser,
         session: Session) -> Response:
-    """
-    Assemble and dispatch an OQ calculation.
+    """Assemble and dispatch an OQ calculation.
 
-    :param job_file: Config file for OQ job.
-    :param session: Database session object.
-    :returns: The Response object from the OpenQuake API.
+    Args:
+        job_file: Config file for OQ job.
+        session: Database session object.
+
+    Returns:
+        The Response object from the OpenQuake API.
     """
 
     # create calculation files
@@ -40,12 +42,12 @@ def dispatch_openquake_calculation(
 def monitor_openquake_calculation(job_id: int,
                                   calculation_branch_oid: int,
                                   session: Session) -> None:
-    """
-    Monitor OQ calculation and update status accordingly.
+    """Monitor OQ calculation and update status accordingly.
 
-    :param job_id: ID of the OQ job.
-    :param calculation_oid: ID of the Calculation DB row.
-    :param session: Database session object.
+    Args:
+        job_id: ID of the OQ job.
+        calculation_branch_oid: ID of the Calculation DB row.
+        session: Database session object.
     """
     while True:
         response = oqapi_get_job_status(job_id)

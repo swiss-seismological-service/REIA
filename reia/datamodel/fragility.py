@@ -10,9 +10,9 @@ from reia.datamodel.mixins import (ClassificationMixin, CompatibleFloatArray,
 
 
 class FragilityModel(ORMBase, PublicIdMixin, CreationInfoMixin):
-    """
-    Fragility Model
-    Instance of SQLAlchemy Single Table Inheritance
+    """Fragility Model.
+
+    Instance of SQLAlchemy Single Table Inheritance.
     """
 
     name = Column(String)

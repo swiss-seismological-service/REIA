@@ -20,13 +20,15 @@ def create_fragility_input(
     session: Session,
     template_name: Path = Path('reia/templates/fragility.xml')) \
         -> io.StringIO:
-    """
-    Create an in memory fragility xml file for OpenQuake.
+    """Create an in memory fragility xml file for OpenQuake.
 
-    :param fragility_model_oid: oid of the VulnerabilityModel to be used.
-    :param session: SQLAlchemy database session.
-    :param template_name: Template to be used for the fragility file.
-    :returns: Filepointer for exposure xml and one for csv list of assets.
+    Args:
+        fragility_model_oid: oid of the VulnerabilityModel to be used.
+        session: SQLAlchemy database session.
+        template_name: Template to be used for the fragility file.
+
+    Returns:
+        Filepointer for exposure xml and one for csv list of assets.
     """
 
     fragility_model = read_fragility_model(
@@ -51,13 +53,15 @@ def create_taxonomymap_input(
     session: Session,
     name: str = 'taxonomy_mapping.csv') \
         -> io.StringIO:
-    """
-    Create an in memory vulnerability xml file for OpenQuake.
+    """Create an in memory vulnerability xml file for OpenQuake.
 
-    :param vulnerability_model_oid: oid of the VulnerabilityModel to be used.
-    :param session: SQLAlchemy database session.
-    :param template_name: Template to be used for the vulnerability file.
-    :returns: Filepointer for exposure xml and one for csv list of assets.
+    Args:
+        oid: oid of the VulnerabilityModel to be used.
+        session: SQLAlchemy database session.
+        name: Template to be used for the vulnerability file.
+
+    Returns:
+        Filepointer for exposure xml and one for csv list of assets.
     """
 
     taxonomy_map = read_taxonomymap(oid, session)
@@ -79,13 +83,15 @@ def create_vulnerability_input(
     session: Session,
     template_name: Path = Path('reia/templates/vulnerability.xml')) \
         -> io.StringIO:
-    """
-    Create an in memory vulnerability xml file for OpenQuake.
+    """Create an in memory vulnerability xml file for OpenQuake.
 
-    :param vulnerability_model_oid: oid of the VulnerabilityModel to be used.
-    :param session: SQLAlchemy database session.
-    :param template_name: Template to be used for the vulnerability file.
-    :returns: Filepointer for exposure xml and one for csv list of assets.
+    Args:
+        vulnerability_model_oid: oid of the VulnerabilityModel to be used.
+        session: SQLAlchemy database session.
+        template_name: Template to be used for the vulnerability file.
+
+    Returns:
+        Filepointer for exposure xml and one for csv list of assets.
     """
 
     vulnerability_model = read_vulnerability_model(
@@ -111,13 +117,16 @@ def create_exposure_input(
     template_name: Path = Path('reia/templates/exposure.xml'),
     assets_csv_name: Path = Path('exposure_assets.csv')) \
         -> Tuple[io.StringIO, io.StringIO]:
-    """
-    Creates in-memory exposure input files for OpenQuake.
+    """Creates in-memory exposure input files for OpenQuake.
 
-    :param asset_collection_oid: oid of the ExposureModel to be used.
-    :param session: SQLAlchemy database session.
-    :param template_name: Template to be used for the exposure file.
-    :returns: Filepointer for exposure xml and one for csv list of assets.
+    Args:
+        asset_collection_oid: oid of the ExposureModel to be used.
+        session: SQLAlchemy database session.
+        template_name: Template to be used for the exposure file.
+        assets_csv_name: Name for the assets CSV file.
+
+    Returns:
+        Filepointer for exposure xml and one for csv list of assets.
     """
 
     asset_collection = read_asset_collection(asset_collection_oid, session)
@@ -142,9 +151,7 @@ def create_exposure_input(
 
 
 def assets_to_dataframe(assets: list[Asset]) -> pd.DataFrame:
-    """
-    Parses a list of Asset objects to a DataFrame.
-    """
+    """Parses a list of Asset objects to a DataFrame."""
 
     assets_df = pd.DataFrame([x._asdict() for x in assets]).set_index('_oid')
 

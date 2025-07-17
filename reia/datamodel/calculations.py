@@ -62,10 +62,9 @@ class RiskAssessment(ORMBase, CreationInfoMixin):
 
 
 class CalculationBranch(ORMBase):
-    """
-    Calculation Branch Parameters model
+    """Calculation Branch Parameters model.
 
-    Instance of SQLAlchemy Joined Table Inheritance
+    Instance of SQLAlchemy Joined Table Inheritance.
     """
 
     config = Column(MutableDict.as_mutable(JSONEncodedDict))
@@ -210,10 +209,9 @@ class DamageCalculationBranch(CalculationBranch):
 
 
 class Calculation(ORMBase, CreationInfoMixin):
-    """
-    Calculation Parameters model
+    """Calculation Parameters model.
 
-    Instance of SQLAlchemy Single Table Inheritance
+    Instance of SQLAlchemy Single Table Inheritance.
     """
 
     aggregateby = Column(CompatibleStringArray)

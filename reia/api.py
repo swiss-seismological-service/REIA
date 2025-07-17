@@ -128,7 +128,7 @@ class OQCalculationAPI(APIConnection):
             self.files['job_config'] = job_config
 
         self.files = self.files | {
-            f'input_model_{i+1}': v for i, v in enumerate(args)}
+            f'input_model_{i + 1}': v for i, v in enumerate(args)}
 
     def get_result(self) -> datastore.DataStore:
         dbserver.ensure_on()
@@ -142,10 +142,16 @@ class OQCalculationAPI(APIConnection):
 
 
 def oqapi_import_remote_calculation(calc_id: int | str, config: Config):
-    """
-    Import a remote calculation into the local database.
-    NB: calc_id can be a local pathname to a datastore not already
-    present in the database: in that case it is imported in the db.
+    """Import a remote calculation into the local database.
+
+    Args:
+        calc_id: Can be a local pathname to a datastore not already
+                present in the database: in that case it is imported in the db.
+        config: Configuration object containing API settings.
+
+    Note:
+        calc_id can be a local pathname to a datastore not already
+        present in the database: in that case it is imported in the db.
     """
     # TODO: Error handling and logs
     dbserver.ensure_on()

@@ -38,7 +38,7 @@ def oqapi_send_calculation(*args: io.StringIO):
     job_config = args.pop(
         next((i for i, f in enumerate(args) if f.name == 'job.ini')))
 
-    files = {f'input_model_{i+1}': v for i, v in enumerate(args)}
+    files = {f'input_model_{i + 1}': v for i, v in enumerate(args)}
     files['job_config'] = job_config
     session = oqapi_auth_session()
     response = session.post(
@@ -63,10 +63,15 @@ def oqapi_get_calculation_result(job_id: int) -> datastore.DataStore:
 
 
 def oqapi_import_remote_calculation(calc_id: int | str):
-    """
-    Import a remote calculation into the local database.
-    NB: calc_id can be a local pathname to a datastore not already
-    present in the database: in that case it is imported in the db.
+    """Import a remote calculation into the local database.
+
+    Args:
+        calc_id: Can be a local pathname to a datastore not already
+                present in the database: in that case it is imported in the db.
+
+    Note:
+        calc_id can be a local pathname to a datastore not already
+        present in the database: in that case it is imported in the db.
     """
     dbserver.ensure_on()
     try:

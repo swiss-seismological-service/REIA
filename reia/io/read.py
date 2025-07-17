@@ -13,15 +13,17 @@ from reia.utils import flatten_config
 
 
 def parse_assets(file: TextIO, tagnames: list[str]) -> pd.DataFrame:
+    """Reads an exposure file with assets into a dataframe.
+
+    Args:
+        file: csv file object with headers (Input OpenQuake):
+              id,lon,lat,taxonomy,number,structural,contents,day(
+              CantonGemeinde,CantonGemeindePC, ...)
+        tagnames: List of tag names to include.
+
+    Returns:
+        df with columns for datamodel.Assets object + lat and lon.
     """
-    Reads an exposure file with assets into a dataframe
-
-    :params file:   csv file object with headers (Input OpenQuake):
-                    id,lon,lat,taxonomy,number,structural,contents,day(
-                    CantonGemeinde,CantonGemeindePC, ...)
-
-    :returns:       df with columns for datamodel.Assets object + lat and lon
-     """
 
     df = pd.read_csv(file, index_col='id')
 
@@ -193,9 +195,16 @@ def parse_vulnerability(file: TextIO) -> dict:
 
 
 def equal_section_options(configs: list[configparser.ConfigParser], name: str):
-    """Returns `True` if all configparsers have:
-        - The same section and the same option keys inside this section.
-        - All don't have the section.
+    """Returns True if all configparsers have consistent section options.
+
+    Args:
+        configs: List of configparser objects to compare.
+        name: Name of the section to check.
+
+    Returns:
+        True if all configparsers have:
+            - The same section and the same option keys inside this section.
+            - All don't have the section.
     """
 
     has_any = any(c.has_section(name) for c in configs)
@@ -214,10 +223,17 @@ def equal_section_options(configs: list[configparser.ConfigParser], name: str):
 
 def equal_option_value(
         configs: list[configparser.ConfigParser], section: str, name: str):
-    """
-    Returns `True` if all configparsers have:
-        - The same option inside the same section with the same value.
-        - All don't have this option.
+    """Returns True if all configparsers have consistent option values.
+
+    Args:
+        configs: List of configparser objects to compare.
+        section: Name of the section containing the option.
+        name: Name of the option to check.
+
+    Returns:
+        True if all configparsers have:
+            - The same option inside the same section with the same value.
+            - All don't have this option.
     """
     has_any = any(c.has_option(section, name) for c in configs)
 
@@ -235,7 +251,11 @@ def equal_option_value(
 
 def validate_calculation_input(
         branch_settings: list[CalculationBranchSettings]) -> None:
+    """Validate calculation input settings.
 
+    Args:
+        branch_settings: List of calculation branch settings to validate.
+    """
     # validate weights
     if not sum([b.weight for b in branch_settings]) == 1:
         raise ValueError('The sum of the weights for the calculation '
@@ -271,9 +291,15 @@ def validate_calculation_input(
 
 def parse_calculation_input(branch_settings: list[CalculationBranchSettings]) \
         -> tuple[dict, list[dict]]:
-    """
-    Parses multiple `esloss` OQ calculation files to the structure of a
-    `Calculation` and multiple `CalculationBranch` objects respectively.
+    """Parses multiple esloss OQ calculation files.
+
+    Args:
+        branch_settings: List of calculation branch settings to parse.
+
+    Returns:
+        Tuple containing:
+            - Calculation dictionary
+            - List of CalculationBranch dictionaries
     """
     calculation = {}
     calculation_branches = []

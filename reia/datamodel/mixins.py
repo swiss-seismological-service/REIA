@@ -33,9 +33,9 @@ class JSONEncodedDict(TypeDecorator):
 
 
 class CreationInfoMixin(object):
-    """
-    `SQLAlchemy <https://www.sqlalchemy.org/>`_ mixin emulating type
-    :code:`CreationInfo` from `QuakeML <https://quake.ethz.ch/quakeml/>`_.
+    """SQLAlchemy mixin emulating type CreationInfo from QuakeML.
+
+    This mixin provides CreationInfo fields compatible with QuakeML standard.
     """
     creationinfo_author = Column(String)
     creationinfo_authoruri_resourceid = Column(String)
@@ -51,17 +51,19 @@ class CreationInfoMixin(object):
 
 
 class PublicIdMixin(object):
-    """
-    `SQLAlchemy <https://www.sqlalchemy.org/>`_ mixin emulating type
-    :code:`PublicId` from `QuakeML <https://quake.ethz.ch/quakeml/>`_.
+    """SQLAlchemy mixin emulating type PublicId from QuakeML.
+
+    This mixin provides PublicId fields compatible with QuakeML standard.
     """
     publicid = Column(String, nullable=False)
 
 
 def ClassificationMixin(name, column_prefix=None):
-    """
-    `SQLAlchemy <https://www.sqlalchemy.org/>`_ mixin emulating type
-    :code:`Classification` from `QuakeML <https://quake.ethz.ch/quakeml/>`_.
+    """SQLAlchemy mixin emulating type Classification from QuakeML.
+
+    Args:
+        name: Name of the classification.
+        column_prefix: Prefix for database columns.
     """
     if column_prefix is None:
         column_prefix = '%s_' % name
@@ -96,9 +98,7 @@ def ClassificationMixin(name, column_prefix=None):
 
 def QuantityMixin(name, quantity_type, column_prefix=None, optional=False,
                   index=False):
-    """
-    Mixin factory for common :code:`Quantity` types from
-    `QuakeML <https://quake.ethz.ch/quakeml/>`_.
+    """Mixin factory for common Quantity types from QuakeML.
 
     Quantity types provide the fields:
         - `value`
@@ -109,20 +109,17 @@ def QuantityMixin(name, quantity_type, column_prefix=None, optional=False,
 
     Note, that a `column_prefix` may be prepended.
 
-    :param str name: Name of the class returned
-    :param str quantity_type: Type of the quantity to be returned. Valid values
-        are :code:`int`, :code:`real` or rather :code:`float` and :code:`time`.
-    :param column_prefix: Prefix used for DB columns. If :code:`None`, then
-        :code:`name` with an appended underscore :code:`_` is used. Capital
-        Letters are converted to lowercase.
-    :type column_prefix: str or None
-    :param bool optional: Flag making the :code:`value` field optional
-        (:code:`True`).
+    Args:
+        name: Name of the class returned.
+        quantity_type: Type of the quantity to be returned. Valid values
+                      are 'int', 'real' or rather 'float' and 'time'.
+        column_prefix: Prefix used for DB columns. If None, then
+                      name with an appended underscore '_' is used. Capital
+                      letters are converted to lowercase.
+        optional: Flag making the value field optional.
+        index: Whether to index the value column.
 
-    The usage of :py:func:`QuantityMixin` is illustrated bellow:
-
-    .. code::
-
+    Example:
         # define a ORM mapping using the Quantity mixin factory
         class FooBar(QuantityMixin('foo', 'int'),
                      QuantityMixin('bar', 'real'),
@@ -132,10 +129,8 @@ def QuantityMixin(name, quantity_type, column_prefix=None, optional=False,
                 return '<FooBar (foo_value=%d, bar_value=%f)>' % (
                     self.foo_value, self.bar_value)
 
-
         # create instance of "FooBar"
         foobar = FooBar(foo_value=1, bar_value=2)
-
     """
 
     if column_prefix is None:

@@ -25,15 +25,15 @@ except BaseException:
 
 
 def init_db():
-    """
-    Initializes the Database.
+    """Initializes the Database.
+
     All DB modules need to be imported when calling this function.
     """
     ORMBase.metadata.create_all(engine)
 
 
 def drop_db():
-    """Drops all database Tables but leaves the DB itself in place"""
+    """Drops all database Tables but leaves the DB itself in place."""
     m = MetaData()
     m.reflect(engine)
     m.drop_all(engine)

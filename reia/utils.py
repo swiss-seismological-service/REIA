@@ -10,17 +10,22 @@ from jinja2 import Template, select_autoescape
 
 
 def import_string(import_name: str, silent: bool = False) -> Any:
-    """Imports an object based on a string.  This is useful if you want to
-    use import paths as endpoints or something similar.  An import path can
-    be specified either in dotted notation (``xml.sax.saxutils.escape``)
-    or with a colon as object delimiter (``xml.sax.saxutils:escape``).
+    """Imports an object based on a string.
+
+    This is useful if you want to use import paths as endpoints or something
+    similar. An import path can be specified either in dotted notation
+    (``xml.sax.saxutils.escape``) or with a colon as object delimiter
+    (``xml.sax.saxutils:escape``).
 
     If `silent` is True the return value will be `None` if the import fails.
 
-    :param import_name: the dotted name for the object to import.
-    :param silent: if set to `True` import errors are ignored and
-                   `None` is returned instead.
-    :return: imported object
+    Args:
+        import_name: The dotted name for the object to import.
+        silent: If set to `True` import errors are ignored and
+                `None` is returned instead.
+
+    Returns:
+        The imported object.
     """
     import_name = import_name.replace(":", ".")
     try:
@@ -50,11 +55,13 @@ def import_string(import_name: str, silent: bool = False) -> Any:
 
 def sites_from_assets(assets: pd.DataFrame) \
         -> Tuple[pd.DataFrame, list[int]]:
-    """
-    Extract sites from assets dataframe
+    """Extract sites from assets dataframe.
 
-    :params assets: Dataframe of assets with 'longitude' and 'latitude' column
-    :returns:       lists of Site objects and group numbers for dataframe rows
+    Args:
+        assets: Dataframe of assets with 'longitude' and 'latitude' column.
+
+    Returns:
+        Lists of Site objects and group numbers for dataframe rows.
     """
     site_keys = list(zip(assets['longitude'], assets['latitude']))
     group_indices, unique_keys = pd.factorize(site_keys)
@@ -67,17 +74,19 @@ def split_assets_and_tags(df: pd.DataFrame,
                           asset_cols: list[str],
                           tag_cols: list[str]) \
         -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Split a DataFrame into asset values and tags.
+
+    Args:
+        df: DataFrame containing asset values and tags.
+        asset_cols: List of columns that contain asset values.
+        tag_cols: List of columns that contain tags.
+
+    Returns:
+        Tuple of DataFrames:
+            - First DataFrame: asset values only.
+            - Second DataFrame: melted tags with 'type' and 'name'.
+            - Third DataFrame: mapping of asset to tag indices.
     """
-    Split a DataFrame into asset values and tags.
-
-    :param df: DataFrame containing asset values and tags.
-    :param asset_cols: List of columns that contain asset values.
-    :param tag_cols: List of columns that contain tags.
-
-    :returns: Tuple of DataFrames:
-        - First DataFrame: asset values only.
-        - Second DataFrame: melted tags with 'type' and 'name'.
-        - Third DataFrame: mapping of asset to tag indices."""
     # First DataFrame: asset values only
     asset_df = df[asset_cols].copy()
 
@@ -96,11 +105,11 @@ def split_assets_and_tags(df: pd.DataFrame,
 
 
 def normalize_tags(tag_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Use pd.factorize to normalize (type, name) pairs.
+    """Use pd.factorize to normalize (type, name) pairs.
+
     Returns:
-    - tag_table: unique (type, name)
-    - mapping_table: rows with asset, aggregationtag, aggregationtype
+        - tag_table: unique (type, name)
+        - mapping_table: rows with asset, aggregationtag, aggregationtype
     """
     # Combine 'type' and 'name' as tuples for uniqueness
     keys = list(zip(tag_df['type'], tag_df['name']))
@@ -147,7 +156,7 @@ def flatten_config(file: TextIO) -> dict:
 
 
 def create_file_pointer(template_name: str, **kwargs) -> io.StringIO:
-    """ create file pointer """
+    """Create file pointer."""
     sio = io.StringIO()
     with open(Path(get_project_root(), template_name)) as t:
         template = Template(t.read(), autoescape=select_autoescape())

@@ -78,9 +78,17 @@ def create_assets(assets: pd.DataFrame,
 
 def create_asset_collection(exposure: dict,
                             session: Session) -> dm.ExposureModel:
-    """
+    """Creates an dm.ExposureModel and the respective CostTypes.
+
     Creates an dm.ExposureModel and the respective CostTypes from a dict and
     saves it to the Database.
+
+    Args:
+        exposure: Dictionary containing exposure model data.
+        session: Database session object.
+
+    Returns:
+        The created ExposureModel instance.
     """
 
     cost_types = exposure.pop('costtypes')
@@ -136,10 +144,18 @@ def create_fragility_model(
         session: Session) \
     -> dm.StructuralFragilityModel | dm.NonstructuralFragilityModel | \
         dm.BusinessInterruptionFragilityModel | dm.ContentsFragilityModel:
-    '''
+    """Creates a fragilitymodel of the right subtype.
+
     Creates a fragilitymodel of the right subtype from a dict containing
     all the data.
-    '''
+
+    Args:
+        model: Dictionary containing fragility model data.
+        session: Database session object.
+
+    Returns:
+        The created fragility model instance.
+    """
     fragility_functions = model.pop('fragilityfunctions')
     loss_category = model.pop('losscategory')
     fragility_model = LOSSCATEGORY_FRAGILITY_MAPPING[loss_category](
@@ -162,9 +178,16 @@ def create_taxonomy_map(
         mapping: pd.DataFrame,
         name: str,
         session: Session) -> dm.TaxonomyMap:
-    '''
-    Creates a TaxonomyMapping.
-    '''
+    """Creates a TaxonomyMapping.
+
+    Args:
+        mapping: DataFrame containing taxonomy mapping data.
+        name: Name for the taxonomy map.
+        session: Database session object.
+
+    Returns:
+        The created TaxonomyMap instance.
+    """
     taxonomy_map = dm.TaxonomyMap(name=name)
     taxonomy_map.mappings = list(
         map(lambda x: dm.Mapping(**x), mapping.to_dict(orient='records')))
@@ -202,9 +225,17 @@ def create_vulnerability_model(
         dm.NonstructuralVulnerabilityModel | \
         dm.BusinessInterruptionVulnerabilityModel | \
         dm.ContentsVulnerabilityModel:
-    """
-    Creates a vulnerabilitymodel of the right subtype from a dict
-    containing all the data.
+    """Creates a vulnerabilitymodel of the right subtype.
+
+    Creates a vulnerabilitymodel of the right subtype from a dict containing
+    all the data.
+
+    Args:
+        model: Dictionary containing vulnerability model data.
+        session: Database session object.
+
+    Returns:
+        The created vulnerability model instance.
     """
     vulnerability_functions = model.pop('vulnerabilityfunctions')
 
