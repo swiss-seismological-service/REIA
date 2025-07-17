@@ -23,6 +23,12 @@ class CreationInfoMixin(Model):
     creationinfo_version: str | None = None
 
 
+class TaxonomyMixin(Model):
+    taxonomy_concept: str | None = None
+    taxonomy_classificationsource_resourceid: str | None = None
+    taxonomy_conceptschema_resourceid: str | None = None
+
+
 def real_value_mixin(field_name: str, real_type: TypeVar) -> Model:
     _func_map = dict([
         (f'{field_name}_value',

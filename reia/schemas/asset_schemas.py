@@ -1,7 +1,8 @@
 from typing import List, Optional
 
 from pydantic import Field
-from reia.schemas.base import CreationInfoMixin, Model
+
+from reia.schemas.base import CreationInfoMixin, Model, TaxonomyMixin
 
 
 class CostType(Model):
@@ -13,7 +14,7 @@ class CostType(Model):
         default=None, alias='_exposuremodel_oid')
 
 
-class ExposureModel(CreationInfoMixin):
+class ExposureModel(CreationInfoMixin, TaxonomyMixin):
     oid: Optional[int] = Field(default=None, alias='_oid')
     name: Optional[str] = None
     category: Optional[str] = None
@@ -24,6 +25,7 @@ class ExposureModel(CreationInfoMixin):
     transitoccupancy: Optional[bool] = False
     publicid: Optional[str] = None
     taxonomy: Optional[str] = None
+    costtypes: List[CostType] | list[str] | None = Field(None, exclude=True)
 
 
 class Asset(Model):

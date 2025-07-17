@@ -11,120 +11,10 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 import reia.datamodel as dm
-from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
-                     CALCULATION_MAPPING, LOSSCATEGORY_FRAGILITY_MAPPING,
+from reia.io import (CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING,
+                     LOSSCATEGORY_FRAGILITY_MAPPING,
                      LOSSCATEGORY_VULNERABILITY_MAPPING)
-from reia.repositories.asset import AssetRepository
 from reia.schemas import AggregationTag
-from reia.utils import normalize_assets_tags, sites_from_assets
-
-#    EXAMPLE UPSERT
-#     stmt = insert(dm.EarthquakeInformation).values(**earthquake)
-#     upsert_stmt = stmt.on_conflict_do_update(
-#         constraint='originid_unique', set_=earthquake)
-#     earthquake = session.scalars(
-#         upsert_stmt.returning(
-#             dm.EarthquakeInformation._oid),
-#         execution_options={
-#             "populate_existing": True}).first()
-#     session.commit()
-
-
-def create_assets(assets: pd.DataFrame,
-                  exposure_model_oid: int,
-                  session: Session) -> int:
-    # get AggregationTag types
-    aggregation_types = [
-        x for x in assets.columns if x not in list(
-            ASSETS_COLS_MAPPING.values()) + ['longitude', 'latitude']]
-
-    # Asset columns
-    asset_cols = list(ASSETS_COLS_MAPPING.values()) + \
-        ['_site_oid', '_exposuremodel_oid']
-
-    # assign ExposureModel oid to assets
-    assets['_exposuremodel_oid'] = exposure_model_oid
-
-    # create Sites
-    sites, assets['_site_oid'] = sites_from_assets(assets)
-    sites['_exposuremodel_oid'] = exposure_model_oid
-
-    # create AggregationTags
-    assets, aggregationtags, assoc_table = normalize_assets_tags(
-        assets, asset_cols, aggregation_types)
-    aggregationtags['_exposuremodel_oid'] = exposure_model_oid
-
-    assets_oids = AssetRepository.insert_from_exposuremodel(
-        session,
-        sites,
-        assets,
-        aggregationtags,
-        assoc_table)
-
-    return assets_oids
-
-
-def create_asset_collection(exposure: dict,
-                            session: Session) -> dm.ExposureModel:
-    """Creates an dm.ExposureModel and the respective CostTypes.
-
-    Creates an dm.ExposureModel and the respective CostTypes from a dict and
-    saves it to the Database.
-
-    Args:
-        exposure: Dictionary containing exposure model data.
-        session: Database session object.
-
-    Returns:
-        The created ExposureModel instance.
-    """
-
-    cost_types = exposure.pop('costtypes')
-    asset_collection = dm.ExposureModel(**exposure)
-
-    for ct in cost_types:
-        asset_collection.costtypes.append(dm.CostType(**ct))
-
-    session.add(asset_collection)
-    session.commit()
-
-    return asset_collection
-
-
-def create_geometries(exposure_model_id: int,
-                      geometries: pd.DataFrame,
-                      session: Session) -> list[dm.AggregationGeometry]:
-    geometries['_exposuremodel_oid'] = exposure_model_id
-
-    stmt = select(dm.AggregationTag).where(
-        dm.AggregationTag._exposuremodel_oid == exposure_model_id).where(
-        dm.AggregationTag.type.in_(geometries['_aggregationtype'].unique()))
-
-    aggregationtags = session.execute(stmt).unique().scalars().all()
-
-    lookup = {tag.name: tag._oid for tag in aggregationtags}
-
-    geometries['_aggregationtag_oid'] = geometries['aggregationtag'] \
-        .map(lookup) \
-        .replace({np.NAN: None})
-
-    geometries.drop(columns=['aggregationtag'], inplace=True)
-
-    geometries = list(map(lambda x: dm.AggregationGeometry(
-        **x), geometries.to_dict(orient='records')))
-
-    session.add_all(geometries)
-    session.commit()
-
-
-def delete_geometries(exposure_model_id: int,
-                      aggregationtype: str,
-                      session: Session) -> None:
-    stmt = delete(dm.AggregationGeometry).where(
-        dm.AggregationGeometry._exposuremodel_oid == exposure_model_id).where(
-        dm.AggregationGeometry._aggregationtype == aggregationtype)
-    session.execute(stmt)
-    session.commit()
 
 
 def create_fragility_model(
@@ -251,22 +141,9 @@ def read_sites(asset_collection_oid: int, session: Session) -> list[dm.Site]:
     return session.execute(stmt).scalars().all()
 
 
-def read_asset_collections(session: Session) -> list[dm.ExposureModel]:
-    stmt = select(dm.ExposureModel).order_by(dm.ExposureModel._oid)
-    return session.execute(stmt).unique().scalars().all()
-
-
 def read_asset_collection(oid, session: Session) -> dm.ExposureModel:
     stmt = select(dm.ExposureModel).where(dm.ExposureModel._oid == oid)
     return session.execute(stmt).unique().scalar()
-
-
-def delete_asset_collection(asset_collection_oid: int,
-                            session: Session) -> int:
-    stmt = delete(dm.ExposureModel).where(
-        dm.ExposureModel._oid == asset_collection_oid)
-    session.execute(stmt)
-    session.commit()
 
 
 def read_fragility_models(session: Session) -> list[dm.FragilityModel]:

@@ -1,7 +1,6 @@
-from typing import Optional
-
+import numpy as np
 import pandas as pd
-from sqlalchemy import select, true
+from sqlalchemy import delete, select, true
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -19,7 +18,19 @@ from reia.schemas.asset_schemas import (AggregationGeometry, AggregationTag,
 
 class ExposureModelRepository(repository_factory(
         ExposureModel, ExposureModelORM)):
-    pass
+    @classmethod
+    def create(cls, session: Session, data: ExposureModel) -> ExposureModel:
+        cost_types = data.costtypes
+
+        db_model = ExposureModelORM(**data.model_dump(exclude_unset=True))
+        for ct in cost_types:
+            db_model.costtypes.append(
+                CostTypeORM(**ct.model_dump(exclude_unset=True)))
+
+        session.add(db_model)
+        session.commit()
+        session.refresh(db_model)
+        return cls.model.model_validate(db_model)
 
 
 class AssetRepository(repository_factory(
@@ -79,6 +90,15 @@ class SiteRepository(repository_factory(
         session.commit()
         return [row._oid for row in result]
 
+    @classmethod
+    def get_by_exposuremodel(cls, session: Session,
+                             exposuremodel_oid: int) -> list[Site]:
+        stmt = select(cls.orm_model).where(
+            cls.orm_model._exposuremodel_oid == exposuremodel_oid)
+        result = session.execute(stmt).unique().scalars().all()
+        session.commit()
+        return [cls.model.model_validate(row) for row in result]
+
 
 class AggregationTagRepository(repository_factory(
         AggregationTag, AggregationTagORM)):
@@ -86,12 +106,13 @@ class AggregationTagRepository(repository_factory(
     def get_by_exposuremodel(cls,
                              session: Session,
                              exposuremodel_oid: int,
-                             type: Optional[str] = None) \
+                             types: list[str] | None = None) \
             -> list[AggregationTag]:
 
-        stmt = select(cls.orm_model).where(
-            ((cls.orm_model.type == type) if type is not None else true())
-            & (cls.orm_model._exposuremodel_oid == exposuremodel_oid))
+        stmt = select(AggregationTagORM) \
+            .where(AggregationTagORM._exposuremodel_oid == exposuremodel_oid) \
+            .where(AggregationTagORM.type.in_(types) if types else true())
+
         result = session.execute(stmt).unique().scalars().all()
         session.commit()
         return [cls.model.model_validate(row) for row in result]
@@ -113,7 +134,56 @@ class AggregationTagRepository(repository_factory(
 
 class AggregationGeometryRepository(repository_factory(
         AggregationGeometry, AggregationGeometryORM)):
-    pass
+    @classmethod
+    def insert_many(cls,
+                    session: Session,
+                    exposuremodel_oid: int,
+                    geometries: pd.DataFrame) -> list[int]:
+        """Insert multiple aggregation geometries into the database.
+        Args:
+            session: SQLAlchemy session.
+            exposuremodel_oid: OID of the exposure model.
+            geometries: DataFrame containing aggregation geometries.
+        Returns:
+            List of OIDs of the inserted aggregation geometries.
+        """
+        geometries['_exposuremodel_oid'] = exposuremodel_oid
+
+        aggregationtags = AggregationTagRepository.get_by_exposuremodel(
+            session,
+            exposuremodel_oid,
+            geometries['_aggregationtype'].unique().tolist())
+
+        lookup = {tag.name: tag.oid for tag in aggregationtags}
+
+        geometries['_aggregationtag_oid'] = geometries['aggregationtag'] \
+            .map(lookup) \
+            .replace({np.NAN: None})
+
+        geometries.drop(columns=['aggregationtag'], inplace=True)
+
+        stmt = insert(AggregationGeometryORM) \
+            .values(geometries.to_dict(orient='records')) \
+            .returning(AggregationGeometryORM._oid)
+
+        result = session.execute(stmt)
+        session.commit()
+        return [row._oid for row in result]
+
+    @classmethod
+    def delete_by_exposuremodel(cls,
+                                session: Session,
+                                exposuremodel_oid: int,
+                                aggregationtype: str | None) -> None:
+        """Delete all aggregation geometries associated with an exposure model.
+        """
+        stmt = delete(AggregationGeometryORM) \
+            .where(AggregationGeometryORM._exposuremodel_oid
+                   == exposuremodel_oid) \
+            .where(AggregationGeometryORM._aggregationtype
+                   == aggregationtype if aggregationtype else true())
+        session.execute(stmt)
+        session.commit()
 
 
 class CostTypeRepository(repository_factory(

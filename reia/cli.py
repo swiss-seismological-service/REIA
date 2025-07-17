@@ -22,7 +22,10 @@ from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
 from reia.io.write import (assemble_calculation_input, create_exposure_input,
                            create_fragility_input, create_taxonomymap_input,
                            create_vulnerability_input)
+from reia.repositories.asset import (AggregationGeometryRepository,
+                                     ExposureModelRepository, SiteRepository)
 from reia.repositories.calculation import CalculationRepository
+from reia.services.assets import create_assets
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()
@@ -80,33 +83,34 @@ def add_exposure(exposure: Path, name: str):
     with open(exposure, 'r') as f:
         exposure, assets = parse_exposure(f)
 
-    exposure['name'] = name
+    exposure.name = name
 
-    asset_collection = crud.create_asset_collection(exposure, session)
+    exposuremodel = ExposureModelRepository.create(session, exposure)
 
-    asset_objects = crud.create_assets(assets, asset_collection._oid, session)
-    sites = crud.read_sites(asset_collection._oid, session)
+    assets_oids = create_assets(assets, exposuremodel.oid, session)
+    sites = SiteRepository.get_by_exposuremodel(session, exposuremodel.oid)
 
-    typer.echo(f'Created asset collection with ID {asset_collection._oid} and '
-               f'{len(sites)} sites with {len(asset_objects)} assets.')
-    asset_collection = asset_collection._oid
+    typer.echo(f'Created asset collection with ID {exposuremodel.oid} and '
+               f'{len(sites)} sites with {len(assets_oids)} assets.')
+
     session.execute(
         text('REFRESH MATERIALIZED VIEW CONCURRENTLY '
              'loss_buildings_per_municipality'))
     session.commit()
 
     session.remove()
-    return asset_collection
+    return exposuremodel.oid
 
 
 @exposure.command('delete')
-def delete_exposure(asset_collection_oid: int):
+def delete_exposure(exposuremodel_oid: int):
     '''
     Delete an exposure model.
     '''
-    crud.delete_asset_collection(asset_collection_oid, session)
+    # crud.delete_asset_collection(asset_collection_oid, session)
+    ExposureModelRepository.delete(session, exposuremodel_oid)
     typer.echo(
-        f'Deleted exposure model with ID {asset_collection_oid}.')
+        f'Deleted exposure model with ID {exposuremodel_oid}.')
     session.remove()
 
 
@@ -115,7 +119,7 @@ def list_exposure():
     '''
     List all exposure models.
     '''
-    asset_collections = crud.read_asset_collections(session)
+    exposuremodels = ExposureModelRepository.get_all(session)
 
     typer.echo('List of existing asset collections:')
     typer.echo('{0:<10} {1:<25} {2}'.format(
@@ -123,9 +127,9 @@ def list_exposure():
         'Name',
         'Creationtime'))
 
-    for ac in asset_collections:
+    for ac in exposuremodels:
         typer.echo('{0:<10} {1:<25} {2}'.format(
-            ac._oid,
+            ac.oid,
             ac.name or '',
             str(ac.creationinfo_creationtime)))
     session.remove()
@@ -183,14 +187,20 @@ def add_exposure_geometries(
     gdf = gdf.rename(columns={tag_column_name: 'aggregationtag'})
     gdf['_aggregationtype'] = aggregationtype
 
-    crud.create_geometries(exposure_id, gdf, session)
-
+    geometry_ids = AggregationGeometryRepository.insert_many(session,
+                                                             exposure_id,
+                                                             gdf)
     session.remove()
+
+    typer.echo(
+        f'Added {len(geometry_ids)} geometries to exposure model '
+        f'with ID {exposure_id} and aggregation type "{aggregationtype}".')
 
 
 @exposure.command('delete_geometries')
 def delete_exposure_geometries(exposure_id: int, aggregationtype: str):
-    crud.delete_geometries(exposure_id, aggregationtype, session)
+    AggregationGeometryRepository.delete_by_exposuremodel(
+        session, exposure_id, aggregationtype)
     session.remove()
 
 

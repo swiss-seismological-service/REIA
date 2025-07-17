@@ -9,6 +9,7 @@ import pandas as pd
 
 from reia.io import (ASSETS_COLS_MAPPING, FRAGILITY_FK_MAPPING,
                      VULNERABILITY_FK_MAPPING, CalculationBranchSettings)
+from reia.schemas.asset_schemas import ExposureModel
 from reia.utils import flatten_config
 
 
@@ -45,7 +46,7 @@ def parse_assets(file: TextIO, tagnames: list[str]) -> pd.DataFrame:
     return df
 
 
-def parse_exposure(file: TextIO) -> Tuple[dict, pd.DataFrame]:
+def parse_exposure(file: TextIO) -> Tuple[ExposureModel, pd.DataFrame]:
     tree = ET.iterparse(file)
 
     # strip namespace for easier querying
@@ -83,7 +84,7 @@ def parse_exposure(file: TextIO) -> Tuple[dict, pd.DataFrame]:
     with open(asset_csv, 'r') as f:
         assets = parse_assets(f, model['aggregationtypes'])
 
-    return model, assets
+    return ExposureModel(**model), assets
 
 
 def clean_array(text: str) -> str:
@@ -353,7 +354,7 @@ def parse_calculation_input(branch_settings: list[CalculationBranchSettings]) \
     return (calculation, calculation_branches)
 
 
-def combine_assets(files: list[str]) -> pd.DataFrame():
+def combine_assets(files: list[str]) -> pd.DataFrame:
     combined_assets = pd.DataFrame()
 
     for exposure in files:
