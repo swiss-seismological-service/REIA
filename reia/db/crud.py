@@ -9,44 +9,8 @@ from sqlalchemy.orm import Session
 import reia.datamodel as dm
 from reia.db.copy import copy_from_dataframe, copy_pooled, get_nextval
 from reia.io import (CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING,
-                     LOSSCATEGORY_FRAGILITY_MAPPING,
                      LOSSCATEGORY_VULNERABILITY_MAPPING)
 from reia.schemas import AggregationTag
-
-
-def create_fragility_model(
-        model: dict,
-        session: Session) \
-    -> dm.StructuralFragilityModel | dm.NonstructuralFragilityModel | \
-        dm.BusinessInterruptionFragilityModel | dm.ContentsFragilityModel:
-    """Creates a fragilitymodel of the right subtype.
-
-    Creates a fragilitymodel of the right subtype from a dict containing
-    all the data.
-
-    Args:
-        model: Dictionary containing fragility model data.
-        session: Database session object.
-
-    Returns:
-        The created fragility model instance.
-    """
-    fragility_functions = model.pop('fragilityfunctions')
-    loss_category = model.pop('losscategory')
-    fragility_model = LOSSCATEGORY_FRAGILITY_MAPPING[loss_category](
-        **{**model, **{'fragilityfunctions': []}})
-
-    for func in fragility_functions:
-        limit = func.pop('limitstates')
-        function_obj = dm.FragilityFunction(**func)
-        function_obj.limitstates = list(
-            map(lambda x: dm.LimitState(**x), limit))
-        fragility_model.fragilityfunctions.append(function_obj)
-
-    session.add(fragility_model)
-    session.commit()
-
-    return fragility_model
 
 
 def create_vulnerability_model(
@@ -89,36 +53,6 @@ def create_vulnerability_model(
     return vulnerability_model
 
 
-def read_sites(asset_collection_oid: int, session: Session) -> list[dm.Site]:
-    stmt = select(dm.Site).where(
-        dm.Site._exposuremodel_oid == asset_collection_oid)
-    return session.execute(stmt).scalars().all()
-
-
-def read_asset_collection(oid, session: Session) -> dm.ExposureModel:
-    stmt = select(dm.ExposureModel).where(dm.ExposureModel._oid == oid)
-    return session.execute(stmt).unique().scalar()
-
-
-def read_fragility_models(session: Session) -> list[dm.FragilityModel]:
-    stmt = select(dm.FragilityModel).order_by(dm.FragilityModel._oid)
-    return session.execute(stmt).unique().scalars().all()
-
-
-def read_fragility_model(oid: int, session: Session) -> dm.FragilityModel:
-    stmt = select(dm.FragilityModel).where(dm.FragilityModel._oid == oid)
-    return session.execute(stmt).unique().scalar()
-
-
-def delete_fragility_model(
-        fragility_model_oid: int,
-        session: Session) -> int:
-    stmt = delete(dm.FragilityModel).where(
-        dm.FragilityModel._oid == fragility_model_oid)
-    session.execute(stmt)
-    session.commit()
-
-
 def read_vulnerability_models(session: Session) -> list[dm.VulnerabilityModel]:
     stmt = select(dm.VulnerabilityModel).order_by(dm.VulnerabilityModel._oid)
     return session.execute(stmt).unique().scalars().all()
@@ -140,6 +74,17 @@ def delete_vulnerability_model(
         dm.VulnerabilityModel._oid == vulnerability_model_oid)
     session.execute(stmt)
     session.commit()
+
+
+def read_sites(asset_collection_oid: int, session: Session) -> list[dm.Site]:
+    stmt = select(dm.Site).where(
+        dm.Site._exposuremodel_oid == asset_collection_oid)
+    return session.execute(stmt).scalars().all()
+
+
+def read_asset_collection(oid, session: Session) -> dm.ExposureModel:
+    stmt = select(dm.ExposureModel).where(dm.ExposureModel._oid == oid)
+    return session.execute(stmt).unique().scalar()
 
 
 def create_calculation(

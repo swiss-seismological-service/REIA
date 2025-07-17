@@ -10,6 +10,7 @@ import pandas as pd
 from reia.io import (ASSETS_COLS_MAPPING, FRAGILITY_FK_MAPPING,
                      VULNERABILITY_FK_MAPPING, CalculationBranchSettings)
 from reia.schemas.asset_schemas import ExposureModel
+from reia.schemas.fragility_schemas import FragilityModel
 from reia.utils import flatten_config
 
 
@@ -149,6 +150,9 @@ def parse_fragility(file: TextIO) -> dict:
             limit_state['stddev'] = params.attrib['stddev']
 
         model['fragilityfunctions'].append(fun)
+
+    model['_type'] = model.pop('losscategory', None)
+    model = FragilityModel.model_validate(model)
 
     return model
 

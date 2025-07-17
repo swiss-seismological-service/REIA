@@ -42,7 +42,7 @@ def repository_factory(model: Model, orm_model: ORMBase):
 
         @classmethod
         def get_all(cls, session: Session) -> list:
-            q = select(cls.orm_model)
+            q = select(cls.orm_model).order_by(getattr(cls.orm_model, '_oid'))
             result = session.execute(q).unique().scalars().all()
             return [cls.model.model_validate(row) for row in result]
 

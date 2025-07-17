@@ -25,7 +25,8 @@ from reia.io.write import (assemble_calculation_input, create_exposure_input,
 from reia.repositories.asset import (AggregationGeometryRepository,
                                      ExposureModelRepository, SiteRepository)
 from reia.repositories.calculation import CalculationRepository
-from reia.repositories.fragility import TaxonomyMapRepository
+from reia.repositories.fragility import (FragilityModelRepository,
+                                         TaxonomyMapRepository)
 from reia.services.assets import create_assets
 
 app = typer.Typer(add_completion=False)
@@ -214,14 +215,14 @@ def add_fragility(fragility: Path, name: str):
     with open(fragility, 'r') as f:
         model = parse_fragility(f)
 
-    model['name'] = name
+    model.name = name
 
-    fragility_model = crud.create_fragility_model(model, session)
+    fragility_model = FragilityModelRepository.create(session, model)
     typer.echo(
-        f'Created fragility model of type "{fragility_model._type}"'
-        f' with ID {fragility_model._oid}.')
+        f'Created fragility model of type "{fragility_model.type}"'
+        f' with ID {fragility_model.oid}.')
     session.remove()
-    return fragility_model._oid
+    return fragility_model.oid
 
 
 @fragility.command('delete')
@@ -229,7 +230,8 @@ def delete_fragility(fragility_model_oid: int):
     '''
     Delete a fragility model.
     '''
-    crud.delete_fragility_model(fragility_model_oid, session)
+    FragilityModelRepository.delete(session, fragility_model_oid)
+
     typer.echo(f'Deleted fragility model with ID {fragility_model_oid}.')
     session.remove()
 
@@ -239,7 +241,7 @@ def list_fragility():
     '''
     List all fragility models.
     '''
-    fragility_models = crud.read_fragility_models(session)
+    fragility_models = FragilityModelRepository.get_all(session)
 
     typer.echo('List of existing fragility models:')
     typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
@@ -250,9 +252,9 @@ def list_fragility():
 
     for vm in fragility_models:
         typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
-            vm._oid,
+            vm.oid,
             vm.name or "",
-            vm._type,
+            vm.type,
             str(vm.creationinfo_creationtime)))
     session.remove()
 

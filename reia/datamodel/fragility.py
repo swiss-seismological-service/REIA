@@ -20,12 +20,11 @@ class FragilityModel(ORMBase, PublicIdMixin, CreationInfoMixin):
     assetcategory = Column(String)
     limitstates = Column(CompatibleStringArray)
 
-    fragilityfunctions = relationship(
-        'FragilityFunction',
-        back_populates='fragilitymodel',
-        cascade='all, delete-orphan',
-        passive_deletes=True,
-        lazy='joined')
+    fragilityfunctions = relationship('FragilityFunction',
+                                      back_populates='fragilitymodel',
+                                      cascade='all, delete-orphan',
+                                      passive_deletes=True,
+                                      lazy='joined')
 
     _type = Column(Enum(ELossCategory))
 

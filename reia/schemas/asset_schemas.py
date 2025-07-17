@@ -24,7 +24,6 @@ class ExposureModel(CreationInfoMixin, TaxonomyMixin):
     nightoccupancy: Optional[bool] = False
     transitoccupancy: Optional[bool] = False
     publicid: Optional[str] = None
-    taxonomy: Optional[str] = None
     costtypes: List[CostType] | list[str] | None = Field(None, exclude=True)
 
 

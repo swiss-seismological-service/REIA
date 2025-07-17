@@ -10,7 +10,8 @@ from reia.cli import (add_exposure, add_fragility, add_risk_assessment,
 from reia.datamodel import ECalculationType, EStatus
 from reia.db import crud
 from reia.io import CalculationBranchSettings
-from reia.repositories.fragility import TaxonomyMapRepository
+from reia.repositories.fragility import (FragilityModelRepository,
+                                         TaxonomyMapRepository)
 
 DATAFOLDER = Path(__file__).parent / 'data' / 'ria_test'
 
@@ -24,7 +25,7 @@ def exposure(db_session):
 @pytest.fixture(scope='module')
 def fragility(db_session):
     fragility_id = add_fragility(DATAFOLDER / 'fragility_test.xml', 'test')
-    return crud.read_fragility_model(fragility_id, db_session)
+    return FragilityModelRepository.get_by_id(db_session, fragility_id)
 
 
 @pytest.fixture(scope='module')
@@ -65,7 +66,7 @@ def damage_calculation(exposure, fragility, taxonomy, db_session):
 
     # damage
     damage_file['exposure']['exposure_file'] = str(exposure._oid)
-    damage_file['fragility']['structural_fragility_file'] = str(fragility._oid)
+    damage_file['fragility']['structural_fragility_file'] = str(fragility.oid)
     damage_file['fragility']['taxonomy_mapping_csv'] = str(taxonomy.oid)
 
     damage_file['hazard']['gmfs_csv'] = str(DATAFOLDER / 'gmfs_test.csv')
@@ -124,7 +125,7 @@ def test_calculationbranches(loss_calculation,
         loss_branch._nonstructuralvulnerabilitymodel_oid == \
         loss_branch._businessinterruptionvulnerabilitymodel_oid is None
 
-    assert damage_branch._structuralfragilitymodel_oid == fragility._oid
+    assert damage_branch._structuralfragilitymodel_oid == fragility.oid
     assert damage_branch._taxonomymap_oid == taxonomy.oid
     assert damage_branch._type == ECalculationType.DAMAGE
     assert damage_branch._contentsfragilitymodel_oid == \

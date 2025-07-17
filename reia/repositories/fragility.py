@@ -27,7 +27,27 @@ from reia.schemas.fragility_schemas import (BusinessInterruptionFragilityModel,
 
 class FragilityModelRepository(repository_factory(
         FragilityModel, FragilityModelORM)):
-    pass
+    @classmethod
+    def create(cls, session: Session, data: FragilityModel) -> FragilityModel:
+        """Create a new fragility model."""
+
+        fragility_functions = []
+        for ff in data.fragilityfunctions:
+            limit_states = [LimitStateORM(**ls.model_dump())
+                            for ls in ff.limitstates]
+            fragility_function = FragilityFunctionORM(
+                **ff.model_dump(exclude={'limitstates'}))
+            fragility_function.limitstates = limit_states
+            fragility_functions.append(fragility_function)
+
+        db_model = FragilityModelORM(
+            **data.model_dump(exclude={'fragilityfunctions'}))
+        db_model.fragilityfunctions = fragility_functions
+
+        session.add(db_model)
+        session.commit()
+        session.refresh(db_model)
+        return FragilityModel.model_validate(db_model)
 
 
 class ContentsFragilityModelRepository(repository_factory(

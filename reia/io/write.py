@@ -8,11 +8,10 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 from reia.datamodel.asset import Asset
-from reia.db.crud import (read_asset_collection, read_fragility_model,
-                          read_vulnerability_model)
-from reia.io import (ASSETS_COLS_MAPPING, LOSSCATEGORY_FRAGILITY_MAPPING,
-                     LOSSCATEGORY_VULNERABILITY_MAPPING)
-from reia.repositories.fragility import TaxonomyMapRepository
+from reia.db.crud import read_asset_collection, read_vulnerability_model
+from reia.io import ASSETS_COLS_MAPPING, LOSSCATEGORY_VULNERABILITY_MAPPING
+from reia.repositories.fragility import (FragilityModelRepository,
+                                         TaxonomyMapRepository)
 from reia.utils import create_file_pointer
 
 
@@ -32,19 +31,10 @@ def create_fragility_input(
         Filepointer for exposure xml and one for csv list of assets.
     """
 
-    fragility_model = read_fragility_model(
-        fragility_model_oid, session)
+    fragility_model = FragilityModelRepository.get_by_id(
+        session, fragility_model_oid)
 
-    data = fragility_model._asdict()
-    data['_type'] = next((k for k, v in
-                          LOSSCATEGORY_FRAGILITY_MAPPING.items(
-                          ) if k == data['_type'].value))
-    data['fragilityfunctions'] = []
-
-    for vf in fragility_model.fragilityfunctions:
-        vf_dict = vf._asdict()
-        vf_dict['limitstates'] = [lr._asdict() for lr in vf.limitstates]
-        data['fragilityfunctions'].append(vf_dict)
+    data = fragility_model.model_dump(mode='json')
 
     return create_file_pointer(template_name, data=data)
 
