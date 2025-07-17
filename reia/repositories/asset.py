@@ -11,6 +11,7 @@ from reia.datamodel.asset import Asset as AssetORM
 from reia.datamodel.asset import CostType as CostTypeORM
 from reia.datamodel.asset import ExposureModel as ExposureModelORM
 from reia.datamodel.asset import Site as SiteORM
+from reia.datamodel.asset import asset_aggregationtag
 from reia.repositories.base import repository_factory
 from reia.schemas.asset_schemas import (AggregationGeometry, AggregationTag,
                                         Asset, CostType, ExposureModel, Site)
@@ -30,6 +31,42 @@ class AssetRepository(repository_factory(
         result = session.execute(stmt)
         return [row._oid for row in result]
 
+    @classmethod
+    def insert_from_exposuremodel(cls,
+                                  session: Session,
+                                  sites: pd.DataFrame,
+                                  assets: pd.DataFrame,
+                                  aggregationtags: pd.DataFrame,
+                                  assoc_assets_tags: pd.DataFrame
+                                  ) -> list[int]:
+        """Insert assets and their associated tags into the database.
+        Args:
+            session: SQLAlchemy session.
+            sites: DataFrame containing site data.
+            assets: DataFrame containing asset data.
+            aggregationtags: DataFrame containing aggregation tags.
+            assoc_assets_tags: DataFrame mapping assets to tags.
+
+        Returns:
+            List of OIDs of the inserted assets.
+        """
+
+        sites_oids = SiteRepository.insert_many(session, sites)
+        assets['_site_oid'] = assets['_site_oid'].map(lambda x: sites_oids[x])
+
+        tags_oids = AggregationTagRepository.insert_many(
+            session, aggregationtags)
+        assoc_assets_tags['aggregationtag'] = \
+            assoc_assets_tags['aggregationtag'].map(lambda x: tags_oids[x])
+
+        assets_oids = AssetRepository.insert_many(session, assets)
+        assoc_assets_tags['asset'] = assoc_assets_tags['asset'].map(
+            lambda x: assets_oids[x])
+
+        AssetAggregationTagRepository.insert_many(session, assoc_assets_tags)
+
+        return assets_oids
+
 
 class SiteRepository(repository_factory(
         Site, SiteORM)):
@@ -39,6 +76,7 @@ class SiteRepository(repository_factory(
         stmt = insert(SiteORM).values(
             sites.to_dict(orient='records')).returning(SiteORM._oid)
         result = session.execute(stmt)
+        session.commit()
         return [row._oid for row in result]
 
 
@@ -55,6 +93,7 @@ class AggregationTagRepository(repository_factory(
             ((cls.orm_model.type == type) if type is not None else true())
             & (cls.orm_model._exposuremodel_oid == exposuremodel_oid))
         result = session.execute(stmt).unique().scalars().all()
+        session.commit()
         return [cls.model.model_validate(row) for row in result]
 
     @classmethod
@@ -68,6 +107,7 @@ class AggregationTagRepository(repository_factory(
                 set_={'name': AggregationTagORM.name}) \
             .returning(AggregationTagORM._oid)
         result = session.execute(stmt)
+        session.commit()
         return [row._oid for row in result]
 
 
@@ -79,3 +119,21 @@ class AggregationGeometryRepository(repository_factory(
 class CostTypeRepository(repository_factory(
         CostType, CostTypeORM)):
     pass
+
+
+class AssetAggregationTagRepository:
+    """Repository for managing asset-aggregationtag associations."""
+
+    @classmethod
+    def insert_many(cls, session: Session, associations: pd.DataFrame) -> None:
+        """Insert multiple asset-aggregationtag associations using SQL insert.
+
+        Args:
+            session: SQLAlchemy session.
+            associations: DataFrame with columns: asset, aggregationtag,
+                         aggregationtype.
+        """
+        stmt = insert(asset_aggregationtag).values(
+            associations.to_dict(orient='records'))
+        session.execute(stmt)
+        session.commit()

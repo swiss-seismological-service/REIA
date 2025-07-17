@@ -14,10 +14,9 @@ import reia.datamodel as dm
 from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
                      CALCULATION_MAPPING, LOSSCATEGORY_FRAGILITY_MAPPING,
                      LOSSCATEGORY_VULNERABILITY_MAPPING)
-from reia.repositories.asset import (AggregationTagRepository, AssetRepository,
-                                     SiteRepository)
+from reia.repositories.asset import AssetRepository
 from reia.schemas import AggregationTag
-from reia.utils import sites_from_assets, split_assets_and_tags
+from reia.utils import normalize_assets_tags, sites_from_assets
 
 #    EXAMPLE UPSERT
 #     stmt = insert(dm.EarthquakeInformation).values(**earthquake)
@@ -49,29 +48,18 @@ def create_assets(assets: pd.DataFrame,
     # create Sites
     sites, assets['_site_oid'] = sites_from_assets(assets)
     sites['_exposuremodel_oid'] = exposure_model_oid
-    sites_oids = SiteRepository.insert_many(session, sites)
-
-    # assign site oids to assets
-    assets['_site_oid'] = assets['_site_oid'].map(lambda x: sites_oids[x])
 
     # create AggregationTags
-    asset_df, tag_df, assoc_table = split_assets_and_tags(assets,
-                                                          asset_cols,
-                                                          aggregation_types)
+    assets, aggregationtags, assoc_table = normalize_assets_tags(
+        assets, asset_cols, aggregation_types)
+    aggregationtags['_exposuremodel_oid'] = exposure_model_oid
 
-    tag_df['_exposuremodel_oid'] = exposure_model_oid
-    tags_oids = AggregationTagRepository.insert_many(session, tag_df)
-
-    assoc_table['aggregationtag'] = assoc_table['aggregationtag'].map(
-        lambda x: tags_oids[x])
-
-    assets_oids = AssetRepository.insert_many(session, asset_df)
-
-    assoc_table['asset'] = assoc_table['asset'].map(
-        lambda x: assets_oids[x])
-    session.commit()
-
-    copy_raw(assoc_table, 'loss_assoc_asset_aggregationtag')
+    assets_oids = AssetRepository.insert_from_exposuremodel(
+        session,
+        sites,
+        assets,
+        aggregationtags,
+        assoc_table)
 
     return assets_oids
 

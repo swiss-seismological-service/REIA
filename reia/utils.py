@@ -53,15 +53,15 @@ def import_string(import_name: str, silent: bool = False) -> Any:
     return None
 
 
-def sites_from_assets(assets: pd.DataFrame) \
-        -> Tuple[pd.DataFrame, list[int]]:
+def sites_from_assets(assets: pd.DataFrame) -> Tuple[pd.DataFrame, list[int]]:
     """Extract sites from assets dataframe.
 
     Args:
         assets: Dataframe of assets with 'longitude' and 'latitude' column.
 
     Returns:
-        Lists of Site objects and group numbers for dataframe rows.
+        DataFrame of `n` unique Sites and list of `len(assets)` indices
+        mapping each asset to its corresponding site.
     """
     site_keys = list(zip(assets['longitude'], assets['latitude']))
     group_indices, unique_keys = pd.factorize(site_keys)
@@ -70,62 +70,37 @@ def sites_from_assets(assets: pd.DataFrame) \
     return unique_sites, group_indices.tolist()
 
 
-def split_assets_and_tags(df: pd.DataFrame,
+def normalize_assets_tags(df: pd.DataFrame,
                           asset_cols: list[str],
-                          tag_cols: list[str]) \
-        -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Split a DataFrame into asset values and tags.
-
-    Args:
-        df: DataFrame containing asset values and tags.
-        asset_cols: List of columns that contain asset values.
-        tag_cols: List of columns that contain tags.
-
-    Returns:
-        Tuple of DataFrames:
-            - First DataFrame: asset values only.
-            - Second DataFrame: melted tags with 'type' and 'name'.
-            - Third DataFrame: mapping of asset to tag indices.
-    """
-    # First DataFrame: asset values only
+                          tag_cols: list[str]) -> tuple[pd.DataFrame,
+                                                        pd.DataFrame,
+                                                        pd.DataFrame]:
+    """Split a DataFrame into asset values and normalized tags."""
     asset_df = df[asset_cols].copy()
 
-    # Melt the tag columns, preserving the original row index
-    df = df.reset_index(drop=True)
-    tag_df = df[tag_cols].reset_index().melt(
-        id_vars=['index'],
-        value_vars=tag_cols,
-        var_name='type',
-        value_name='name'
-    ).rename(columns={'index': 'asset'})
+    # Melt tag columns into long format
+    tag_df = (
+        df[tag_cols]
+        .reset_index(drop=True)
+        .melt(ignore_index=False, var_name='type', value_name='name')
+        .reset_index().rename(columns={'index': 'asset'})
+    )
 
-    tag_df, mapping_df = normalize_tags(tag_df)
-
-    return asset_df, tag_df, mapping_df
+    tag_table, mapping_df = normalize_tags(tag_df)
+    return asset_df, tag_table, mapping_df
 
 
 def normalize_tags(tag_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Use pd.factorize to normalize (type, name) pairs.
+    """Normalize (type, name) pairs using pd.factorize."""
+    tag_idx, unique_tags = pd.factorize(
+        list(zip(tag_df['type'], tag_df['name'])))
+    tag_table = pd.DataFrame(unique_tags.tolist(), columns=['type', 'name'])
 
-    Returns:
-        - tag_table: unique (type, name)
-        - mapping_table: rows with asset, aggregationtag, aggregationtype
-    """
-    # Combine 'type' and 'name' as tuples for uniqueness
-    keys = list(zip(tag_df['type'], tag_df['name']))
+    mapping_df = tag_df[['asset', 'type']].copy()
+    mapping_df['aggregationtag'] = tag_idx
+    mapping_df.rename(columns={'type': 'aggregationtype'}, inplace=True)
 
-    # Factorize to get unique (type, name) combos and mapping indices
-    tag_indices, unique_keys = pd.factorize(keys)
-
-    # Build tag_table from unique_keys
-    tag_table = pd.DataFrame(unique_keys.tolist(), columns=['type', 'name'])
-
-    # Build mapping_table
-    mapping_table = tag_df[['asset', 'type']].copy()
-    mapping_table['aggregationtag'] = tag_indices
-    mapping_table.rename(columns={'type': 'aggregationtype'}, inplace=True)
-
-    return tag_table, mapping_table
+    return tag_table, mapping_df
 
 
 def flatten_config(file: TextIO) -> dict:
