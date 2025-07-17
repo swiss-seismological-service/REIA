@@ -1,3 +1,7 @@
+import pandas as pd
+from sqlalchemy import insert
+from sqlalchemy.orm import Session
+
 from reia.datamodel.fragility import \
     BusinessInterruptionFragilityModel as BusinessInterruptionFragilityModelORM
 from reia.datamodel.fragility import \
@@ -60,7 +64,24 @@ class LimitStateRepository(repository_factory(
 
 class TaxonomyMapRepository(repository_factory(
         TaxonomyMap, TaxonomyMapORM)):
-    pass
+    @classmethod
+    def insert_many(cls,
+                    session: Session,
+                    mappings: pd.DataFrame,
+                    name: str) -> TaxonomyMap:
+        """Insert multiple mappings into the repository."""
+        taxonomy_map = TaxonomyMapORM(name=name)
+        session.add(taxonomy_map)
+        session.flush()
+
+        mappings['_taxonomymap_oid'] = taxonomy_map._oid
+        stmt = insert(MappingORM).values(
+            mappings.to_dict(orient='records'))
+        session.execute(stmt)
+        session.commit()
+        session.refresh(taxonomy_map)
+
+        return TaxonomyMap.model_validate(taxonomy_map)
 
 
 class MappingRepository(repository_factory(

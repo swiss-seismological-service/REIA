@@ -9,9 +9,10 @@ from sqlalchemy.orm import Session
 
 from reia.datamodel.asset import Asset
 from reia.db.crud import (read_asset_collection, read_fragility_model,
-                          read_taxonomymap, read_vulnerability_model)
+                          read_vulnerability_model)
 from reia.io import (ASSETS_COLS_MAPPING, LOSSCATEGORY_FRAGILITY_MAPPING,
                      LOSSCATEGORY_VULNERABILITY_MAPPING)
+from reia.repositories.fragility import TaxonomyMapRepository
 from reia.utils import create_file_pointer
 
 
@@ -64,9 +65,10 @@ def create_taxonomymap_input(
         Filepointer for exposure xml and one for csv list of assets.
     """
 
-    taxonomy_map = read_taxonomymap(oid, session)
+    taxonomy_map = TaxonomyMapRepository.get_by_id(session, oid)
 
     mappings = taxonomy_map.mappings
+
     mappings = pd.DataFrame([vars(s) for s in mappings], columns=[
         'taxonomy', 'conversion', 'weight'])
 

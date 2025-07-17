@@ -52,49 +52,6 @@ def create_fragility_model(
     return fragility_model
 
 
-def create_taxonomy_map(
-        mapping: pd.DataFrame,
-        name: str,
-        session: Session) -> dm.TaxonomyMap:
-    """Creates a TaxonomyMapping.
-
-    Args:
-        mapping: DataFrame containing taxonomy mapping data.
-        name: Name for the taxonomy map.
-        session: Database session object.
-
-    Returns:
-        The created TaxonomyMap instance.
-    """
-    taxonomy_map = dm.TaxonomyMap(name=name)
-    taxonomy_map.mappings = list(
-        map(lambda x: dm.Mapping(**x), mapping.to_dict(orient='records')))
-
-    session.add(taxonomy_map)
-    session.commit()
-
-    return taxonomy_map
-
-
-def read_taxonomymaps(session: Session) -> list[dm.TaxonomyMap]:
-    stmt = select(dm.TaxonomyMap).order_by(dm.TaxonomyMap._oid)
-    return session.execute(stmt).unique().scalars().all()
-
-
-def read_taxonomymap(oid: int, session: Session) -> dm.TaxonomyMap:
-    stmt = select(dm.TaxonomyMap).where(dm.TaxonomyMap._oid == oid)
-    return session.execute(stmt).unique().scalar()
-
-
-def delete_taxonomymap(
-        oid: int,
-        session: Session) -> int:
-    stmt = delete(dm.TaxonomyMap).where(
-        dm.TaxonomyMap._oid == oid)
-    session.execute(stmt)
-    session.commit()
-
-
 def create_vulnerability_model(
     model: dict,
     session: Session) \

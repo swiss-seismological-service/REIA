@@ -25,6 +25,7 @@ from reia.io.write import (assemble_calculation_input, create_exposure_input,
 from reia.repositories.asset import (AggregationGeometryRepository,
                                      ExposureModelRepository, SiteRepository)
 from reia.repositories.calculation import CalculationRepository
+from reia.repositories.fragility import TaxonomyMapRepository
 from reia.services.assets import create_assets
 
 app = typer.Typer(add_completion=False)
@@ -283,11 +284,13 @@ def add_taxonomymap(map_file: Path, name: str):
     with open(map_file, 'r') as f:
         mapping = parse_taxonomy_map(f)
 
-    taxonomy_map = crud.create_taxonomy_map(mapping, name, session)
+    taxonomy_map = TaxonomyMapRepository.insert_many(session,
+                                                     mapping,
+                                                     name)
     typer.echo(
-        f'Created taxonomy map with ID {taxonomy_map._oid}.')
+        f'Created taxonomy map with ID {taxonomy_map.oid}.')
     session.remove()
-    return taxonomy_map._oid
+    return taxonomy_map.oid
 
 
 @taxonomymap.command('delete')
@@ -295,7 +298,7 @@ def delete_taxonomymap(taxonomymap_oid: int):
     '''
     Delete a vulnerability model.
     '''
-    crud.delete_taxonomymap(taxonomymap_oid, session)
+    TaxonomyMapRepository.delete(session, taxonomymap_oid)
     typer.echo(
         f'Deleted taxonomy map with ID {taxonomymap_oid}.')
     session.remove()
@@ -306,7 +309,7 @@ def list_taxonomymap():
     '''
     List all vulnerability models.
     '''
-    taxonomy_maps = crud.read_taxonomymaps(session)
+    taxonomy_maps = TaxonomyMapRepository.get_all(session)
 
     typer.echo('List of existing vulnerability models:')
     typer.echo('{0:<10} {1:<25} {2}'.format(
@@ -316,7 +319,7 @@ def list_taxonomymap():
 
     for tm in taxonomy_maps:
         typer.echo('{0:<10} {1:<25} {2}'.format(
-            tm._oid,
+            tm.oid,
             tm.name or "",
             str(tm.creationinfo_creationtime)))
     session.remove()

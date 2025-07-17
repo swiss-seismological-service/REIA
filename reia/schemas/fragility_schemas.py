@@ -56,14 +56,16 @@ class LimitState(Model):
         default=None, alias='_fragilityfunction_oid')
 
 
-class TaxonomyMap(CreationInfoMixin):
-    oid: Optional[int] = Field(default=None, alias='_oid')
-    name: Optional[str] = None
-
-
 class Mapping(Model):
     oid: Optional[int] = Field(default=None, alias='_oid')
     taxonomy: Optional[str] = None
     conversion: Optional[str] = None
+    weight: Optional[float] = None
     taxonomymap_oid: Optional[int] = Field(
         default=None, alias='_taxonomymap_oid')
+
+
+class TaxonomyMap(CreationInfoMixin):
+    oid: Optional[int] = Field(default=None, alias='_oid')
+    name: Optional[str] = None
+    mappings: list[Mapping] | None = None
