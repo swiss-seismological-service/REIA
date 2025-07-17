@@ -3,7 +3,7 @@ import os
 import re
 import xml.etree.ElementTree as ET
 from itertools import groupby
-from typing import TextIO, Tuple
+from typing import TextIO
 
 import pandas as pd
 
@@ -47,7 +47,7 @@ def parse_assets(file: TextIO, tagnames: list[str]) -> pd.DataFrame:
     return df
 
 
-def parse_exposure(file: TextIO) -> Tuple[ExposureModel, pd.DataFrame]:
+def parse_exposure(file: TextIO) -> tuple[ExposureModel, pd.DataFrame]:
     tree = ET.iterparse(file)
 
     # strip namespace for easier querying

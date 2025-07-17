@@ -1,4 +1,3 @@
-from typing import List, Optional
 
 from pydantic import Field
 
@@ -7,38 +6,38 @@ from reia.schemas.vulnerability_schemas import ELossCategory
 
 
 class LimitState(Model):
-    oid: Optional[int] = Field(default=None, alias='_oid')
-    name: Optional[str] = None
-    mean: Optional[float] = None
-    stddev: Optional[float] = None
-    poes: Optional[List[float]] = None
-    fragilityfunction_oid: Optional[int] = Field(
+    oid: int | None = Field(default=None, alias='_oid')
+    name: str | None = None
+    mean: float | None = None
+    stddev: float | None = None
+    poes: list[float] | None = None
+    fragilityfunction_oid: int | None = Field(
         default=None, alias='_fragilityfunction_oid')
 
 
 class FragilityFunction(TaxonomyMixin):
-    oid: Optional[int] = Field(default=None, alias='_oid')
-    fragilitymodel_oid: Optional[int] = Field(
+    oid: int | None = Field(default=None, alias='_oid')
+    fragilitymodel_oid: int | None = Field(
         default=None, alias='_fragilitymodel_oid')
-    format: Optional[str] = None
-    shape: Optional[str] = None
-    nodamagelimit: Optional[float] = None
-    minintensitymeasurelevel: Optional[float] = None
-    maxintensitymeasurelevel: Optional[float] = None
-    intensitymeasuretype: Optional[str] = None
-    intensitymeasurelevels: Optional[list[float]] = None
+    format: str | None = None
+    shape: str | None = None
+    nodamagelimit: float | None = None
+    minintensitymeasurelevel: float | None = None
+    maxintensitymeasurelevel: float | None = None
+    intensitymeasuretype: str | None = None
+    intensitymeasurelevels: list[float] | None = None
     limitstates: list[LimitState] = []
 
 
 class FragilityModel(CreationInfoMixin):
-    oid: Optional[int] = Field(default=None, alias='_oid')
-    name: Optional[str] = None
-    description: Optional[str] = None
-    assetcategory: Optional[str] = None
-    publicid: Optional[str] = None
-    type: Optional[ELossCategory] = Field(default=None, alias='_type')
-    limitstates: Optional[list[str]] = None
-    fragilityfunctions: List[FragilityFunction] = []
+    oid: int | None = Field(default=None, alias='_oid')
+    name: str | None = None
+    description: str | None = None
+    assetcategory: str | None = None
+    publicid: str | None = None
+    type: ELossCategory | None = Field(default=None, alias='_type')
+    limitstates: list[str] | None = None
+    fragilityfunctions: list[FragilityFunction] = []
 
 
 class ContentsFragilityModel(FragilityModel):
@@ -58,15 +57,15 @@ class BusinessInterruptionFragilityModel(FragilityModel):
 
 
 class Mapping(Model):
-    oid: Optional[int] = Field(default=None, alias='_oid')
-    taxonomy: Optional[str] = None
-    conversion: Optional[str] = None
-    weight: Optional[float] = None
-    taxonomymap_oid: Optional[int] = Field(
+    oid: int | None = Field(default=None, alias='_oid')
+    taxonomy: str | None = None
+    conversion: str | None = None
+    weight: float | None = None
+    taxonomymap_oid: int | None = Field(
         default=None, alias='_taxonomymap_oid')
 
 
 class TaxonomyMap(CreationInfoMixin):
-    oid: Optional[int] = Field(default=None, alias='_oid')
-    name: Optional[str] = None
+    oid: int | None = Field(default=None, alias='_oid')
+    name: str | None = None
     mappings: list[Mapping] | None = None

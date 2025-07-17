@@ -2,8 +2,6 @@ import configparser
 import io
 import pickle
 from pathlib import Path
-from typing import Tuple
-
 import pandas as pd
 from sqlalchemy.orm import Session
 
@@ -108,7 +106,7 @@ def create_exposure_input(
     session: Session,
     template_name: Path = Path('reia/templates/exposure.xml'),
     assets_csv_name: Path = Path('exposure_assets.csv')) \
-        -> Tuple[io.StringIO, io.StringIO]:
+        -> tuple[io.StringIO, io.StringIO]:
     """Creates in-memory exposure input files for OpenQuake.
 
     Args:

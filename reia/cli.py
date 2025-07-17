@@ -1,8 +1,6 @@
 import configparser
 import traceback
 from pathlib import Path
-from typing import Optional
-
 import geopandas as gpd
 import pandas as pd
 import shapely
@@ -483,7 +481,7 @@ def run_calculation(
 
 
 @calculation.command('list')
-def list_calculations(eqtype: Optional[EEarthquakeType] = typer.Option(None)):
+def list_calculations(eqtype: EEarthquakeType | None = typer.Option(None)):
     '''
     List all calculations.
     '''

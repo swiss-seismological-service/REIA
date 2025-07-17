@@ -1,4 +1,3 @@
-from typing import Optional
 
 from pydantic import Field
 
@@ -8,14 +7,14 @@ from reia.schemas.vulnerability_schemas import ELossCategory
 
 
 class RiskValue(Model):
-    oid: Optional[int] = Field(default=None, alias='_oid')
-    type: Optional[ECalculationType] = Field(default=None, alias='_type')
-    losscategory: Optional[ELossCategory] = None
-    eventid: Optional[int] = None
-    weight: Optional[float] = None
-    calculation_oid: Optional[int] = Field(
+    oid: int | None = Field(default=None, alias='_oid')
+    type: ECalculationType | None = Field(default=None, alias='_type')
+    losscategory: ELossCategory | None = None
+    eventid: int | None = None
+    weight: float | None = None
+    calculation_oid: int | None = Field(
         default=None, alias='_calculation_oid')
-    calculationbranch_oid: Optional[int] = Field(
+    calculationbranch_oid: int | None = Field(
         default=None, alias='_calculationbranch_oid')
 
 

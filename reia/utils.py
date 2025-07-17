@@ -3,7 +3,7 @@ import configparser
 import io
 import sys
 from pathlib import Path
-from typing import Any, TextIO, Tuple
+from typing import Any, TextIO
 
 import pandas as pd
 from jinja2 import Template, select_autoescape
@@ -53,7 +53,7 @@ def import_string(import_name: str, silent: bool = False) -> Any:
     return None
 
 
-def sites_from_assets(assets: pd.DataFrame) -> Tuple[pd.DataFrame, list[int]]:
+def sites_from_assets(assets: pd.DataFrame) -> tuple[pd.DataFrame, list[int]]:
     """Extract sites from assets dataframe.
 
     Args:
