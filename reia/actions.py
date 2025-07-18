@@ -72,45 +72,50 @@ def save_openquake_results(calculationbranch: CalculationBranch,
                            job_id: int,
                            session: Session) -> None:
 
+    # Get calculation data
     dstore = oqapi_get_calculation_result(job_id)
     oq_parameter_inputs = dstore['oqparam']
 
-    aggregation_tags = {}
-    for type in [it for sub in oq_parameter_inputs.aggregate_by for it in sub]:
-        type_tags = AggregationTagRepository.get_by_exposuremodel(
-            session, calculationbranch._exposuremodel_oid, types=[type])
-        aggregation_tags.update({tag.name: tag for tag in type_tags})
+    # Flatten and deduplicate types
+    all_types = {it for sub in oq_parameter_inputs.aggregate_by for it in sub}
+
+    # Bulk fetch aggregation tags once per exposuremodel
+    aggregation_tags_list = AggregationTagRepository.get_by_exposuremodel(
+        session, calculationbranch._exposuremodel_oid, types=list(all_types))
+    aggregation_tag_by_name = {tag.name: tag for tag in aggregation_tags_list}
 
     risk_type = ERiskType(oq_parameter_inputs.calculation_mode)
 
+    # Retrieve and enrich risk values
     risk_values = get_risk_from_dstore(dstore, risk_type)
+    risk_values = risk_values.copy()  # If risk_values is shared elsewhere
 
-    risk_values['weight'] = risk_values['weight'] * calculationbranch.weight
+    risk_values['weight'] *= calculationbranch.weight
     risk_values['_calculation_oid'] = calculationbranch._calculation_oid
     risk_values['_calculationbranch_oid'] = calculationbranch._oid
     risk_values['_type'] = risk_type.name
-    risk_values['losscategory'] = \
-        risk_values['losscategory'].map(attrgetter('name'))
-
+    risk_values['losscategory'] = risk_values['losscategory'].map(
+        attrgetter('name'))
     risk_values['_oid'] = pd.RangeIndex(start=1, stop=len(risk_values) + 1)
 
-    # build up many2many reference table dm.riskvalue_aggregationtag
-    df_agg_val = pd.DataFrame(
-        {'riskvalue': risk_values['_oid'],
-         'aggregationtag': risk_values.pop('aggregationtags'),
-         '_calculation_oid': risk_values['_calculation_oid'],
-         'losscategory': risk_values['losscategory']})
+    # Build many-to-many reference table
+    df_agg_val = pd.DataFrame({
+        'riskvalue': risk_values['_oid'],
+        'aggregationtag': risk_values.pop('aggregationtags'),
+        '_calculation_oid': risk_values['_calculation_oid'],
+        'losscategory': risk_values['losscategory']
+    })
 
-    # Explode list of aggregationtags and replace with correct oid's
+    # Explode aggregation tags (list -> rows)
     df_agg_val = df_agg_val.explode('aggregationtag', ignore_index=True)
-    df_agg_val['aggregationtag'] = df_agg_val['aggregationtag'].map(
-        aggregation_tags)
-    df_agg_val['aggregationtype'] = df_agg_val['aggregationtag'].map(
-        attrgetter('type'))
-    df_agg_val['aggregationtag'] = df_agg_val['aggregationtag'].map(
-        attrgetter('oid'))
+
+    # Map to tag object
+    tag_objs = df_agg_val['aggregationtag'].map(aggregation_tag_by_name)
+    df_agg_val['aggregationtype'] = tag_objs.map(attrgetter('type'))
+    df_agg_val['aggregationtag'] = tag_objs.map(attrgetter('oid'))
 
     crud.create_risk_values(risk_values, df_agg_val, session)
+
     return None
 
 
