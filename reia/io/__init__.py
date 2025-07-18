@@ -6,17 +6,6 @@ from reia.datamodel.calculations import (DamageCalculation,
                                          DamageCalculationBranch,
                                          LossCalculation,
                                          LossCalculationBranch)
-from reia.datamodel.vulnerability import (
-    BusinessInterruptionVulnerabilityModel, ContentsVulnerabilityModel,
-    NonstructuralVulnerabilityModel, OccupantsVulnerabilityModel,
-    StructuralVulnerabilityModel)
-
-LOSSCATEGORY_VULNERABILITY_MAPPING = {
-    'structural': StructuralVulnerabilityModel,
-    'nonstructural': NonstructuralVulnerabilityModel,
-    'contents': ContentsVulnerabilityModel,
-    'business_interruption': BusinessInterruptionVulnerabilityModel,
-    'occupants': OccupantsVulnerabilityModel}
 
 CALCULATION_MAPPING = {'scenario_risk': LossCalculation,
                        'scenario_damage': DamageCalculation}

@@ -2,14 +2,16 @@ import configparser
 import io
 import pickle
 from pathlib import Path
+
 import pandas as pd
 from sqlalchemy.orm import Session
 
 from reia.datamodel.asset import Asset
-from reia.db.crud import read_asset_collection, read_vulnerability_model
-from reia.io import ASSETS_COLS_MAPPING, LOSSCATEGORY_VULNERABILITY_MAPPING
+from reia.db.crud import read_asset_collection
+from reia.io import ASSETS_COLS_MAPPING
 from reia.repositories.fragility import (FragilityModelRepository,
                                          TaxonomyMapRepository)
+from reia.repositories.vulnerability import VulnerabilityModelRepository
 from reia.utils import create_file_pointer
 
 
@@ -68,11 +70,11 @@ def create_taxonomymap_input(
     return taxonomy_map_csv
 
 
-def create_vulnerability_input(
-    vulnerability_model_oid: int,
-    session: Session,
-    template_name: Path = Path('reia/templates/vulnerability.xml')) \
-        -> io.StringIO:
+def create_vulnerability_input(vulnerability_model_oid: int,
+                               session: Session,
+                               template_name: Path =
+                               Path('reia/templates/vulnerability.xml')
+                               ) -> io.StringIO:
     """Create an in memory vulnerability xml file for OpenQuake.
 
     Args:
@@ -83,30 +85,21 @@ def create_vulnerability_input(
     Returns:
         Filepointer for exposure xml and one for csv list of assets.
     """
+    vulnerability_model = VulnerabilityModelRepository.get_by_id(
+        session, vulnerability_model_oid)
 
-    vulnerability_model = read_vulnerability_model(
-        vulnerability_model_oid, session)
-
-    data = vulnerability_model._asdict()
-    data['_type'] = next((k for k, v in
-                          LOSSCATEGORY_VULNERABILITY_MAPPING.items(
-                          ) if k == data['_type'].value))
-    data['vulnerabilityfunctions'] = []
-
-    for vf in vulnerability_model.vulnerabilityfunctions:
-        vf_dict = vf._asdict()
-        vf_dict['lossratios'] = [lr._asdict() for lr in vf.lossratios]
-        data['vulnerabilityfunctions'].append(vf_dict)
+    data = vulnerability_model.model_dump(mode='json')
 
     return create_file_pointer(template_name, data=data)
 
 
-def create_exposure_input(
-    asset_collection_oid: int,
-    session: Session,
-    template_name: Path = Path('reia/templates/exposure.xml'),
-    assets_csv_name: Path = Path('exposure_assets.csv')) \
-        -> tuple[io.StringIO, io.StringIO]:
+def create_exposure_input(asset_collection_oid: int,
+                          session: Session,
+                          template_name: Path =
+                          Path('reia/templates/exposure.xml'),
+                          assets_csv_name: Path =
+                          Path('exposure_assets.csv')
+                          ) -> tuple[io.StringIO, io.StringIO]:
     """Creates in-memory exposure input files for OpenQuake.
 
     Args:

@@ -1,6 +1,7 @@
 import configparser
 import traceback
 from pathlib import Path
+
 import geopandas as gpd
 import pandas as pd
 import shapely
@@ -25,6 +26,7 @@ from reia.repositories.asset import (AggregationGeometryRepository,
 from reia.repositories.calculation import CalculationRepository
 from reia.repositories.fragility import (FragilityModelRepository,
                                          TaxonomyMapRepository)
+from reia.repositories.vulnerability import VulnerabilityModelRepository
 from reia.services.assets import create_assets
 
 app = typer.Typer(add_completion=False)
@@ -351,15 +353,14 @@ def add_vulnerability(vulnerability: Path, name: str):
     '''
     with open(vulnerability, 'r') as f:
         model = parse_vulnerability(f)
-    model['name'] = name
+    model.name = name
 
-    vulnerability_model = crud.create_vulnerability_model(model, session)
-
+    vulnerability_model = VulnerabilityModelRepository.create(session, model)
     typer.echo(
-        f'Created vulnerability model of type "{vulnerability_model._type}"'
-        f' with ID {vulnerability_model._oid}.')
+        f'Created vulnerability model of type "{vulnerability_model.type}"'
+        f' with ID {vulnerability_model.oid}.')
     session.remove()
-    return vulnerability_model._oid
+    return vulnerability_model.oid
 
 
 @vulnerability.command('delete')
@@ -367,7 +368,7 @@ def delete_vulnerability(vulnerability_model_oid: int):
     '''
     Delete a vulnerability model.
     '''
-    crud.delete_vulnerability_model(vulnerability_model_oid, session)
+    VulnerabilityModelRepository.delete(session, vulnerability_model_oid)
     typer.echo(
         f'Deleted vulnerability model with ID {vulnerability_model_oid}.')
     session.remove()
@@ -378,8 +379,8 @@ def list_vulnerability():
     '''
     List all vulnerability models.
     '''
-    vulnerability_models = crud.read_vulnerability_models(session)
-
+    vulnerability_models = \
+        VulnerabilityModelRepository.get_all(session)
     typer.echo('List of existing vulnerability models:')
     typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
         'ID',
@@ -389,9 +390,9 @@ def list_vulnerability():
 
     for vm in vulnerability_models:
         typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
-            vm._oid,
+            vm.oid,
             vm.name or "",
-            vm._type,
+            vm.type,
             str(vm.creationinfo_creationtime)))
     session.remove()
 

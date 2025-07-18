@@ -11,6 +11,7 @@ from reia.io import (ASSETS_COLS_MAPPING, FRAGILITY_FK_MAPPING,
                      VULNERABILITY_FK_MAPPING, CalculationBranchSettings)
 from reia.schemas.asset_schemas import ExposureModel
 from reia.schemas.fragility_schemas import FragilityModel
+from reia.schemas.vulnerability_schemas import VulnerabilityModel
 from reia.utils import flatten_config
 
 
@@ -110,7 +111,7 @@ def parse_fragility(file: TextIO) -> dict:
 
     for child in root:
         model['assetcategory'] = child.attrib['assetCategory']
-        model['losscategory'] = child.attrib['lossCategory']
+        model['_type'] = child.attrib['lossCategory']
         model['publicid'] = child.attrib['id']
 
     model['description'] = root.find('fragilityModel/description').text
@@ -151,7 +152,6 @@ def parse_fragility(file: TextIO) -> dict:
 
         model['fragilityfunctions'].append(fun)
 
-    model['_type'] = model.pop('losscategory', None)
     model = FragilityModel.model_validate(model)
 
     return model
@@ -172,7 +172,7 @@ def parse_vulnerability(file: TextIO) -> dict:
     # read values for VulnerabilityModel
     for child in root:
         model['assetcategory'] = child.attrib['assetCategory']
-        model['losscategory'] = child.attrib['lossCategory']
+        model['_type'] = child.attrib['lossCategory']
         model['publicid'] = child.attrib['id']
     model['description'] = root.find(
         'vulnerabilityModel/description').text.strip()
@@ -195,6 +195,8 @@ def parse_vulnerability(file: TextIO) -> dict:
                                       'coefficientofvariation': c})
 
         model['vulnerabilityfunctions'].append(fun)
+
+    model = VulnerabilityModel.model_validate(model)
 
     return model
 

@@ -6,77 +6,7 @@ from sqlalchemy.orm import Session
 
 import reia.datamodel as dm
 from reia.db.copy import allocate_oids, copy_pooled, db_cursor_from_session
-from reia.io import (CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING,
-                     LOSSCATEGORY_VULNERABILITY_MAPPING)
-
-
-def create_vulnerability_model(
-    model: dict,
-    session: Session) \
-    -> dm.StructuralVulnerabilityModel | \
-        dm.OccupantsVulnerabilityModel | \
-        dm.NonstructuralVulnerabilityModel | \
-        dm.BusinessInterruptionVulnerabilityModel | \
-        dm.ContentsVulnerabilityModel:
-    """Creates a vulnerabilitymodel of the right subtype.
-
-    Creates a vulnerabilitymodel of the right subtype from a dict containing
-    all the data.
-
-    Args:
-        model: Dictionary containing vulnerability model data.
-        session: Database session object.
-
-    Returns:
-        The created vulnerability model instance.
-    """
-    vulnerability_functions = model.pop('vulnerabilityfunctions')
-
-    loss_category = model.pop('losscategory')
-
-    vulnerability_model = LOSSCATEGORY_VULNERABILITY_MAPPING[loss_category](
-        **{**model, **{'vulnerabilityfunctions': []}})
-
-    for func in vulnerability_functions:
-        loss = func.pop('lossratios')
-        function_obj = dm.VulnerabilityFunction(**func)
-        function_obj.lossratios = list(map(lambda x: dm.LossRatio(**x),
-                                           loss))
-        vulnerability_model.vulnerabilityfunctions.append(function_obj)
-
-    session.add(vulnerability_model)
-    session.commit()
-
-    return vulnerability_model
-
-
-def read_vulnerability_models(session: Session) -> list[dm.VulnerabilityModel]:
-    stmt = select(dm.VulnerabilityModel).order_by(dm.VulnerabilityModel._oid)
-    return session.execute(stmt).unique().scalars().all()
-
-
-def read_vulnerability_model(
-        oid: int,
-        session: Session) -> dm.VulnerabilityModel:
-    stmt = select(
-        dm.VulnerabilityModel).where(
-        dm.VulnerabilityModel._oid == oid)
-    return session.execute(stmt).unique().scalar()
-
-
-def delete_vulnerability_model(
-        vulnerability_model_oid: int,
-        session: Session) -> int:
-    stmt = delete(dm.VulnerabilityModel).where(
-        dm.VulnerabilityModel._oid == vulnerability_model_oid)
-    session.execute(stmt)
-    session.commit()
-
-
-def read_sites(asset_collection_oid: int, session: Session) -> list[dm.Site]:
-    stmt = select(dm.Site).where(
-        dm.Site._exposuremodel_oid == asset_collection_oid)
-    return session.execute(stmt).scalars().all()
+from reia.io import CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING
 
 
 def read_asset_collection(oid, session: Session) -> dm.ExposureModel:
