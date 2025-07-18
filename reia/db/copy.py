@@ -1,6 +1,6 @@
-from contextlib import contextmanager
 import logging
 import os
+from contextlib import contextmanager
 from io import StringIO
 from multiprocessing import Pool
 
@@ -9,6 +9,8 @@ import pandas as pd
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from sqlalchemy.engine import Connection
+from sqlalchemy.sql import text
 
 logging.basicConfig(level=logging.INFO)
 
@@ -88,3 +90,33 @@ def db_cursor_from_session(session):
         raise
     finally:
         connection.close()
+
+
+def drop_dynamic_table(connection: Connection, table_name: str):
+    """
+    Truncates and drops a standalone dynamically named table.
+    Example: 'loss_assoc_<int>'
+    """
+    with connection.connect() as conn:
+        conn.execute(text(f"""
+            TRUNCATE TABLE {table_name};
+            DROP TABLE {table_name};
+        """))
+        conn.commit()
+
+
+def drop_partition_table(connection: Connection,
+                         parent_table: str,
+                         partition_suffix: int):
+    """
+    Detaches, truncates, and drops a child partition from a parent table.
+    Example: 'loss_riskvalue_<int>' from 'loss_riskvalue'.
+    """
+    partition_table = f"{parent_table}_{partition_suffix}"
+    with connection.connect() as conn:
+        conn.execute(text(f"""
+            ALTER TABLE {parent_table} DETACH PARTITION {partition_table};
+            TRUNCATE TABLE {partition_table};
+            DROP TABLE {partition_table};
+        """))
+        conn.commit()

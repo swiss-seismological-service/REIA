@@ -1,12 +1,16 @@
 from uuid import UUID
 
 import pandas as pd
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import reia.datamodel as dm
-from reia.db.copy import allocate_oids, copy_pooled, db_cursor_from_session
+from reia.db.copy import (allocate_oids, copy_pooled, db_cursor_from_session,
+                          drop_dynamic_table, drop_partition_table)
 from reia.io import CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING
+from reia.repositories.calculation import (DamageCalculationRepository,
+                                           LossCalculationRepository,
+                                           RiskAssessmentRepository)
 
 
 def read_asset_collection(oid, session: Session) -> dm.ExposureModel:
@@ -91,67 +95,37 @@ def create_risk_values(risk_values: pd.DataFrame,
     copy_pooled(df_agg_val, dm.riskvalue_aggregationtag.name)
 
 
-def delete_risk_assessment(risk_assessment_oid: UUID,
-                           session: Session) -> int:
-
-    connection = session.get_bind().raw_connection()
-    cursor = connection.cursor()
-
-    stmt = select(dm.RiskAssessment).where(
-        dm.RiskAssessment._oid == risk_assessment_oid)
-    riskassessment = session.execute(stmt).unique().scalar()
+def delete_risk_assessment(risk_assessment_oid: UUID, session: Session) -> int:
+    # Fetch the risk assessment
+    riskassessment = RiskAssessmentRepository.get_by_id(
+        session, risk_assessment_oid)
 
     if not riskassessment:
         return 0
 
-    losscalculation_id = riskassessment._losscalculation_oid
-    damagecalculation_id = riskassessment._damagecalculation_oid
+    losscalc_oid = riskassessment.losscalculation_oid
+    damagecalc_oid = riskassessment.damagecalculation_oid
 
-    cursor.execute(
-        "DELETE FROM loss_riskassessment WHERE _oid = {};".format(
-            f"'{str(risk_assessment_oid)}'"))
-    rowcount = cursor.rowcount
-    connection.commit()
+    # Delete the RiskAssessment entry itself
+    RiskAssessmentRepository.delete(session, risk_assessment_oid)
 
-    if losscalculation_id:
+    bind = session.get_bind()
 
-        loss_assoc_table = f'loss_assoc_{losscalculation_id}'
-        cursor.execute(
-            "TRUNCATE TABLE {0};"
-            "DROP TABLE {0};".format(
-                loss_assoc_table))
-        connection.commit()
+    # Handle loss calculation
+    if losscalc_oid:
+        drop_dynamic_table(bind, f"loss_assoc_{losscalc_oid}")
+        drop_partition_table(bind, "loss_riskvalue", losscalc_oid)
+        LossCalculationRepository.delete(session, losscalc_oid)
 
-        loss_table = f'loss_riskvalue_{losscalculation_id}'
-        cursor.execute(
-            "ALTER TABLE loss_riskvalue DETACH PARTITION {0};"
-            "TRUNCATE TABLE {0};"
-            "DROP TABLE {0};"
-            "DELETE FROM loss_calculation WHERE _oid = {1};".format(
-                loss_table,
-                losscalculation_id))
+    # Handle damage calculation
+    if damagecalc_oid:
+        drop_dynamic_table(bind, f"loss_assoc_{damagecalc_oid}")
+        drop_partition_table(bind, "loss_riskvalue", damagecalc_oid)
+        DamageCalculationRepository.delete(session, damagecalc_oid)
 
-    if damagecalculation_id:
-        damage_assoc_table = f'loss_assoc_{damagecalculation_id}'
-        cursor.execute(
-            "TRUNCATE TABLE {0};"
-            "DROP TABLE {0};".format(
-                damage_assoc_table))
-        connection.commit()
-
-        damage_table = f'loss_riskvalue_{damagecalculation_id}'
-        cursor.execute(
-            "ALTER TABLE loss_riskvalue DETACH PARTITION {0};"
-            "TRUNCATE TABLE {0};"
-            "DROP TABLE {0};"
-            "DELETE FROM loss_calculation WHERE _oid = {1};".format(
-                damage_table,
-                damagecalculation_id))
-
-    connection.commit()
-    cursor.close()
-    connection.close()
-    return rowcount
+    session.commit()
+    session.remove()
+    return 1
 
 
 def create_risk_assessment(originid: str,
