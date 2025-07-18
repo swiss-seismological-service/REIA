@@ -1,7 +1,9 @@
 import logging
 import time
 from configparser import ConfigParser
+from operator import attrgetter
 
+import pandas as pd
 from requests import Response
 from sqlalchemy.orm import Session
 
@@ -81,16 +83,34 @@ def save_openquake_results(calculationbranch: CalculationBranch,
 
     risk_type = ERiskType(oq_parameter_inputs.calculation_mode)
 
-    df = get_risk_from_dstore(dstore, risk_type)
+    risk_values = get_risk_from_dstore(dstore, risk_type)
 
-    df['weight'] = df['weight'] * calculationbranch.weight
-    df['_calculation_oid'] = calculationbranch._calculation_oid
-    df['_calculationbranch_oid'] = calculationbranch._oid
-    df['_type'] = risk_type.name
+    risk_values['weight'] = risk_values['weight'] * calculationbranch.weight
+    risk_values['_calculation_oid'] = calculationbranch._calculation_oid
+    risk_values['_calculationbranch_oid'] = calculationbranch._oid
+    risk_values['_type'] = risk_type.name
+    risk_values['losscategory'] = \
+        risk_values['losscategory'].map(attrgetter('name'))
 
-    connection = session.get_bind().raw_connection()
-    crud.create_risk_values(df, aggregation_tags, connection)
-    connection.close()
+    risk_values['_oid'] = pd.RangeIndex(start=1, stop=len(risk_values) + 1)
+
+    # build up many2many reference table dm.riskvalue_aggregationtag
+    df_agg_val = pd.DataFrame(
+        {'riskvalue': risk_values['_oid'],
+         'aggregationtag': risk_values.pop('aggregationtags'),
+         '_calculation_oid': risk_values['_calculation_oid'],
+         'losscategory': risk_values['losscategory']})
+
+    # Explode list of aggregationtags and replace with correct oid's
+    df_agg_val = df_agg_val.explode('aggregationtag', ignore_index=True)
+    df_agg_val['aggregationtag'] = df_agg_val['aggregationtag'].map(
+        aggregation_tags)
+    df_agg_val['aggregationtype'] = df_agg_val['aggregationtag'].map(
+        attrgetter('type'))
+    df_agg_val['aggregationtag'] = df_agg_val['aggregationtag'].map(
+        attrgetter('oid'))
+
+    crud.create_risk_values(risk_values, df_agg_val, session)
     return None
 
 

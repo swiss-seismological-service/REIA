@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import logging
 import os
 from io import StringIO
@@ -22,7 +23,10 @@ def make_connection():
     )
 
 
-def copy_pooled(df, tablename, max_procs, max_entries=750_000):
+def copy_pooled(df, tablename, max_entries=750_000):
+
+    max_procs = int(os.getenv('MAX_PROCESSES', '2'))
+
     nprocs = max(1, min(max_procs, int(np.ceil(len(df) / max_entries))))
     nprocs = 2
     chunks = np.array_split(df, nprocs)
@@ -70,3 +74,17 @@ def allocate_oids(cursor, table: str, column: str, count: int) -> list[int]:
         (table, column, count)
     )
     return [row[0] for row in cursor.fetchall()]
+
+
+@contextmanager
+def db_cursor_from_session(session):
+    connection = session.get_bind().raw_connection()
+    try:
+        with connection.cursor() as cursor:
+            yield cursor
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()

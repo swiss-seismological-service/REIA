@@ -1,5 +1,3 @@
-import os
-from operator import attrgetter
 from uuid import UUID
 
 import pandas as pd
@@ -7,10 +5,9 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 import reia.datamodel as dm
-from reia.db.copy import allocate_oids, copy_pooled
+from reia.db.copy import allocate_oids, copy_pooled, db_cursor_from_session
 from reia.io import (CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING,
                      LOSSCATEGORY_VULNERABILITY_MAPPING)
-from reia.schemas import AggregationTag
 
 
 def create_vulnerability_model(
@@ -146,41 +143,22 @@ def update_calculation_status(calculation_oid: int,
 
 
 def create_risk_values(risk_values: pd.DataFrame,
-                       aggregation_tags: dict[str, AggregationTag],
-                       connection):
-    print(risk_values)
-    max_procs = int(os.getenv('MAX_PROCESSES', '1'))
-    cursor = connection.cursor()
+                       df_agg_val: pd.DataFrame,
+                       session: Session) -> None:
 
-    indexes = allocate_oids(cursor,
-                            dm.RiskValue.__table__.name,
-                            '_oid',
-                            len(risk_values))
+    with db_cursor_from_session(session) as cursor:
+        db_indexes = allocate_oids(cursor,
+                                   dm.RiskValue.__table__.name,
+                                   '_oid',
+                                   len(risk_values))
 
-    risk_values['_oid'] = indexes
-    risk_values['losscategory'] = \
-        risk_values['losscategory'].map(attrgetter('name'))
+    oid_map = dict(zip(risk_values['_oid'], db_indexes))
 
-    # build up many2many reference table dm.riskvalue_aggregationtag
-    df_agg_val = pd.DataFrame(
-        {'riskvalue': risk_values['_oid'],
-         'aggregationtag': risk_values.pop('aggregationtags'),
-         '_calculation_oid': risk_values['_calculation_oid'],
-         'losscategory': risk_values['losscategory']})
+    risk_values['_oid'] = db_indexes
+    df_agg_val['riskvalue'] = df_agg_val['riskvalue'].map(oid_map)
 
-    # Explode list of aggregationtags and replace with correct oid's
-    df_agg_val = df_agg_val.explode('aggregationtag', ignore_index=True)
-    df_agg_val['aggregationtag'] = df_agg_val['aggregationtag'].map(
-        aggregation_tags)
-    df_agg_val['aggregationtype'] = df_agg_val['aggregationtag'].map(
-        attrgetter('type'))
-    df_agg_val['aggregationtag'] = df_agg_val['aggregationtag'].map(
-        attrgetter('oid'))
-
-    copy_pooled(risk_values, dm.RiskValue.__table__.name, max_procs)
-    copy_pooled(df_agg_val, dm.riskvalue_aggregationtag.name, max_procs)
-
-    cursor.close()
+    copy_pooled(risk_values, dm.RiskValue.__table__.name)
+    copy_pooled(df_agg_val, dm.riskvalue_aggregationtag.name)
 
 
 def delete_risk_assessment(risk_assessment_oid: UUID,
