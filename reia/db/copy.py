@@ -23,12 +23,11 @@ def make_connection():
 
 
 def copy_pooled(df, tablename, max_procs, max_entries=750_000):
-    nprocs = 1
-    while len(df) / nprocs > max_entries and nprocs < max_procs:
-        nprocs += 1
+    nprocs = max(1, min(max_procs, int(np.ceil(len(df) / max_entries))))
+    nprocs = 2
+    chunks = np.array_split(df, nprocs)
 
-    chunks = df.groupby(np.arange(len(df)) // (len(df) / nprocs))
-    pool_args = [(chunk, tablename) for _, chunk in chunks]
+    pool_args = [(chunk, tablename) for chunk in chunks]
 
     with Pool(nprocs) as pool:
         pool.starmap(copy_raw, pool_args)
@@ -37,11 +36,13 @@ def copy_pooled(df, tablename, max_procs, max_entries=750_000):
 def copy_raw(df, tablename):
     conn = make_connection()
     conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-    with conn:
+    try:
         with conn.cursor() as cursor:
             cursor.execute("SET synchronous_commit TO OFF;")
             logging.info(f"Copying {len(df)} rows to {tablename}...")
             copy_from_dataframe(cursor, df, tablename)
+    finally:
+        conn.close()
 
 
 def copy_from_dataframe(cursor, df: pd.DataFrame, table: str):
@@ -54,26 +55,18 @@ def copy_from_dataframe(cursor, df: pd.DataFrame, table: str):
                 sql.Identifier(table), columns
             )
             cursor.copy_expert(stmt, buffer)
-    except (Exception, psycopg2.DatabaseError) as err:
+            logging.info(f"Successfully copied {len(df)} rows to {table}.")
+    except Exception as err:
         logging.error(f"Error copying to {table}: {err}")
         raise
 
 
-def get_nextval(cursor, table: str, column: str):
+def allocate_oids(cursor, table: str, column: str, count: int) -> list[int]:
     cursor.execute(
-        f"SELECT setval(pg_get_serial_sequence('{table}', '{column}'), "
-        f"coalesce(max({column}),0) + 1, false) FROM {table};"
+        """
+        SELECT nextval(pg_get_serial_sequence(%s, %s))
+        FROM generate_series(1, %s)
+        """,
+        (table, column, count)
     )
-    cursor.execute(
-        f"SELECT nextval(pg_get_serial_sequence('{table}', '{column}'))"
-    )
-    return cursor.fetchone()[0]
-
-
-def reset_sequence(cursor, table: str, column: str):
-    cursor.execute(
-        f"SELECT setval(\n"
-        f"  pg_get_serial_sequence('{table}', '{column}'),\n"
-        f"  (SELECT MAX({column}) FROM {table}) + 1\n"
-        f");"
-    )
+    return [row[0] for row in cursor.fetchall()]

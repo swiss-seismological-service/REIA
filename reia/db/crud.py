@@ -7,7 +7,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 import reia.datamodel as dm
-from reia.db.copy import copy_from_dataframe, copy_pooled, get_nextval
+from reia.db.copy import allocate_oids, copy_pooled
 from reia.io import (CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING,
                      LOSSCATEGORY_VULNERABILITY_MAPPING)
 from reia.schemas import AggregationTag
@@ -148,22 +148,18 @@ def update_calculation_status(calculation_oid: int,
 def create_risk_values(risk_values: pd.DataFrame,
                        aggregation_tags: dict[str, AggregationTag],
                        connection):
-
+    print(risk_values)
     max_procs = int(os.getenv('MAX_PROCESSES', '1'))
     cursor = connection.cursor()
 
-    # lock the table since we're setting indexes manually
-    # TODO: find solution so it works with threading
-    if max_procs == 1:
-        cursor.execute(
-            f'LOCK TABLE {dm.RiskValue.__table__.name} IN EXCLUSIVE MODE;')
+    indexes = allocate_oids(cursor,
+                            dm.RiskValue.__table__.name,
+                            '_oid',
+                            len(risk_values))
 
-    # create the index on the riskvalues
-    index0 = get_nextval(cursor, dm.RiskValue.__table__.name, '_oid')
-
-    risk_values['_oid'] = range(index0, index0 + len(risk_values))
-    risk_values['losscategory'] = risk_values['losscategory'].map(
-        attrgetter('name'))
+    risk_values['_oid'] = indexes
+    risk_values['losscategory'] = \
+        risk_values['losscategory'].map(attrgetter('name'))
 
     # build up many2many reference table dm.riskvalue_aggregationtag
     df_agg_val = pd.DataFrame(
@@ -174,20 +170,16 @@ def create_risk_values(risk_values: pd.DataFrame,
 
     # Explode list of aggregationtags and replace with correct oid's
     df_agg_val = df_agg_val.explode('aggregationtag', ignore_index=True)
-    df_agg_val['aggregationtype'] = df_agg_val['aggregationtag'].map(
-        aggregation_tags).map(attrgetter('type'))
     df_agg_val['aggregationtag'] = df_agg_val['aggregationtag'].map(
-        aggregation_tags).map(attrgetter('oid'))
+        aggregation_tags)
+    df_agg_val['aggregationtype'] = df_agg_val['aggregationtag'].map(
+        attrgetter('type'))
+    df_agg_val['aggregationtag'] = df_agg_val['aggregationtag'].map(
+        attrgetter('oid'))
 
-    if max_procs > 1:
-        copy_pooled(risk_values, dm.RiskValue.__table__.name, max_procs)
-        copy_pooled(df_agg_val, dm.riskvalue_aggregationtag.name, max_procs)
-    else:
-        copy_from_dataframe(cursor, risk_values, dm.RiskValue.__table__.name)
-        copy_from_dataframe(
-            cursor,
-            df_agg_val,
-            dm.riskvalue_aggregationtag.name)
+    copy_pooled(risk_values, dm.RiskValue.__table__.name, max_procs)
+    copy_pooled(df_agg_val, dm.riskvalue_aggregationtag.name, max_procs)
+
     cursor.close()
 
 
