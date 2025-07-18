@@ -23,7 +23,8 @@ from reia.io.write import (assemble_calculation_input, create_exposure_input,
                            create_vulnerability_input)
 from reia.repositories.asset import (AggregationGeometryRepository,
                                      ExposureModelRepository, SiteRepository)
-from reia.repositories.calculation import CalculationRepository
+from reia.repositories.calculation import (CalculationRepository,
+                                           RiskAssessmentRepository)
 from reia.repositories.fragility import (FragilityModelRepository,
                                          TaxonomyMapRepository)
 from reia.repositories.vulnerability import VulnerabilityModelRepository
@@ -539,11 +540,11 @@ def add_risk_assessment(originid: str, loss_id: int, damage_id: int):
 
 
 @risk_assessment.command('delete')
-def delete_risk_assessment(risk_assessment_oid: str):
+def delete_risk_assessment(riskassessment_oid: str):
     '''
     Delete a risk assessment.
     '''
-    rowcount = crud.delete_risk_assessment(risk_assessment_oid, session)
+    rowcount = RiskAssessmentRepository.delete(session, riskassessment_oid)
     typer.echo(f'Deleted {rowcount} risk assessment.')
     session.remove()
 

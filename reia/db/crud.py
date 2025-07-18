@@ -1,16 +1,10 @@
 from uuid import UUID
 
-import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import reia.datamodel as dm
-from reia.db.copy import (allocate_oids, copy_pooled, db_cursor_from_session,
-                          drop_dynamic_table, drop_partition_table)
 from reia.io import CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING
-from reia.repositories.calculation import (DamageCalculationRepository,
-                                           LossCalculationRepository,
-                                           RiskAssessmentRepository)
 
 
 def read_asset_collection(oid, session: Session) -> dm.ExposureModel:
@@ -74,58 +68,6 @@ def update_calculation_status(calculation_oid: int,
     calculation.status = status
     session.commit()
     return calculation
-
-
-def create_risk_values(risk_values: pd.DataFrame,
-                       df_agg_val: pd.DataFrame,
-                       session: Session) -> None:
-
-    with db_cursor_from_session(session) as cursor:
-        db_indexes = allocate_oids(cursor,
-                                   dm.RiskValue.__table__.name,
-                                   '_oid',
-                                   len(risk_values))
-
-    oid_map = dict(zip(risk_values['_oid'], db_indexes))
-
-    risk_values['_oid'] = db_indexes
-    df_agg_val['riskvalue'] = df_agg_val['riskvalue'].map(oid_map)
-
-    copy_pooled(risk_values, dm.RiskValue.__table__.name)
-    copy_pooled(df_agg_val, dm.riskvalue_aggregationtag.name)
-
-
-def delete_risk_assessment(risk_assessment_oid: UUID, session: Session) -> int:
-    # Fetch the risk assessment
-    riskassessment = RiskAssessmentRepository.get_by_id(
-        session, risk_assessment_oid)
-
-    if not riskassessment:
-        return 0
-
-    losscalc_oid = riskassessment.losscalculation_oid
-    damagecalc_oid = riskassessment.damagecalculation_oid
-
-    # Delete the RiskAssessment entry itself
-    RiskAssessmentRepository.delete(session, risk_assessment_oid)
-
-    bind = session.get_bind()
-
-    # Handle loss calculation
-    if losscalc_oid:
-        drop_dynamic_table(bind, f"loss_assoc_{losscalc_oid}")
-        drop_partition_table(bind, "loss_riskvalue", losscalc_oid)
-        LossCalculationRepository.delete(session, losscalc_oid)
-
-    # Handle damage calculation
-    if damagecalc_oid:
-        drop_dynamic_table(bind, f"loss_assoc_{damagecalc_oid}")
-        drop_partition_table(bind, "loss_riskvalue", damagecalc_oid)
-        DamageCalculationRepository.delete(session, damagecalc_oid)
-
-    session.commit()
-    session.remove()
-    return 1
 
 
 def create_risk_assessment(originid: str,

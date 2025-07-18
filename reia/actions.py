@@ -17,6 +17,7 @@ from reia.oqapi import (oqapi_failed_for_zero_losses,
                         oqapi_get_calculation_result, oqapi_get_job_status,
                         oqapi_send_calculation)
 from reia.repositories.asset import AggregationTagRepository
+from reia.repositories.lossvalue import RiskValueRepository
 
 LOGGER = logging.getLogger(__name__)
 
@@ -114,8 +115,9 @@ def save_openquake_results(calculationbranch: CalculationBranch,
     df_agg_val['aggregationtype'] = tag_objs.map(attrgetter('type'))
     df_agg_val['aggregationtag'] = tag_objs.map(attrgetter('oid'))
 
-    crud.create_risk_values(risk_values, df_agg_val, session)
-
+    # crud.create_risk_values(risk_values, df_agg_val, session)
+    RiskValueRepository.insert_many(
+        session, risk_values, df_agg_val)
     return None
 
 
