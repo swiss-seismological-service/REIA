@@ -17,9 +17,10 @@ from reia.repositories.base import repository_factory
 from reia.schemas.calculation_schemas import (Calculation, CalculationBranch,
                                               DamageCalculation,
                                               DamageCalculationBranch,
-                                              EEarthquakeType, LossCalculation,
+                                              LossCalculation,
                                               LossCalculationBranch,
                                               RiskAssessment)
+from reia.schemas.enums import ECalculationType, EEarthquakeType, EStatus
 
 
 class RiskAssessmentRepository(repository_factory(
@@ -60,7 +61,34 @@ class RiskAssessmentRepository(repository_factory(
 
 class CalculationBranchRepository(repository_factory(
         CalculationBranch, CalculationBranchORM)):
-    pass
+    @classmethod
+    def create(cls,
+               session: Session,
+               data: CalculationBranch) -> CalculationBranch:
+        if data.type == ECalculationType.LOSS:
+            return LossCalculationBranchRepository.create(session, data)
+        elif data.type == ECalculationType.DAMAGE:
+            return DamageCalculationBranchRepository.create(session, data)
+        else:
+            raise ValueError(f"Unsupported calculation type: {data.type}")
+
+    @classmethod
+    def get_by_id(cls, session: Session, oid: int) -> CalculationBranch:
+        branch = super().get_by_id(session, oid)
+        if branch.type == ECalculationType.LOSS:
+            return LossCalculationBranchRepository.get_by_id(session, oid)
+        elif branch.type == ECalculationType.DAMAGE:
+            return DamageCalculationBranchRepository.get_by_id(session, oid)
+        else:
+            raise ValueError(f"Unsupported calculation type: {branch.type}")
+
+    @classmethod
+    def update_status(cls, session: Session, oid: int,
+                      status: EStatus) -> CalculationBranch:
+        branch = super().get_by_id(session, oid)
+        branch.status = status
+        cls.update(session, branch)
+        return branch
 
 
 class LossCalculationBranchRepository(repository_factory(
@@ -76,6 +104,23 @@ class DamageCalculationBranchRepository(repository_factory(
 class CalculationRepository(repository_factory(
         Calculation, CalculationORM)):
     @classmethod
+    def create(cls, session: Session, data: Calculation) -> Calculation:
+        if data.type == ECalculationType.LOSS:
+            return LossCalculationRepository.create(session, data)
+        elif data.type == ECalculationType.DAMAGE:
+            return DamageCalculationRepository.create(session, data)
+        else:
+            raise ValueError(f"Unsupported calculation type: {data.type}")
+
+    @classmethod
+    def get_by_id(cls, session: Session, oid: int) -> Calculation:
+        calc = super().get_by_id(session, oid)
+        if calc.type == ECalculationType.LOSS:
+            return LossCalculationRepository.get_by_id(session, oid)
+        elif calc.type == ECalculationType.DAMAGE:
+            return DamageCalculationRepository.get_by_id(session, oid)
+
+    @classmethod
     def get_all_by_type(
             session: Session,
             type: EEarthquakeType | None = None) -> list[Calculation]:
@@ -85,6 +130,14 @@ class CalculationRepository(repository_factory(
         )
         result = session.execute(stmt).unique().scalars().all()
         return [Calculation.model_validate(row) for row in result]
+
+    @classmethod
+    def update_status(
+            cls, session: Session, oid: int, status: EStatus) -> Calculation:
+        calc = super().get_by_id(session, oid)
+        calc.status = status
+        cls.update(session, calc)
+        return calc
 
 
 class LossCalculationRepository(repository_factory(

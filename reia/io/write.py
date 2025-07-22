@@ -7,8 +7,8 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 from reia.datamodel.asset import Asset
-from reia.db.crud import read_asset_collection
 from reia.io import ASSETS_COLS_MAPPING
+from reia.repositories.asset import ExposureModelRepository
 from reia.repositories.fragility import (FragilityModelRepository,
                                          TaxonomyMapRepository)
 from reia.repositories.vulnerability import VulnerabilityModelRepository
@@ -112,18 +112,21 @@ def create_exposure_input(asset_collection_oid: int,
         Filepointer for exposure xml and one for csv list of assets.
     """
 
-    asset_collection = read_asset_collection(asset_collection_oid, session)
-    data = asset_collection._asdict()
+    exposuremodel = ExposureModelRepository.get_by_id(
+        session, asset_collection_oid)
+
+    data = exposuremodel.model_dump(mode='json')
 
     data['assets_csv_name'] = assets_csv_name.name
-    data['costtypes'] = [c._asdict() for c in asset_collection.costtypes]
+    data['costtypes'] = [c.model_dump(mode='json')
+                         for c in exposuremodel.costtypes]
     # first asset's tag types must be the same as all other's
     data['tagnames'] = [agg.type for agg in
-                        asset_collection.assets[0].aggregationtags]
+                        exposuremodel.assets[0].aggregationtags]
 
     exposure_xml = create_file_pointer(template_name, data=data)
 
-    exposure_df = assets_to_dataframe(asset_collection.assets)
+    exposure_df = assets_to_dataframe(exposuremodel.assets)
 
     exposure_csv = io.StringIO()
     exposure_df.to_csv(exposure_csv)
@@ -136,9 +139,10 @@ def create_exposure_input(asset_collection_oid: int,
 def assets_to_dataframe(assets: list[Asset]) -> pd.DataFrame:
     """Parses a list of Asset objects to a DataFrame."""
 
-    assets_df = pd.DataFrame([x._asdict() for x in assets]).set_index('_oid')
+    assets_df = pd.DataFrame([x.model_dump(mode='json')
+                             for x in assets]).set_index('_oid')
 
-    sites_df = pd.DataFrame([x.site._asdict() for x in assets])[
+    sites_df = pd.DataFrame([x.site.model_dump(mode='json') for x in assets])[
         ['longitude', 'latitude']]
 
     aggregationtags_df = pd.DataFrame(map(

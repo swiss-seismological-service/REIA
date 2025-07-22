@@ -1,28 +1,12 @@
-import enum
+from __future__ import annotations
+
 import uuid
+
 from pydantic import Field
 
 from reia.schemas.base import CreationInfoMixin, Model
-
-
-class EStatus(int, enum.Enum):
-    FAILED = 1
-    ABORTED = 2
-    CREATED = 3
-    SUBMITTED = 4
-    EXECUTING = 5
-    COMPLETE = 6
-
-
-class EEarthquakeType(str, enum.Enum):
-    SCENARIO = 'scenario'
-    NATURAL = 'natural'
-
-
-class ECalculationType(str, enum.Enum):
-    RISK = 'risk'
-    LOSS = 'loss'
-    DAMAGE = 'damage'
+from reia.schemas.enums import ECalculationType, EEarthquakeType, EStatus
+from reia.schemas.lossvalue_schemas import DamageValue, LossValue
 
 
 class RiskAssessment(CreationInfoMixin):
@@ -53,6 +37,7 @@ class CalculationBranch(Model):
 
 
 class LossCalculationBranch(CalculationBranch):
+    losses: list[LossValue] = Field(default=[], exclude=True)
     occupantsvulnerabilitymodel_oid: int | None = Field(
         default=None, alias='_occupantsvulnerabilitymodel_oid')
     contentsvulnerabilitymodel_oid: int | None = Field(
@@ -63,9 +48,12 @@ class LossCalculationBranch(CalculationBranch):
         default=None, alias='_nonstructuralvulnerabilitymodel_oid')
     businessinterruptionvulnerabilitymodel_oid: int | None = Field(
         default=None, alias='_businessinterruptionvulnerabilitymodel_oid')
+    type: ECalculationType = Field(default=ECalculationType.LOSS,
+                                   alias='_type')
 
 
 class DamageCalculationBranch(CalculationBranch):
+    damages: list[DamageValue] = Field(default=[], exclude=True)
     contentsfragilitymodel_oid: int | None = Field(
         default=None, alias='_contentsfragilitymodel_oid')
     structuralfragilitymodel_oid: int | None = Field(
@@ -74,19 +62,29 @@ class DamageCalculationBranch(CalculationBranch):
         default=None, alias='_nonstructuralfragilitymodel_oid')
     businessinterruptionfragilitymodel_oid: int | None = Field(
         default=None, alias='_businessinterruptionfragilitymodel_oid')
+    type: ECalculationType = Field(
+        default=ECalculationType.DAMAGE, alias='_type')
 
 
 class Calculation(CreationInfoMixin):
     oid: int | None = Field(default=None, alias='_oid')
-    aggregateby: list[str] | None = None
+    aggregateby: list[str] = []
     status: EStatus | None = None
     description: str | None = None
     type: ECalculationType | None = Field(default=None, alias='_type')
 
 
 class LossCalculation(Calculation):
-    pass
+    losses: list[LossValue] = Field(default=[], exclude=True)
+    losscalculationbranches: list[LossCalculationBranch] = Field(
+        default=[], exclude=True)
+    type: ECalculationType = Field(default=ECalculationType.LOSS,
+                                   alias='_type')
 
 
 class DamageCalculation(Calculation):
-    pass
+    damages: list[DamageValue] = Field(default=[], exclude=True)
+    damagecalculationbranches: list[DamageCalculationBranch] = Field(
+        default=[], exclude=True)
+    type: ECalculationType = Field(
+        default=ECalculationType.DAMAGE, alias='_type')

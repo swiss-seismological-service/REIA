@@ -1,11 +1,9 @@
 import configparser
-import enum
 from dataclasses import dataclass
 
-from reia.datamodel.calculations import (DamageCalculation,
-                                         DamageCalculationBranch,
-                                         LossCalculation,
-                                         LossCalculationBranch)
+from reia.schemas import (DamageCalculation, DamageCalculationBranch,
+                          LossCalculation, LossCalculationBranch)
+from reia.schemas.enums import ERiskType
 
 CALCULATION_MAPPING = {'scenario_risk': LossCalculation,
                        'scenario_damage': DamageCalculation}
@@ -47,11 +45,6 @@ class CalculationBranchSettings:
     """ Contains the weight and a OQ settings file for a calculation"""
     weight: float
     config: configparser.ConfigParser
-
-
-class ERiskType(str, enum.Enum):
-    LOSS = 'scenario_risk'
-    DAMAGE = 'scenario_damage'
 
 
 RISK_COLUMNS_MAPPING = {

@@ -1,9 +1,10 @@
 
+
 from pydantic import Field
 
+from reia.schemas.asset_schemas import AggregationTag
 from reia.schemas.base import Model, real_value_mixin
-from reia.schemas.calculation_schemas import ECalculationType
-from reia.schemas.vulnerability_schemas import ELossCategory
+from reia.schemas.enums import ECalculationType, ELossCategory
 
 
 class RiskValue(Model):
@@ -16,6 +17,8 @@ class RiskValue(Model):
         default=None, alias='_calculation_oid')
     calculationbranch_oid: int | None = Field(
         default=None, alias='_calculationbranch_oid')
+    aggregationtags: list[AggregationTag] = Field(
+        default=[], exclude=True)
 
 
 class LossValue(RiskValue,

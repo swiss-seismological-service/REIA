@@ -7,13 +7,14 @@ from sqlalchemy.orm import Session
 from reia.datamodel.asset import AggregationGeometry as AggregationGeometryORM
 from reia.datamodel.asset import AggregationTag as AggregationTagORM
 from reia.datamodel.asset import Asset as AssetORM
-from reia.datamodel.asset import CostType as CostTypeORM
-from reia.datamodel.asset import ExposureModel as ExposureModelORM
 from reia.datamodel.asset import Site as SiteORM
 from reia.datamodel.asset import asset_aggregationtag
+from reia.datamodel.exposure import CostType as CostTypeORM
+from reia.datamodel.exposure import ExposureModel as ExposureModelORM
 from reia.repositories.base import repository_factory
 from reia.schemas.asset_schemas import (AggregationGeometry, AggregationTag,
-                                        Asset, CostType, ExposureModel, Site)
+                                        Asset, Site)
+from reia.schemas.exposure_schema import CostType, ExposureModel
 
 
 class ExposureModelRepository(repository_factory(

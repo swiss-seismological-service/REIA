@@ -2,73 +2,11 @@ from geoalchemy2 import Geometry
 from sqlalchemy import ForeignKeyConstraint, Table, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.schema import Column, ForeignKey
-from sqlalchemy.sql.sqltypes import BigInteger, Boolean, Float, Integer, String
+from sqlalchemy.sql.sqltypes import BigInteger, Float, Integer, String
 
 from reia.datamodel.base import ORMBase
 from reia.datamodel.lossvalues import riskvalue_aggregationtag
-from reia.datamodel.mixins import (ClassificationMixin, CompatibleStringArray,
-                                   CreationInfoMixin, PublicIdMixin)
-
-
-class ExposureModel(ORMBase,
-                    PublicIdMixin,
-                    CreationInfoMixin,
-                    ClassificationMixin('taxonomy')):
-    '''Asset Collection model'''
-    name = Column(String)
-    category = Column(String)
-    description = Column(String)
-    aggregationtypes = Column(CompatibleStringArray, nullable=False)
-    dayoccupancy = Column(Boolean,
-                          server_default='false',
-                          default=False,
-                          nullable=False)
-    nightoccupancy = Column(Boolean,
-                            server_default='false',
-                            default=False,
-                            nullable=False)
-    transitoccupancy = Column(Boolean,
-                              server_default='false',
-                              default=False,
-                              nullable=False)
-
-    costtypes = relationship('CostType', back_populates='exposuremodel',
-                             passive_deletes=True,
-                             cascade='all, delete-orphan',
-                             lazy='joined')
-
-    calculationbranch = relationship('CalculationBranch',
-                                     back_populates='exposuremodel')
-
-    assets = relationship('Asset',
-                          back_populates='exposuremodel',
-                          passive_deletes=True,
-                          cascade='all, delete-orphan')
-    sites = relationship('Site',
-                         back_populates='exposuremodel',
-                         passive_deletes=True,
-                         cascade='all, delete-orphan')
-    aggregationtags = relationship('AggregationTag',
-                                   back_populates='exposuremodel',
-                                   passive_deletes=True,
-                                   cascade='all, delete-orphan')
-    aggregationgeometries = relationship('AggregationGeometry',
-                                         back_populates='exposuremodel',
-                                         passive_deletes=True,
-                                         cascade='all, delete-orphan')
-
-
-class CostType(ORMBase):
-    name = Column(String)
-    type = Column(String)
-    unit = Column(String)
-
-    _exposuremodel_oid = Column(BigInteger, ForeignKey(
-        'loss_exposuremodel._oid', ondelete='CASCADE'))
-    exposuremodel = relationship(
-        'ExposureModel',
-        back_populates='costtypes')
-
+from reia.datamodel.mixins import ClassificationMixin
 
 asset_aggregationtag = Table(
     'loss_assoc_asset_aggregationtag',
@@ -79,7 +17,8 @@ asset_aggregationtag = Table(
     Column('aggregationtag', BigInteger),
     Column('aggregationtype', String),
 
-    ForeignKeyConstraint(['aggregationtag', 'aggregationtype'],
+    ForeignKeyConstraint(['aggregationtag',
+                          'aggregationtype'],
                          ['loss_aggregationtag._oid',
                          'loss_aggregationtag.type'],
                          ondelete='CASCADE'),
@@ -126,48 +65,46 @@ class Site(ORMBase):
     latitude = Column(Float, nullable=False)
 
     # asset collection relationship
-    _exposuremodel_oid = Column(
-        BigInteger,
-        ForeignKey('loss_exposuremodel._oid', ondelete='CASCADE'))
-    exposuremodel = relationship(
-        'ExposureModel',
-        back_populates='sites')
+    _exposuremodel_oid = Column(BigInteger,
+                                ForeignKey('loss_exposuremodel._oid',
+                                           ondelete='CASCADE'))
+    exposuremodel = relationship('ExposureModel',
+                                 back_populates='sites')
 
-    assets = relationship(
-        'Asset',
-        back_populates='site')
+    assets = relationship('Asset',
+                          back_populates='site')
 
 
 class AggregationTag(ORMBase):
-    _oid = Column(
-        BigInteger,
-        autoincrement=True,
-        primary_key=True)
+    _oid = Column(BigInteger,
+                  autoincrement=True,
+                  primary_key=True)
+
     type = Column(String, primary_key=True)
     name = Column(String)
 
-    assets = relationship(
-        'Asset', secondary=asset_aggregationtag,
-        back_populates='aggregationtags')
+    assets = relationship('Asset',
+                          secondary=asset_aggregationtag,
+                          back_populates='aggregationtags')
 
-    riskvalues = relationship(
-        'RiskValue', secondary=riskvalue_aggregationtag,
-        back_populates='aggregationtags'
-    )
+    riskvalues = relationship('RiskValue',
+                              secondary=riskvalue_aggregationtag,
+                              back_populates='aggregationtags'
+                              )
 
-    geometries = relationship(
-        'AggregationGeometry',
-        back_populates='aggregationtag')
+    geometries = relationship('AggregationGeometry',
+                              back_populates='aggregationtag')
 
-    _exposuremodel_oid = Column(
-        BigInteger,
-        ForeignKey('loss_exposuremodel._oid', ondelete='CASCADE'))
-    exposuremodel = relationship(
-        'ExposureModel',
-        back_populates='aggregationtags')
+    _exposuremodel_oid = Column(BigInteger,
+                                ForeignKey('loss_exposuremodel._oid',
+                                           ondelete='CASCADE'))
+    exposuremodel = relationship('ExposureModel',
+                                 back_populates='aggregationtags')
 
     __table_args__ = (
-        UniqueConstraint('name', 'type', '_exposuremodel_oid'),
+        UniqueConstraint('name',
+                         'type',
+                         '_exposuremodel_oid'),
         {
             'postgresql_partition_by': 'LIST (type)',
         }
@@ -186,17 +123,17 @@ class AggregationGeometry(ORMBase):
         'AggregationTag',
         back_populates='geometries')
 
-    _exposuremodel_oid = Column(
-        BigInteger,
-        ForeignKey('loss_exposuremodel._oid', ondelete='CASCADE'))
-    exposuremodel = relationship(
-        'ExposureModel',
-        back_populates='aggregationgeometries')
+    _exposuremodel_oid = Column(BigInteger,
+                                ForeignKey('loss_exposuremodel._oid',
+                                           ondelete='CASCADE'))
+    exposuremodel = relationship('ExposureModel',
+                                 back_populates='aggregationgeometries')
 
     geometry = Column(Geometry('MULTIPOLYGON', srid=4326))
 
     __table_args__ = (
-        ForeignKeyConstraint(['_aggregationtag_oid', '_aggregationtype'],
+        ForeignKeyConstraint(['_aggregationtag_oid',
+                              '_aggregationtype'],
                              ['loss_aggregationtag._oid',
                               'loss_aggregationtag.type']),
     )

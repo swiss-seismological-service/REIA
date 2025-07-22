@@ -7,9 +7,8 @@ import pandas as pd
 from requests import Response
 from sqlalchemy.orm import Session
 
-from reia.datamodel import CalculationBranch, EStatus
-from reia.db import crud
-from reia.io import CalculationBranchSettings, ERiskType
+from reia.datamodel import CalculationBranch
+from reia.io import CalculationBranchSettings
 from reia.io.dstore import get_risk_from_dstore
 from reia.io.read import parse_calculation_input, validate_calculation_input
 from reia.io.write import assemble_calculation_input
@@ -17,7 +16,10 @@ from reia.oqapi import (oqapi_failed_for_zero_losses,
                         oqapi_get_calculation_result, oqapi_get_job_status,
                         oqapi_send_calculation)
 from reia.repositories.asset import AggregationTagRepository
+from reia.repositories.calculation import (CalculationBranchRepository,
+                                           CalculationRepository)
 from reia.repositories.lossvalue import RiskValueRepository
+from reia.schemas.enums import ERiskType, EStatus
 
 LOGGER = logging.getLogger(__name__)
 
@@ -43,7 +45,7 @@ def dispatch_openquake_calculation(
 
 
 def monitor_openquake_calculation(job_id: int,
-                                  calculation_branch_oid: int,
+                                  calculation_branch: CalculationBranch,
                                   session: Session) -> None:
     """Monitor OQ calculation and update status accordingly.
 
@@ -56,15 +58,15 @@ def monitor_openquake_calculation(job_id: int,
         response = oqapi_get_job_status(job_id)
         response.raise_for_status()
         status = EStatus[response.json()['status'].upper()]
-        crud.update_calculation_branch_status(
-            calculation_branch_oid, status, session)
+        calculation_branch = CalculationBranchRepository.update_status(
+            session, calculation_branch.oid, status)
 
         if status in (EStatus.COMPLETE, EStatus.ABORTED, EStatus.FAILED):
             if status == EStatus.FAILED and oqapi_failed_for_zero_losses(
                     job_id):
-                crud.update_calculation_branch_status(
-                    calculation_branch_oid, EStatus.COMPLETE, session)
-            return
+                calculation_branch = CalculationBranchRepository.update_status(
+                    session, calculation_branch.oid, EStatus.COMPLETE)
+            return calculation_branch
 
         time.sleep(1)
 
@@ -82,7 +84,7 @@ def save_openquake_results(calculationbranch: CalculationBranch,
 
     # Bulk fetch aggregation tags once per exposuremodel
     aggregation_tags_list = AggregationTagRepository.get_by_exposuremodel(
-        session, calculationbranch._exposuremodel_oid, types=list(all_types))
+        session, calculationbranch.exposuremodel_oid, types=list(all_types))
     aggregation_tag_by_name = {tag.name: tag for tag in aggregation_tags_list}
 
     risk_type = ERiskType(oq_parameter_inputs.calculation_mode)
@@ -92,8 +94,8 @@ def save_openquake_results(calculationbranch: CalculationBranch,
     risk_values = risk_values.copy()  # If risk_values is shared elsewhere
 
     risk_values['weight'] *= calculationbranch.weight
-    risk_values['_calculation_oid'] = calculationbranch._calculation_oid
-    risk_values['_calculationbranch_oid'] = calculationbranch._oid
+    risk_values['_calculation_oid'] = calculationbranch.calculation_oid
+    risk_values['_calculationbranch_oid'] = calculationbranch.oid
     risk_values['_type'] = risk_type.name
     risk_values['losscategory'] = risk_values['losscategory'].map(
         attrgetter('name'))
@@ -131,37 +133,45 @@ def run_openquake_calculations(
     # parse information to separate dicts
     calculation_dict, branches_dicts = parse_calculation_input(branch_settings)
 
-    # create the calculation and the branches on the db
-    calculation = crud.create_calculation(calculation_dict, session)
-    branches = [crud.create_calculation_branch(
-        b, session,
-        calculation._oid) for b in branches_dicts]
+    calculation = CalculationRepository.create(
+        session, calculation_dict)
+    for b in branches_dicts:
+        b.calculation_oid = calculation.oid
+    branches = [CalculationBranchRepository.create(
+        session, b) for b in branches_dicts]
 
     try:
-        crud.update_calculation_status(
-            calculation._oid, EStatus.EXECUTING, session)
+        calculation = CalculationRepository.update_status(
+            session, calculation.oid, EStatus.EXECUTING)
 
-        for branch in zip(branch_settings, branches):
+        for setting, branch in zip(branch_settings, branches):
             # send calculation to OQ and keep updating its status
             response = dispatch_openquake_calculation(
-                branch[0].config, session)
+                setting.config, session)
             job_id = response.json()['job_id']
-            monitor_openquake_calculation(job_id, branch[1]._oid, session)
+            branch = monitor_openquake_calculation(
+                job_id, branch, session)
 
             print('Calculation finished with status '
-                  f'"{EStatus(branch[1].status)}".')
+                  f'"{EStatus(branch.status)}".')
 
             # Collect OQ results and save to database
-            if branch[1].status == EStatus.COMPLETE:
+            if branch.status == EStatus.COMPLETE:
                 print('Saving results for calculation branch '
-                      f'{branch[1]._oid} with weight {branch[1].weight}')
-                save_openquake_results(branch[1], job_id, session)
+                      f'{branch.oid} with weight {branch.weight}')
+                save_openquake_results(branch, job_id, session)
+
+        branches = [
+            CalculationBranchRepository.get_by_id(session, b.oid)
+            for b in branches]
 
         status = EStatus.COMPLETE if all(
             b.status == EStatus.COMPLETE for b in branches) else EStatus.FAILED
 
-        crud.update_calculation_status(calculation._oid, status, session)
-
+        calculation = CalculationRepository.update_status(
+            session, calculation.oid, status)
+        calculation = CalculationRepository.get_by_id(
+            session, calculation.oid)
         return calculation
 
     except BaseException as e:

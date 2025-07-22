@@ -4,7 +4,7 @@ import pytest
 
 from reia.cli import (add_exposure, add_exposure_geometries,
                       delete_exposure_geometries)
-from reia.db import crud
+from reia.repositories.asset import ExposureModelRepository
 
 DATAFOLDER = Path(__file__).parent / 'data'
 
@@ -20,8 +20,8 @@ def exposure_with_geoms(db_session):
 
 
 def test_geometries(exposure_with_geoms, db_session):
-    exposure = crud.read_asset_collection(exposure_with_geoms, db_session)
-
+    exposure = ExposureModelRepository.get_by_id(
+        db_session, exposure_with_geoms)
     assert len(exposure.aggregationgeometries) == 3
 
     aggregationtags = exposure.aggregationtags
@@ -42,5 +42,6 @@ def test_geometries(exposure_with_geoms, db_session):
 
 def test_geometry_deletion(exposure_with_geoms, db_session):
     delete_exposure_geometries(exposure_with_geoms, 'CantonGemeinde')
-    exposure = crud.read_asset_collection(exposure_with_geoms, db_session)
+    exposure = ExposureModelRepository.get_by_id(
+        db_session, exposure_with_geoms)
     assert len(exposure.aggregationgeometries) == 0

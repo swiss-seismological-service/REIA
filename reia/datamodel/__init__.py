@@ -1,13 +1,12 @@
 # flake8: noqa
 from reia.datamodel.asset import (AggregationGeometry, AggregationTag, Asset,
-                                  CostType, ExposureModel, Site,
-                                  asset_aggregationtag)
+                                  Site, asset_aggregationtag)
 from reia.datamodel.calculations import (Calculation, CalculationBranch,
                                          DamageCalculation,
                                          DamageCalculationBranch,
-                                         ECalculationType, EEarthquakeType,
-                                         EStatus, LossCalculation,
+                                         LossCalculation,
                                          LossCalculationBranch, RiskAssessment)
+from reia.datamodel.exposure import CostType, ExposureModel
 from reia.datamodel.fragility import (BusinessInterruptionFragilityModel,
                                       ContentsFragilityModel,
                                       FragilityFunction, FragilityModel,

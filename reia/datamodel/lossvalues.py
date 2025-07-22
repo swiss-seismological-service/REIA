@@ -1,23 +1,12 @@
-import enum
-
 from sqlalchemy import ForeignKeyConstraint, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.schema import Column, ForeignKey
 from sqlalchemy.sql.sqltypes import BigInteger, Enum, Float, Integer, String
 
 from reia.datamodel.base import ORMBase
-from reia.datamodel.calculations import ECalculationType
 from reia.datamodel.mixins import RealQuantityMixin
-
-
-class ELossCategory(str, enum.Enum):
-    CONTENTS = 'contents'
-    BUSINESS_INTERRUPTION = 'business_interruption'
-    NONSTRUCTURAL = 'nonstructural'
-    OCCUPANTS = 'occupants'
-    STRUCTURAL = 'structural'
-    NULL = 'null'
-
+from reia.schemas import ELossCategory
+from reia.schemas.enums import ECalculationType
 
 riskvalue_aggregationtag = Table(
     'loss_assoc_riskvalue_aggregationtag',
@@ -25,7 +14,7 @@ riskvalue_aggregationtag = Table(
 
     Column('riskvalue', BigInteger),
     Column('losscategory', Enum(ELossCategory)),
-    # Column('_calculation_oid', BigInteger),
+
     Column('_calculation_oid', ForeignKey('loss_calculation._oid',
                                           ondelete='SET NULL')),
 

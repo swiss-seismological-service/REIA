@@ -4,7 +4,8 @@ from openquake.commonlib.datastore import DataStore
 from openquake.risklib.scientific import LOSSTYPE
 
 from reia.datamodel import ELossCategory
-from reia.io import RISK_COLUMNS_MAPPING, ERiskType
+from reia.io import RISK_COLUMNS_MAPPING
+from reia.schemas.enums import ERiskType
 
 
 def get_risk_from_dstore(dstore: DataStore, risk_type: ERiskType):

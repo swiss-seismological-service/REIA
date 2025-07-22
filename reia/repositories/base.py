@@ -29,7 +29,7 @@ def repository_factory(model: Model, orm_model: ORMBase):
         @classmethod
         def update(cls, session: Session, data: Model) -> Model:
             q = select(cls.orm_model).where(
-                getattr(cls.orm_model, '_oid') == data._oid)
+                getattr(cls.orm_model, '_oid') == data.oid)
             result = session.execute(q).unique().scalar_one_or_none()
             if result:
                 for key, value in data.model_dump(exclude_unset=True).items():
@@ -38,7 +38,7 @@ def repository_factory(model: Model, orm_model: ORMBase):
                 session.refresh(result)
                 return cls.model.model_validate(result)
             else:
-                raise ValueError(f'No object with id {data._oid} found')
+                raise ValueError(f'No object with id {data.oid} found')
 
         @classmethod
         def get_all(cls, session: Session) -> list:

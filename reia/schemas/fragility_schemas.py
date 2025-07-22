@@ -10,7 +10,7 @@ class LimitState(Model):
     name: str | None = None
     mean: float | None = None
     stddev: float | None = None
-    poes: list[float] | None = None
+    poes: list[float] = []
     fragilityfunction_oid: int | None = Field(
         default=None, alias='_fragilityfunction_oid')
 
@@ -25,8 +25,8 @@ class FragilityFunction(TaxonomyMixin):
     minintensitymeasurelevel: float | None = None
     maxintensitymeasurelevel: float | None = None
     intensitymeasuretype: str | None = None
-    intensitymeasurelevels: list[float] | None = None
-    limitstates: list[LimitState] = []
+    intensitymeasurelevels: list[float] = []
+    limitstates: list[LimitState] = Field(default=[])
 
 
 class FragilityModel(CreationInfoMixin):
@@ -36,8 +36,9 @@ class FragilityModel(CreationInfoMixin):
     assetcategory: str | None = None
     publicid: str | None = None
     type: ELossCategory | None = Field(default=None, alias='_type')
-    limitstates: list[str] | None = None
-    fragilityfunctions: list[FragilityFunction] = []
+    limitstates: list[str] = []
+    fragilityfunctions: list[FragilityFunction] = Field(
+        default=[])
 
 
 class ContentsFragilityModel(FragilityModel):
@@ -68,4 +69,4 @@ class Mapping(Model):
 class TaxonomyMap(CreationInfoMixin):
     oid: int | None = Field(default=None, alias='_oid')
     name: str | None = None
-    mappings: list[Mapping] | None = None
+    mappings: list[Mapping] = Field(default=[])

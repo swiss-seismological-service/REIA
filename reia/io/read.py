@@ -7,9 +7,10 @@ from typing import TextIO
 
 import pandas as pd
 
-from reia.io import (ASSETS_COLS_MAPPING, FRAGILITY_FK_MAPPING,
+from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
+                     CALCULATION_MAPPING, FRAGILITY_FK_MAPPING,
                      VULNERABILITY_FK_MAPPING, CalculationBranchSettings)
-from reia.schemas.asset_schemas import ExposureModel
+from reia.schemas.exposure_schema import ExposureModel
 from reia.schemas.fragility_schemas import FragilityModel
 from reia.schemas.vulnerability_schemas import VulnerabilityModel
 from reia.utils import flatten_config
@@ -356,6 +357,12 @@ def parse_calculation_input(branch_settings: list[CalculationBranchSettings]) \
         calculation_branch_setting['weight'] = settings.weight
 
         calculation_branches.append(calculation_branch_setting)
+
+    calculation = CALCULATION_MAPPING[calculation.pop(
+        'calculation_mode')].model_validate(calculation)
+    calculation_branches = [CALCULATION_BRANCH_MAPPING[branch.pop(
+        'calculation_mode')].model_validate(branch)
+        for branch in calculation_branches]
 
     return (calculation, calculation_branches)
 

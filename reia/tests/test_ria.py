@@ -7,12 +7,13 @@ from numpy.testing import assert_almost_equal
 from reia.actions import run_openquake_calculations
 from reia.cli import (add_exposure, add_fragility, add_risk_assessment,
                       add_taxonomymap, add_vulnerability)
-from reia.datamodel import ECalculationType, EStatus
 from reia.db import crud
 from reia.io import CalculationBranchSettings
+from reia.repositories.asset import ExposureModelRepository
 from reia.repositories.fragility import (FragilityModelRepository,
                                          TaxonomyMapRepository)
 from reia.repositories.vulnerability import VulnerabilityModelRepository
+from reia.schemas.enums import ECalculationType, EStatus
 
 DATAFOLDER = Path(__file__).parent / 'data' / 'ria_test'
 
@@ -20,7 +21,7 @@ DATAFOLDER = Path(__file__).parent / 'data' / 'ria_test'
 @pytest.fixture(scope='module')
 def exposure(db_session):
     exposure_id = add_exposure(DATAFOLDER / 'exposure_test.xml', 'test')
-    return crud.read_asset_collection(exposure_id, db_session)
+    return ExposureModelRepository.get_by_id(db_session, exposure_id)
 
 
 @pytest.fixture(scope='module')
@@ -48,7 +49,7 @@ def loss_calculation(exposure, vulnerability, db_session):
     risk_file.read(str(DATAFOLDER / 'risk.ini'))
 
     # risk
-    risk_file['exposure']['exposure_file'] = str(exposure._oid)
+    risk_file['exposure']['exposure_file'] = str(exposure.oid)
     risk_file['vulnerability']['structural_vulnerability_file'] = str(
         vulnerability.oid)
 
@@ -66,7 +67,7 @@ def damage_calculation(exposure, fragility, taxonomy, db_session):
     damage_file.read(str(DATAFOLDER / 'damage.ini'))
 
     # damage
-    damage_file['exposure']['exposure_file'] = str(exposure._oid)
+    damage_file['exposure']['exposure_file'] = str(exposure.oid)
     damage_file['fragility']['structural_fragility_file'] = str(fragility.oid)
     damage_file['fragility']['taxonomy_mapping_csv'] = str(taxonomy.oid)
 
@@ -81,14 +82,14 @@ def damage_calculation(exposure, fragility, taxonomy, db_session):
 @pytest.fixture(scope='module')
 def risk_assessment(loss_calculation, damage_calculation, db_session):
     riskassessment_id = add_risk_assessment(
-        'smi:ch.ethz.sed/test', loss_calculation._oid, damage_calculation._oid)
+        'smi:ch.ethz.sed/test', loss_calculation.oid, damage_calculation.oid)
     return crud.read_risk_assessment(riskassessment_id, db_session)
 
 
 def test_riskassessment(risk_assessment, loss_calculation, damage_calculation):
     assert risk_assessment.originid == 'smi:ch.ethz.sed/test'
-    assert risk_assessment._losscalculation_oid == loss_calculation._oid
-    assert risk_assessment._damagecalculation_oid == damage_calculation._oid
+    assert risk_assessment._losscalculation_oid == loss_calculation.oid
+    assert risk_assessment._damagecalculation_oid == damage_calculation.oid
 
 
 def test_calculations(loss_calculation, damage_calculation):
@@ -97,8 +98,8 @@ def test_calculations(loss_calculation, damage_calculation):
         damage_calculation.aggregateby == aggregateby
     assert loss_calculation.status == \
         damage_calculation.status == EStatus.COMPLETE
-    assert loss_calculation._type == ECalculationType.LOSS
-    assert damage_calculation._type == ECalculationType.DAMAGE
+    assert loss_calculation.type == ECalculationType.LOSS
+    assert damage_calculation.type == ECalculationType.DAMAGE
 
 
 def test_calculationbranches(loss_calculation,
@@ -116,22 +117,22 @@ def test_calculationbranches(loss_calculation,
     assert loss_branch.status == damage_branch.status == EStatus.COMPLETE
     assert loss_branch.weight == damage_branch.weight == 1.0
 
-    assert loss_branch._exposuremodel_oid == \
-        damage_branch._exposuremodel_oid == exposure._oid
+    assert loss_branch.exposuremodel_oid == \
+        damage_branch.exposuremodel_oid == exposure.oid
 
-    assert loss_branch._structuralvulnerabilitymodel_oid == vulnerability.oid
-    assert loss_branch._type == ECalculationType.LOSS
-    assert loss_branch._contentsvulnerabilitymodel_oid == \
-        loss_branch._occupantsvulnerabilitymodel_oid == \
-        loss_branch._nonstructuralvulnerabilitymodel_oid == \
-        loss_branch._businessinterruptionvulnerabilitymodel_oid is None
+    assert loss_branch.structuralvulnerabilitymodel_oid == vulnerability.oid
+    assert loss_branch.type == ECalculationType.LOSS
+    assert loss_branch.contentsvulnerabilitymodel_oid == \
+        loss_branch.occupantsvulnerabilitymodel_oid == \
+        loss_branch.nonstructuralvulnerabilitymodel_oid == \
+        loss_branch.businessinterruptionvulnerabilitymodel_oid is None
 
-    assert damage_branch._structuralfragilitymodel_oid == fragility.oid
-    assert damage_branch._taxonomymap_oid == taxonomy.oid
-    assert damage_branch._type == ECalculationType.DAMAGE
-    assert damage_branch._contentsfragilitymodel_oid == \
-        damage_branch._nonstructuralfragilitymodel_oid == \
-        damage_branch._businessinterruptionfragilitymodel_oid is None
+    assert damage_branch.structuralfragilitymodel_oid == fragility.oid
+    assert damage_branch.taxonomymap_oid == taxonomy.oid
+    assert damage_branch.type == ECalculationType.DAMAGE
+    assert damage_branch.contentsfragilitymodel_oid == \
+        damage_branch.nonstructuralfragilitymodel_oid == \
+        damage_branch.businessinterruptionfragilitymodel_oid is None
 
 
 def test_riskvalues(loss_calculation, damage_calculation):
@@ -141,13 +142,15 @@ def test_riskvalues(loss_calculation, damage_calculation):
     assert len(damages) == 26
 
 
-def test_aggreagationtags(loss_calculation, damage_calculation, exposure):
+def test_aggregationtags(loss_calculation, damage_calculation, exposure):
     losses = loss_calculation.losses
-    aggregationtags = set(
-        [tag for loss in losses for tag in loss.aggregationtags])
+    aggregationtags = set([tag.oid for loss in losses
+                           for tag in loss.aggregationtags])
     assert len(aggregationtags) == 2
-    assert all(tag._exposuremodel_oid == exposure._oid
-               for tag in aggregationtags)
+
+    exposuremodel_oid = set([tag.exposuremodel_oid for loss in losses
+                             for tag in loss.aggregationtags])
+    assert len(exposuremodel_oid) == 1
 
 
 def test_exposuremodel(exposure):
@@ -170,8 +173,8 @@ def test_assets(exposure):
     assert len(assets) == 39
     assert len(exposure.sites) == 28
 
-    assert set([a._site_oid for a in assets]).issubset(
-        set([s._oid for s in sites]))
+    assert set([a.site_oid for a in assets]).issubset(
+        set([s.oid for s in sites]))
 
     assert_almost_equal(
         sum([a.structuralvalue for a in assets]) / len(assets),
@@ -184,11 +187,13 @@ def test_assets(exposure):
         sum([s.latitude for s in sites]) / len(sites),
         46.86077451544124, 4)
 
-    aggregationtags = set(
-        [tag for asset in assets for tag in asset.aggregationtags])
+    aggregationtags = set([tag.oid for asset in assets
+                           for tag in asset.aggregationtags])
     assert len(aggregationtags) == 4
-    assert all(tag._exposuremodel_oid == exposure._oid
-               for tag in aggregationtags)
+
+    exposuremodel_oid = set([tag.exposuremodel_oid for asset in assets
+                             for tag in asset.aggregationtags])
+    assert len(exposuremodel_oid) == 1
 
 
 def test_loss_results(loss_calculation):

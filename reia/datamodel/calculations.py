@@ -1,4 +1,3 @@
-import enum
 import uuid
 
 from sqlalchemy.dialects.postgresql import UUID
@@ -10,26 +9,7 @@ from sqlalchemy.sql.sqltypes import BigInteger, Boolean, Enum, Float, String
 from reia.datamodel.base import ORMBase
 from reia.datamodel.mixins import (CompatibleStringArray, CreationInfoMixin,
                                    JSONEncodedDict)
-
-
-class EStatus(int, enum.Enum):
-    FAILED = 1
-    ABORTED = 2
-    CREATED = 3
-    SUBMITTED = 4
-    EXECUTING = 5
-    COMPLETE = 6
-
-
-class EEarthquakeType(str, enum.Enum):
-    SCENARIO = 'scenario'
-    NATURAL = 'natural'
-
-
-class ECalculationType(str, enum.Enum):
-    RISK = 'risk'
-    LOSS = 'loss'
-    DAMAGE = 'damage'
+from reia.schemas.enums import ECalculationType, EEarthquakeType, EStatus
 
 
 class RiskAssessment(ORMBase, CreationInfoMixin):
