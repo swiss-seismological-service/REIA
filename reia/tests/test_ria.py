@@ -7,9 +7,9 @@ from numpy.testing import assert_almost_equal
 from reia.actions import run_openquake_calculations
 from reia.cli import (add_exposure, add_fragility, add_risk_assessment,
                       add_taxonomymap, add_vulnerability)
-from reia.db import crud
 from reia.io import CalculationBranchSettings
 from reia.repositories.asset import ExposureModelRepository
+from reia.repositories.calculation import RiskAssessmentRepository
 from reia.repositories.fragility import (FragilityModelRepository,
                                          TaxonomyMapRepository)
 from reia.repositories.vulnerability import VulnerabilityModelRepository
@@ -83,13 +83,13 @@ def damage_calculation(exposure, fragility, taxonomy, db_session):
 def risk_assessment(loss_calculation, damage_calculation, db_session):
     riskassessment_id = add_risk_assessment(
         'smi:ch.ethz.sed/test', loss_calculation.oid, damage_calculation.oid)
-    return crud.read_risk_assessment(riskassessment_id, db_session)
+    return RiskAssessmentRepository.get_by_id(db_session, riskassessment_id)
 
 
 def test_riskassessment(risk_assessment, loss_calculation, damage_calculation):
     assert risk_assessment.originid == 'smi:ch.ethz.sed/test'
-    assert risk_assessment._losscalculation_oid == loss_calculation.oid
-    assert risk_assessment._damagecalculation_oid == damage_calculation.oid
+    assert risk_assessment.losscalculation_oid == loss_calculation.oid
+    assert risk_assessment.damagecalculation_oid == damage_calculation.oid
 
 
 def test_calculations(loss_calculation, damage_calculation):

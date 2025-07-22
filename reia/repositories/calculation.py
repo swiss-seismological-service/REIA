@@ -58,6 +58,19 @@ class RiskAssessmentRepository(repository_factory(
         session.remove()
         return 1
 
+    @classmethod
+    def update_risk_assessment_status(
+            cls, session: Session, riskassessment_oid: int,
+            status: EStatus) -> RiskAssessment:
+        risk_assessment = cls.get_by_id(session, riskassessment_oid)
+        if not risk_assessment:
+            raise ValueError(
+                f"Risk assessment with OID {riskassessment_oid} not found.")
+
+        risk_assessment.status = status
+
+        return cls.update(session, risk_assessment)
+
 
 class CalculationBranchRepository(repository_factory(
         CalculationBranch, CalculationBranchORM)):
@@ -122,6 +135,7 @@ class CalculationRepository(repository_factory(
 
     @classmethod
     def get_all_by_type(
+            cls,
             session: Session,
             type: EEarthquakeType | None = None) -> list[Calculation]:
 

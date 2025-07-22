@@ -13,7 +13,7 @@ from typing_extensions import Annotated
 
 from reia.actions import (dispatch_openquake_calculation,
                           run_openquake_calculations)
-from reia.db import crud, drop_db, init_db, init_db_file, session
+from reia.db import drop_db, init_db, init_db_file, session
 from reia.io import CalculationBranchSettings
 from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
                           parse_vulnerability)
@@ -27,6 +27,7 @@ from reia.repositories.calculation import (CalculationRepository,
 from reia.repositories.fragility import (FragilityModelRepository,
                                          TaxonomyMapRepository)
 from reia.repositories.vulnerability import VulnerabilityModelRepository
+from reia.schemas.calculation_schemas import RiskAssessment
 from reia.schemas.enums import EEarthquakeType, EStatus
 from reia.services.assets import create_assets
 
@@ -500,9 +501,9 @@ def list_calculations(eqtype: EEarthquakeType | None = typer.Option(None)):
 
     for c in calculations:
         typer.echo('{0:<10} {1:<25} {2:<25} {3:<30} {4}'.format(
-            c._oid,
+            c.oid,
             c.status.name,
-            c._type.name,
+            c.type.name,
             str(c.creationinfo_creationtime),
             c.description))
     session.remove()
@@ -524,19 +525,20 @@ def add_risk_assessment(originid: str, loss_id: int, damage_id: int):
     '''
     Add a risk assessment.
     '''
-    added = crud.create_risk_assessment(
-        originid,
-        session,
-        _losscalculation_oid=loss_id,
-        _damagecalculation_oid=damage_id)
+    riskassessment = RiskAssessment(
+        originid=originid,
+        losscalculation_oid=loss_id,
+        damagecalculation_oid=damage_id
+    )
+    added = RiskAssessmentRepository.create(session, riskassessment)
 
     typer.echo(
         f'added risk_assessment for {added.originid} with '
-        f'ID {added._oid}.')
+        f'ID {added.oid}.')
 
     session.remove()
 
-    return added._oid
+    return added.oid
 
 
 @risk_assessment.command('delete')
@@ -554,7 +556,7 @@ def list_risk_assessment():
     '''
     List risk assessments.
     '''
-    risk_assessments = crud.read_risk_assessments(session)
+    risk_assessments = RiskAssessmentRepository.get_all(session)
 
     typer.echo('List of existing risk assessments:')
     typer.echo('{0:<40} {1:<20} {2:<15} {3}'.format(
@@ -565,7 +567,7 @@ def list_risk_assessment():
 
     for c in risk_assessments:
         typer.echo('{0:<40} {1:<20} {2:<15} {3}'.format(
-            str(c._oid),
+            str(c.oid),
             c.status.name,
             c.type.name,
             str(c.creationinfo_creationtime)))
@@ -583,18 +585,23 @@ def run_risk_assessment(
     typer.echo('Running risk assessment:')
     typer.echo('Starting loss calculations...')
 
-    risk_assessment = crud.create_risk_assessment(
-        originid, session, type=EEarthquakeType.NATURAL,
-        status=EStatus.CREATED)
+    risk_assessment = RiskAssessment(
+        originid=originid,
+        type=EEarthquakeType.NATURAL,
+        status=EStatus.CREATED
+    )
+    risk_assessment = RiskAssessmentRepository.create(session, risk_assessment)
+
     try:
         job_file_loss = configparser.ConfigParser()
         job_file_loss.read(Path(loss))
         loss_branch = CalculationBranchSettings(1, job_file_loss)
-        risk_assessment = crud.update_risk_assessment_status(
-            risk_assessment._oid, EStatus.EXECUTING, session)
+        risk_assessment = \
+            RiskAssessmentRepository.update_risk_assessment_status(
+                session, risk_assessment.oid, EStatus.EXECUTING)
         losscalculation = run_openquake_calculations([loss_branch], session)
 
-        risk_assessment._losscalculation_oid = losscalculation._oid
+        risk_assessment.losscalculation_oid = losscalculation.oid
 
         typer.echo('Starting damage calculations...')
         job_file_damage = configparser.ConfigParser()
@@ -603,12 +610,17 @@ def run_risk_assessment(
         damagecalculation = run_openquake_calculations(
             [damage_branch], session)
 
-        risk_assessment._damagecalculation_oid = damagecalculation._oid
+        risk_assessment.damagecalculation_oid = damagecalculation.oid
         risk_assessment.status = EStatus(
             min(losscalculation.status.value, damagecalculation.status.value))
+        risk_assessment = RiskAssessmentRepository.update(
+            session, risk_assessment)
     except BaseException as e:
-        risk_assessment.status = EStatus.ABORTED if isinstance(
+        status = EStatus.ABORTED if isinstance(
             e, KeyboardInterrupt) else EStatus.FAILED
+        risk_assessment = \
+            RiskAssessmentRepository.update_risk_assessment_status(
+                session, risk_assessment.oid, status)
         traceback.print_exc()
     finally:
         session.commit()
