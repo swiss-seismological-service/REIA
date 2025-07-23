@@ -9,7 +9,7 @@
             {%- endfor %}
          </costTypes>
       </conversions>
-      <tagNames>{% for tag in data.tagnames -%} {{tag+" "}} {%- endfor %}</tagNames>
+      <tagNames>{% for tag in data.aggregationtypes -%} {{tag+" "}} {%- endfor %}</tagNames>
       <occupancyPeriods>{{ 'day'+" " if data.dayoccupancy else '' }}{{ 'night'+" " if data.nightoccupancy else ''}}{{'transit'+" " if data.transitoccupancy else ''}}</occupancyPeriods>
       <assets>{{data.assets_csv_name}}</assets>
    </exposureModel>

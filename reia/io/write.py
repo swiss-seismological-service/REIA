@@ -10,25 +10,27 @@ from reia.datamodel.asset import Asset
 from reia.io import ASSETS_COLS_MAPPING
 from reia.repositories.asset import ExposureModelRepository
 from reia.repositories.fragility import (FragilityModelRepository,
-                                         TaxonomyMapRepository)
+                                         MappingRepository)
 from reia.repositories.vulnerability import VulnerabilityModelRepository
-from reia.utils import create_file_pointer
+from reia.utils import (create_file_pointer_configparser,
+                        create_file_pointer_dataframe,
+                        create_file_pointer_jinja)
 
 
-def create_fragility_input(
-    fragility_model_oid: int,
-    session: Session,
-    template_name: Path = Path('reia/templates/fragility.xml')) \
-        -> io.StringIO:
+def create_fragility_input(fragility_model_oid: int,
+                           session: Session,
+                           template_name: Path =
+                           Path('reia/templates/fragility.xml')
+                           ) -> io.StringIO:
     """Create an in memory fragility xml file for OpenQuake.
 
     Args:
-        fragility_model_oid: oid of the VulnerabilityModel to be used.
+        fragility_model_oid: oid of the FragilityModel to be used.
         session: SQLAlchemy database session.
         template_name: Template to be used for the fragility file.
 
     Returns:
-        Filepointer for exposure xml and one for csv list of assets.
+        Filepointer for fragility input.
     """
 
     fragility_model = FragilityModelRepository.get_by_id(
@@ -36,38 +38,27 @@ def create_fragility_input(
 
     data = fragility_model.model_dump(mode='json')
 
-    return create_file_pointer(template_name, data=data)
+    return create_file_pointer_jinja(template_name, data=data)
 
 
-def create_taxonomymap_input(
-    oid: int,
-    session: Session,
-    name: str = 'taxonomy_mapping.csv') \
-        -> io.StringIO:
-    """Create an in memory vulnerability xml file for OpenQuake.
+def create_taxonomymap_input(oid: int,
+                             session: Session,
+                             name: str = 'taxonomy_mapping.csv'
+                             ) -> io.StringIO:
+    """Create an in memory taxonomy mapping CSV file for OpenQuake.
 
     Args:
-        oid: oid of the VulnerabilityModel to be used.
+        oid: oid of the TaxonomyMap to be used.
         session: SQLAlchemy database session.
-        name: Template to be used for the vulnerability file.
+        name: Name of the file to be created.
 
     Returns:
-        Filepointer for exposure xml and one for csv list of assets.
+        Filepointer for taxonomy mapping CSV.
     """
 
-    taxonomy_map = TaxonomyMapRepository.get_by_id(session, oid)
-
-    mappings = taxonomy_map.mappings
-
-    mappings = pd.DataFrame([vars(s) for s in mappings], columns=[
-        'taxonomy', 'conversion', 'weight'])
-
-    taxonomy_map_csv = io.StringIO()
-    mappings.to_csv(taxonomy_map_csv, index=False)
-    taxonomy_map_csv.seek(0)
-    taxonomy_map_csv.name = name
-
-    return taxonomy_map_csv
+    mappings = MappingRepository.get_by_taxonomymap_oid(session, oid)
+    mappings = mappings[['taxonomy', 'conversion', 'weight']]
+    return create_file_pointer_dataframe(mappings, name=name, index=False)
 
 
 def create_vulnerability_input(vulnerability_model_oid: int,
@@ -83,14 +74,14 @@ def create_vulnerability_input(vulnerability_model_oid: int,
         template_name: Template to be used for the vulnerability file.
 
     Returns:
-        Filepointer for exposure xml and one for csv list of assets.
+        Filepointer for vulnerability XML.
     """
     vulnerability_model = VulnerabilityModelRepository.get_by_id(
         session, vulnerability_model_oid)
 
     data = vulnerability_model.model_dump(mode='json')
 
-    return create_file_pointer(template_name, data=data)
+    return create_file_pointer_jinja(template_name, data=data)
 
 
 def create_exposure_input(asset_collection_oid: int,
@@ -112,32 +103,35 @@ def create_exposure_input(asset_collection_oid: int,
         Filepointer for exposure xml and one for csv list of assets.
     """
 
-    exposuremodel = ExposureModelRepository.get_by_id(
-        session, asset_collection_oid)
+    exposuremodel = ExposureModelRepository.get_by_id(session,
+                                                      asset_collection_oid)
 
     data = exposuremodel.model_dump(mode='json')
 
     data['assets_csv_name'] = assets_csv_name.name
-    data['costtypes'] = [c.model_dump(mode='json')
-                         for c in exposuremodel.costtypes]
-    # first asset's tag types must be the same as all other's
-    data['tagnames'] = [agg.type for agg in
-                        exposuremodel.assets[0].aggregationtags]
 
-    exposure_xml = create_file_pointer(template_name, data=data)
+    exposure_xml = create_file_pointer_jinja(template_name, data=data)
 
     exposure_df = assets_to_dataframe(exposuremodel.assets)
 
-    exposure_csv = io.StringIO()
-    exposure_df.to_csv(exposure_csv)
-    exposure_csv.seek(0)
-    exposure_csv.name = assets_csv_name.name
+    exposure_csv = create_file_pointer_dataframe(
+        exposure_df, name=assets_csv_name.name)
 
     return (exposure_xml, exposure_csv)
 
 
 def assets_to_dataframe(assets: list[Asset]) -> pd.DataFrame:
-    """Parses a list of Asset objects to a DataFrame."""
+    """Convert a list of Asset objects to a pandas DataFrame.
+    
+    Combines asset data with associated site coordinates and aggregation tags
+    into a single DataFrame formatted for OpenQuake exposure input.
+    
+    Args:
+        assets: List of Asset objects to convert.
+        
+    Returns:
+        DataFrame with asset data, coordinates, and aggregation tags.
+    """
 
     assets_df = pd.DataFrame([x.model_dump(mode='json')
                              for x in assets]).set_index('_oid')
@@ -168,6 +162,19 @@ def assets_to_dataframe(assets: list[Asset]) -> pd.DataFrame:
 
 def assemble_calculation_input(job: configparser.ConfigParser,
                                session: Session) -> list[io.StringIO]:
+    """Assemble all input files needed for an OpenQuake calculation.
+    
+    Creates in-memory file objects for all calculation inputs including
+    exposure, vulnerability/fragility, taxonomy mapping, hazard files,
+    and the job configuration file.
+    
+    Args:
+        job: ConfigParser object containing calculation configuration.
+        session: SQLAlchemy database session.
+        
+    Returns:
+        List of StringIO file objects for the calculation.
+    """
     # create deep copy of configparser
     tmp = pickle.dumps(job)
     working_job = pickle.loads(tmp)
@@ -209,16 +216,8 @@ def assemble_calculation_input(job: configparser.ConfigParser,
         working_job['hazard'][k] = file.name
         calculation_files.append(file)
 
-    job_file = create_job_file(working_job)
-    job_file.name = 'job.ini'
+    job_file = create_file_pointer_configparser(working_job, 'job.ini')
+
     calculation_files.append(job_file)
 
     return calculation_files
-
-
-def create_job_file(settings: configparser.ConfigParser) -> io.StringIO:
-    job_ini = io.StringIO()
-    settings.write(job_ini)
-    job_ini.seek(0)
-
-    return job_ini

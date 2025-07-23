@@ -21,12 +21,15 @@ class ExposureModelRepository(repository_factory(
         ExposureModel, ExposureModelORM)):
     @classmethod
     def create(cls, session: Session, data: ExposureModel) -> ExposureModel:
-        cost_types = data.costtypes
 
-        db_model = ExposureModelORM(**data.model_dump(exclude_unset=True))
-        for ct in cost_types:
-            db_model.costtypes.append(
-                CostTypeORM(**ct.model_dump(exclude_unset=True)))
+        cost_types = [
+            CostTypeORM(**ct.model_dump(exclude_unset=True))
+            for ct in data.costtypes
+        ]
+
+        db_model = ExposureModelORM(
+            **data.model_dump(exclude_unset=True, exclude=('costtypes',)))
+        db_model.costtypes = cost_types
 
         session.add(db_model)
         session.commit()

@@ -1,3 +1,6 @@
+from sqlalchemy.orm.session import Session
+from sqlalchemy import Select
+import pandas as pd
 import numpy as np
 from psycopg2.extensions import AsIs, register_adapter
 from sqlalchemy import create_engine, create_mock_engine
@@ -50,3 +53,8 @@ def init_db_file():
 
 
 register_adapter(np.int64, AsIs)
+
+
+def pandas_read_sql(stmt: Select, session: Session):
+    df = pd.read_sql_query(stmt, session.connection())
+    return df

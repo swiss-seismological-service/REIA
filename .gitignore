@@ -10,7 +10,7 @@ test_model/
 *_gen.csv
 ./*.sh
 CLAUDE.md
-.claude
+.claude/
 
 
 # Byte-compiled / optimized / DLL files

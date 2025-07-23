@@ -1,5 +1,5 @@
 import pandas as pd
-from sqlalchemy import insert
+from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
 from reia.datamodel.fragility import \
@@ -15,6 +15,7 @@ from reia.datamodel.fragility import \
 from reia.datamodel.fragility import \
     StructuralFragilityModel as StructuralFragilityModelORM
 from reia.datamodel.fragility import TaxonomyMap as TaxonomyMapORM
+from reia.repositories import pandas_read_sql
 from reia.repositories.base import repository_factory
 from reia.schemas.fragility_schemas import (BusinessInterruptionFragilityModel,
                                             ContentsFragilityModel,
@@ -97,6 +98,7 @@ class TaxonomyMapRepository(repository_factory(
         mappings['_taxonomymap_oid'] = taxonomy_map._oid
         stmt = insert(MappingORM).values(
             mappings.to_dict(orient='records'))
+
         session.execute(stmt)
         session.commit()
         session.refresh(taxonomy_map)
@@ -106,4 +108,12 @@ class TaxonomyMapRepository(repository_factory(
 
 class MappingRepository(repository_factory(
         Mapping, MappingORM)):
-    pass
+    @classmethod
+    def get_by_taxonomymap_oid(cls,
+                               session: Session,
+                               taxonomymap_oid: int) -> pd.DataFrame:
+        """Get mappings by taxonomy map OID."""
+        stmt = select(MappingORM).where(
+            MappingORM._taxonomymap_oid == taxonomymap_oid)
+        result = pandas_read_sql(stmt, session)
+        return result
