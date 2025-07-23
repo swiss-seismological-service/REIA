@@ -12,8 +12,8 @@ from reia.datamodel.calculations import LossCalculation as LossCalculationORM
 from reia.datamodel.calculations import \
     LossCalculationBranch as LossCalculationBranchORM
 from reia.datamodel.calculations import RiskAssessment as RiskAssessmentORM
-from reia.db.copy import drop_dynamic_table, drop_partition_table
 from reia.repositories.base import repository_factory
+from reia.repositories.utils import drop_dynamic_table, drop_partition_table
 from reia.schemas.calculation_schemas import (Calculation, CalculationBranch,
                                               DamageCalculation,
                                               DamageCalculationBranch,

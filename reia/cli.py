@@ -13,13 +13,13 @@ from typing_extensions import Annotated
 
 from reia.actions import (dispatch_openquake_calculation,
                           run_openquake_calculations)
-from reia.db import drop_db, init_db, init_db_file, session
 from reia.io import CalculationBranchSettings
 from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
                           parse_vulnerability)
 from reia.io.write import (assemble_calculation_input, create_exposure_input,
                            create_fragility_input, create_taxonomymap_input,
                            create_vulnerability_input)
+from reia.repositories import drop_db, init_db, init_db_file, session
 from reia.repositories.asset import (AggregationGeometryRepository,
                                      ExposureModelRepository, SiteRepository)
 from reia.repositories.calculation import (CalculationRepository,

@@ -5,8 +5,9 @@ from reia.datamodel.lossvalues import DamageValue as DamageValueORM
 from reia.datamodel.lossvalues import LossValue as LossValueORM
 from reia.datamodel.lossvalues import RiskValue as RiskValueORM
 from reia.datamodel.lossvalues import riskvalue_aggregationtag
-from reia.db.copy import allocate_oids, copy_pooled, db_cursor_from_session
 from reia.repositories.base import repository_factory
+from reia.repositories.utils import (allocate_oids, copy_pooled,
+                                     db_cursor_from_session)
 from reia.schemas.lossvalue_schemas import DamageValue, LossValue, RiskValue
 
 

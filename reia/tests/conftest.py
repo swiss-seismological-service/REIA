@@ -2,7 +2,7 @@
 import pytest
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-from reia.db import engine
+from reia.repositories import engine
 
 
 @pytest.fixture(scope='module')
