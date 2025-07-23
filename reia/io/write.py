@@ -3,12 +3,10 @@ import io
 import pickle
 from pathlib import Path
 
-import pandas as pd
 from sqlalchemy.orm import Session
 
-from reia.datamodel.asset import Asset
 from reia.io import ASSETS_COLS_MAPPING
-from reia.repositories.asset import ExposureModelRepository
+from reia.repositories.asset import AssetRepository, ExposureModelRepository
 from reia.repositories.fragility import (FragilityModelRepository,
                                          MappingRepository)
 from reia.repositories.vulnerability import VulnerabilityModelRepository
@@ -112,7 +110,19 @@ def create_exposure_input(asset_collection_oid: int,
 
     exposure_xml = create_file_pointer_jinja(template_name, data=data)
 
-    exposure_df = assets_to_dataframe(exposuremodel.assets)
+    exposure_df = AssetRepository.get_by_exposuremodel(
+        session, asset_collection_oid)
+    exposure_df.index.name = 'id'
+
+    columns_map = {**{'longitude': 'lon', 'latitude': 'lat'},
+                   **{v: k for k, v in ASSETS_COLS_MAPPING.items()}}
+
+    exposure_df = exposure_df.rename(columns=columns_map)
+
+    exposure_df = exposure_df[[*columns_map.values(),
+                               *exposuremodel.aggregationtypes]] \
+        .dropna(axis=1, how='all') \
+        .fillna(0)
 
     exposure_csv = create_file_pointer_dataframe(
         exposure_df, name=assets_csv_name.name)
@@ -120,58 +130,18 @@ def create_exposure_input(asset_collection_oid: int,
     return (exposure_xml, exposure_csv)
 
 
-def assets_to_dataframe(assets: list[Asset]) -> pd.DataFrame:
-    """Convert a list of Asset objects to a pandas DataFrame.
-    
-    Combines asset data with associated site coordinates and aggregation tags
-    into a single DataFrame formatted for OpenQuake exposure input.
-    
-    Args:
-        assets: List of Asset objects to convert.
-        
-    Returns:
-        DataFrame with asset data, coordinates, and aggregation tags.
-    """
-
-    assets_df = pd.DataFrame([x.model_dump(mode='json')
-                             for x in assets]).set_index('_oid')
-
-    sites_df = pd.DataFrame([x.site.model_dump(mode='json') for x in assets])[
-        ['longitude', 'latitude']]
-
-    aggregationtags_df = pd.DataFrame(map(
-        lambda asset: {tag.type: tag.name for tag in asset.aggregationtags},
-        assets))
-
-    result_df = pd.concat([assets_df,
-                           sites_df.set_index(assets_df.index),
-                           aggregationtags_df.set_index(assets_df.index)],
-                          axis=1)
-
-    selector = {**{'longitude': 'lon', 'latitude': 'lat'},
-                **{v: k for k, v in ASSETS_COLS_MAPPING.items()},
-                **{k: k for k in aggregationtags_df.columns}}
-
-    result_df = result_df.rename(columns=selector)[[*selector.values()]] \
-        .dropna(axis=1, how='all') \
-        .fillna(0)
-    result_df.index.name = 'id'
-
-    return result_df
-
-
 def assemble_calculation_input(job: configparser.ConfigParser,
                                session: Session) -> list[io.StringIO]:
     """Assemble all input files needed for an OpenQuake calculation.
-    
+
     Creates in-memory file objects for all calculation inputs including
     exposure, vulnerability/fragility, taxonomy mapping, hazard files,
     and the job configuration file.
-    
+
     Args:
         job: ConfigParser object containing calculation configuration.
         session: SQLAlchemy database session.
-        
+
     Returns:
         List of StringIO file objects for the calculation.
     """

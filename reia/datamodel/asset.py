@@ -40,8 +40,7 @@ class Asset(ORMBase, ClassificationMixin('taxonomy')):
 
     aggregationtags = relationship('AggregationTag',
                                    secondary=asset_aggregationtag,
-                                   back_populates='assets',
-                                   lazy='joined')
+                                   back_populates='assets')
 
     _exposuremodel_oid = Column(BigInteger,
                                 ForeignKey('loss_exposuremodel._oid',

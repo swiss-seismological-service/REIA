@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from sqlalchemy import delete, select, true
+from sqlalchemy import case, delete, func, select, true
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ from reia.datamodel.asset import Site as SiteORM
 from reia.datamodel.asset import asset_aggregationtag
 from reia.datamodel.exposure import CostType as CostTypeORM
 from reia.datamodel.exposure import ExposureModel as ExposureModelORM
+from reia.repositories import pandas_read_sql
 from reia.repositories.base import repository_factory
 from reia.schemas.asset_schemas import (AggregationGeometry, AggregationTag,
                                         Asset, Site)
@@ -39,6 +40,46 @@ class ExposureModelRepository(repository_factory(
 
 class AssetRepository(repository_factory(
         Asset, AssetORM)):
+    @classmethod
+    def get_by_exposuremodel(cls, session: Session,
+                             exposuremodel_oid: int) -> pd.DataFrame:
+
+        # Get distinct aggregation tag types
+        tagtype_query = select(AggregationTagORM.type).distinct().where(
+            AggregationTagORM._exposuremodel_oid == exposuremodel_oid
+        )
+        result = session.execute(tagtype_query)
+        tagtypes = [row[0] for row in result]
+
+        # Build dynamic pivot columns for aggregation tags
+        pivot_columns = [
+            func.max(case((AggregationTagORM.type == tagtype,
+                           AggregationTagORM.name))).label(tagtype)
+            for tagtype in tagtypes
+        ]
+
+        asset_cols = [getattr(AssetORM, col.name)
+                      for col in AssetORM.__table__.columns]
+
+        stmt = select(*asset_cols,
+                      SiteORM.longitude,
+                      SiteORM.latitude,
+                      *pivot_columns)\
+            .join(SiteORM, AssetORM._site_oid == SiteORM._oid) \
+            .join(asset_aggregationtag,
+                  AssetORM._oid == asset_aggregationtag.c.asset) \
+            .join(AggregationTagORM,
+                  (asset_aggregationtag.c.aggregationtag
+                   == AggregationTagORM._oid)
+                  & (asset_aggregationtag.c.aggregationtype
+                     == AggregationTagORM.type)) \
+            .where(AssetORM._exposuremodel_oid == exposuremodel_oid) \
+            .group_by(AssetORM._oid,
+                      SiteORM.longitude,
+                      SiteORM.latitude,)
+
+        return pandas_read_sql(stmt, session)
+
     @classmethod
     def insert_many(cls, session: Session, assets: pd.DataFrame) -> list[int]:
         stmt = insert(AssetORM).values(
