@@ -9,7 +9,8 @@ import pandas as pd
 
 from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
                      CALCULATION_MAPPING, FRAGILITY_FK_MAPPING,
-                     VULNERABILITY_FK_MAPPING, CalculationBranchSettings)
+                     VULNERABILITY_FK_MAPPING)
+from reia.schemas.calculation_schemas import CalculationBranchSettings
 from reia.schemas.exposure_schema import ExposureModel
 from reia.schemas.fragility_schemas import FragilityModel
 from reia.schemas.vulnerability_schemas import VulnerabilityModel

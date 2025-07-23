@@ -1,5 +1,3 @@
-import configparser
-from dataclasses import dataclass
 
 from reia.schemas import (DamageCalculation, DamageCalculationBranch,
                           LossCalculation, LossCalculationBranch)
@@ -38,13 +36,6 @@ FRAGILITY_FK_MAPPING = {
     'business_interruption_fragility_file':
     '_businessinterruptionfragilitymodel_oid',
     'taxonomy_mapping_csv': '_taxonomymap_oid'}
-
-
-@dataclass
-class CalculationBranchSettings:
-    """ Contains the weight and a OQ settings file for a calculation"""
-    weight: float
-    config: configparser.ConfigParser
 
 
 RISK_COLUMNS_MAPPING = {

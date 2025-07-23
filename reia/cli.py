@@ -13,7 +13,6 @@ from typing_extensions import Annotated
 
 from reia.actions import (dispatch_openquake_calculation,
                           run_openquake_calculations)
-from reia.io import CalculationBranchSettings
 from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
                           parse_vulnerability)
 from reia.io.write import (assemble_calculation_input, create_exposure_input,
@@ -27,7 +26,8 @@ from reia.repositories.calculation import (CalculationRepository,
 from reia.repositories.fragility import (FragilityModelRepository,
                                          TaxonomyMapRepository)
 from reia.repositories.vulnerability import VulnerabilityModelRepository
-from reia.schemas.calculation_schemas import RiskAssessment
+from reia.schemas.calculation_schemas import (CalculationBranchSettings,
+                                              RiskAssessment)
 from reia.schemas.enums import EEarthquakeType, EStatus
 from reia.services.assets import create_assets
 
@@ -476,7 +476,9 @@ def run_calculation(
     for s in settings:
         job_file = configparser.ConfigParser()
         job_file.read(Path(s[1]))
-        branch_settings.append(CalculationBranchSettings(s[0], job_file))
+        branch_settings.append(
+            CalculationBranchSettings(
+                weight=s[0], config=job_file))
 
     run_openquake_calculations(branch_settings, session)
 
@@ -595,7 +597,7 @@ def run_risk_assessment(
     try:
         job_file_loss = configparser.ConfigParser()
         job_file_loss.read(Path(loss))
-        loss_branch = CalculationBranchSettings(1, job_file_loss)
+        loss_branch = CalculationBranchSettings(weight=1, config=job_file_loss)
         risk_assessment = \
             RiskAssessmentRepository.update_risk_assessment_status(
                 session, risk_assessment.oid, EStatus.EXECUTING)
@@ -606,7 +608,8 @@ def run_risk_assessment(
         typer.echo('Starting damage calculations...')
         job_file_damage = configparser.ConfigParser()
         job_file_damage.read(Path(damage))
-        damage_branch = CalculationBranchSettings(1, job_file_damage)
+        damage_branch = CalculationBranchSettings(
+            weight=1, config=job_file_damage)
         damagecalculation = run_openquake_calculations(
             [damage_branch], session)
 

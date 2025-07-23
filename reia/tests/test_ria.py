@@ -7,12 +7,12 @@ from numpy.testing import assert_almost_equal
 from reia.actions import run_openquake_calculations
 from reia.cli import (add_exposure, add_fragility, add_risk_assessment,
                       add_taxonomymap, add_vulnerability)
-from reia.io import CalculationBranchSettings
 from reia.repositories.asset import ExposureModelRepository
 from reia.repositories.calculation import RiskAssessmentRepository
 from reia.repositories.fragility import (FragilityModelRepository,
                                          TaxonomyMapRepository)
 from reia.repositories.vulnerability import VulnerabilityModelRepository
+from reia.schemas.calculation_schemas import CalculationBranchSettings
 from reia.schemas.enums import ECalculationType, EStatus
 
 DATAFOLDER = Path(__file__).parent / 'data' / 'ria_test'
@@ -56,7 +56,7 @@ def loss_calculation(exposure, vulnerability, db_session):
     risk_file['hazard']['gmfs_csv'] = str(DATAFOLDER / 'gmfs_test.csv')
     risk_file['hazard']['sites_csv'] = str(DATAFOLDER / 'sites.csv')
 
-    settings = [CalculationBranchSettings(1, risk_file)]
+    settings = [CalculationBranchSettings(weight=1, config=risk_file)]
 
     return run_openquake_calculations(settings, db_session)
 
@@ -74,7 +74,7 @@ def damage_calculation(exposure, fragility, taxonomy, db_session):
     damage_file['hazard']['gmfs_csv'] = str(DATAFOLDER / 'gmfs_test.csv')
     damage_file['hazard']['sites_csv'] = str(DATAFOLDER / 'sites.csv')
 
-    settings = [CalculationBranchSettings(1, damage_file)]
+    settings = [CalculationBranchSettings(weight=1, config=damage_file)]
 
     return run_openquake_calculations(settings, db_session)
 

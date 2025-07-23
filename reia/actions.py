@@ -8,7 +8,6 @@ from requests import Response
 from sqlalchemy.orm import Session
 
 from reia.datamodel import CalculationBranch
-from reia.io import CalculationBranchSettings
 from reia.io.dstore import get_risk_from_dstore
 from reia.io.read import parse_calculation_input, validate_calculation_input
 from reia.io.write import assemble_calculation_input
@@ -19,6 +18,7 @@ from reia.repositories.asset import AggregationTagRepository
 from reia.repositories.calculation import (CalculationBranchRepository,
                                            CalculationRepository)
 from reia.repositories.lossvalue import RiskValueRepository
+from reia.schemas.calculation_schemas import CalculationBranchSettings
 from reia.schemas.enums import ERiskType, EStatus
 
 LOGGER = logging.getLogger(__name__)

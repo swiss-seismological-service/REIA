@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import configparser
 import uuid
 
 from pydantic import Field
@@ -88,3 +89,9 @@ class DamageCalculation(Calculation):
         default=[], exclude=True)
     type: ECalculationType = Field(
         default=ECalculationType.DAMAGE, alias='_type')
+
+
+class CalculationBranchSettings(Model):
+    """ Contains the weight and a OQ settings file for a calculation"""
+    weight: float
+    config: configparser.ConfigParser
