@@ -11,6 +11,8 @@ class Config(object):
         f"postgresql+psycopg2://{os.getenv('DB_USER')}:" \
         f"{os.getenv('DB_PASSWORD')}@{os.getenv('POSTGRES_HOST')}" \
         f":{os.getenv('POSTGRES_PORT')}/{os.getenv('DB_NAME')}"
+    POSTGRES_POOL_SIZE = int(os.getenv('POSTGRES_POOL_SIZE', 5))
+    POSTGRES_MAX_OVERFLOW = int(os.getenv('POSTGRES_MAX_OVERFLOW', 10))
 
 
 class DevelopmentConfig(Config):

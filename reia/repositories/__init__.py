@@ -1,30 +1,44 @@
-from sqlalchemy.orm.session import Session
-from sqlalchemy import Select
-import pandas as pd
 import numpy as np
+import pandas as pd
 from psycopg2.extensions import AsIs, register_adapter
-from sqlalchemy import create_engine, create_mock_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy import Select
+from sqlalchemy import create_engine as _create_engine
+from sqlalchemy import create_mock_engine
+from sqlalchemy.engine import URL, Engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.session import Session
 from sqlalchemy.schema import MetaData
+from sqlalchemy.sql import text
 
 from reia.datamodel.base import ORMBase
 from settings import get_config
 
-try:
-    config = get_config()
-    engine = create_engine(
-        config.DB_CONNECTION_STRING,
-        echo=False,
-        future=True)
+config = get_config()
+EXTENSIONS = []
 
-    session = scoped_session(sessionmaker(autocommit=False,
-                                          bind=engine,
-                                          future=True))
 
-    ORMBase.query = session.query_property()
-except BaseException:
-    session = None
-    engine = None
+def create_extensions(engine):
+    with engine.connect() as conn:
+        for extension in EXTENSIONS:
+            conn.execute(
+                text(f'CREATE EXTENSION IF NOT EXISTS "{extension}"'))
+            conn.commit()
+
+
+def create_engine(url: URL | str, **kwargs) -> Engine:
+    _engine = _create_engine(
+        url,
+        future=True,
+        pool_size=config.POSTGRES_POOL_SIZE,
+        max_overflow=config.POSTGRES_MAX_OVERFLOW,
+        **kwargs,
+    )
+    create_extensions(_engine)
+    return _engine
+
+
+engine = create_engine(config.DB_CONNECTION_STRING)
+DatabaseSession = sessionmaker(engine, expire_on_commit=True)
 
 
 def init_db():

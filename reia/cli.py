@@ -18,7 +18,7 @@ from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
 from reia.io.write import (assemble_calculation_input, create_exposure_input,
                            create_fragility_input, create_taxonomymap_input,
                            create_vulnerability_input)
-from reia.repositories import drop_db, init_db, init_db_file, session
+from reia.repositories import DatabaseSession, drop_db, init_db, init_db_file
 from reia.repositories.asset import (AggregationGeometryRepository,
                                      ExposureModelRepository, SiteRepository)
 from reia.repositories.calculation import (CalculationRepository,
@@ -89,20 +89,20 @@ def add_exposure(exposure: Path, name: str):
 
     exposure.name = name
 
-    exposuremodel = ExposureModelRepository.create(session, exposure)
+    with DatabaseSession() as session:
+        exposuremodel = ExposureModelRepository.create(session, exposure)
 
-    assets_oids = create_assets(assets, exposuremodel.oid, session)
-    sites = SiteRepository.get_by_exposuremodel(session, exposuremodel.oid)
+        assets_oids = create_assets(assets, exposuremodel.oid, session)
+        sites = SiteRepository.get_by_exposuremodel(session, exposuremodel.oid)
 
-    typer.echo(f'Created asset collection with ID {exposuremodel.oid} and '
-               f'{len(sites)} sites with {len(assets_oids)} assets.')
+        typer.echo(f'Created asset collection with ID {exposuremodel.oid} and '
+                   f'{len(sites)} sites with {len(assets_oids)} assets.')
 
-    session.execute(
-        text('REFRESH MATERIALIZED VIEW CONCURRENTLY '
-             'loss_buildings_per_municipality'))
-    session.commit()
+        session.execute(
+            text('REFRESH MATERIALIZED VIEW CONCURRENTLY '
+                 'loss_buildings_per_municipality'))
+        session.commit()
 
-    session.remove()
     return exposuremodel.oid
 
 
@@ -111,11 +111,11 @@ def delete_exposure(exposuremodel_oid: int):
     '''
     Delete an exposure model.
     '''
-    # crud.delete_asset_collection(asset_collection_oid, session)
-    ExposureModelRepository.delete(session, exposuremodel_oid)
+    with DatabaseSession() as session:
+        # crud.delete_asset_collection(asset_collection_oid, session)
+        ExposureModelRepository.delete(session, exposuremodel_oid)
     typer.echo(
         f'Deleted exposure model with ID {exposuremodel_oid}.')
-    session.remove()
 
 
 @exposure.command('list')
@@ -123,7 +123,8 @@ def list_exposure():
     '''
     List all exposure models.
     '''
-    exposuremodels = ExposureModelRepository.get_all(session)
+    with DatabaseSession() as session:
+        exposuremodels = ExposureModelRepository.get_all(session)
 
     typer.echo('List of existing asset collections:')
     typer.echo('{0:<10} {1:<25} {2}'.format(
@@ -136,7 +137,6 @@ def list_exposure():
             ac.oid,
             ac.name or '',
             str(ac.creationinfo_creationtime)))
-    session.remove()
 
 
 @exposure.command('create_file')
@@ -146,8 +146,10 @@ def create_exposure(id: int, filename: Path):
     '''
     p_xml = filename.with_suffix('.xml')
     p_csv = filename.with_suffix('.csv')
-    fp_xml, fp_csv = create_exposure_input(id, session, assets_csv_name=p_csv)
-    session.remove()
+
+    with DatabaseSession() as session:
+        fp_xml, fp_csv = create_exposure_input(
+            id, session, assets_csv_name=p_csv)
 
     p_xml.parent.mkdir(exist_ok=True)
     p_xml.open('w').write(fp_xml.getvalue())
@@ -191,10 +193,10 @@ def add_exposure_geometries(
     gdf = gdf.rename(columns={tag_column_name: 'aggregationtag'})
     gdf['_aggregationtype'] = aggregationtype
 
-    geometry_ids = AggregationGeometryRepository.insert_many(session,
-                                                             exposure_id,
-                                                             gdf)
-    session.remove()
+    with DatabaseSession() as session:
+        geometry_ids = AggregationGeometryRepository.insert_many(session,
+                                                                 exposure_id,
+                                                                 gdf)
 
     typer.echo(
         f'Added {len(geometry_ids)} geometries to exposure model '
@@ -203,9 +205,9 @@ def add_exposure_geometries(
 
 @exposure.command('delete_geometries')
 def delete_exposure_geometries(exposure_id: int, aggregationtype: str):
-    AggregationGeometryRepository.delete_by_exposuremodel(
-        session, exposure_id, aggregationtype)
-    session.remove()
+    with DatabaseSession() as session:
+        AggregationGeometryRepository.delete_by_exposuremodel(
+            session, exposure_id, aggregationtype)
 
 
 @fragility.command('add')
@@ -218,12 +220,11 @@ def add_fragility(fragility: Path, name: str):
         model = parse_fragility(f)
 
     model.name = name
-
-    fragility_model = FragilityModelRepository.create(session, model)
+    with DatabaseSession() as session:
+        fragility_model = FragilityModelRepository.create(session, model)
     typer.echo(
         f'Created fragility model of type "{fragility_model.type}"'
         f' with ID {fragility_model.oid}.')
-    session.remove()
     return fragility_model.oid
 
 
@@ -232,10 +233,10 @@ def delete_fragility(fragility_model_oid: int):
     '''
     Delete a fragility model.
     '''
-    FragilityModelRepository.delete(session, fragility_model_oid)
+    with DatabaseSession() as session:
+        FragilityModelRepository.delete(session, fragility_model_oid)
 
     typer.echo(f'Deleted fragility model with ID {fragility_model_oid}.')
-    session.remove()
 
 
 @fragility.command('list')
@@ -243,7 +244,8 @@ def list_fragility():
     '''
     List all fragility models.
     '''
-    fragility_models = FragilityModelRepository.get_all(session)
+    with DatabaseSession() as session:
+        fragility_models = FragilityModelRepository.get_all(session)
 
     typer.echo('List of existing fragility models:')
     typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
@@ -258,7 +260,6 @@ def list_fragility():
             vm.name or "",
             vm.type,
             str(vm.creationinfo_creationtime)))
-    session.remove()
 
 
 @fragility.command('create_file')
@@ -267,8 +268,9 @@ def create_fragility(id: int, filename: Path):
     Create input file for a fragility model.
     '''
     filename = filename.with_suffix('.xml')
-    file_pointer = create_fragility_input(id, session)
-    session.remove()
+
+    with DatabaseSession() as session:
+        file_pointer = create_fragility_input(id, session)
 
     filename.parent.mkdir(exist_ok=True)
     filename.open('w').write(file_pointer.getvalue())
@@ -288,12 +290,12 @@ def add_taxonomymap(map_file: Path, name: str):
     with open(map_file, 'r') as f:
         mapping = parse_taxonomy_map(f)
 
-    taxonomy_map = TaxonomyMapRepository.insert_many(session,
-                                                     mapping,
-                                                     name)
+    with DatabaseSession() as session:
+        taxonomy_map = TaxonomyMapRepository.insert_many(session,
+                                                         mapping,
+                                                         name)
     typer.echo(
         f'Created taxonomy map with ID {taxonomy_map.oid}.')
-    session.remove()
     return taxonomy_map.oid
 
 
@@ -302,10 +304,10 @@ def delete_taxonomymap(taxonomymap_oid: int):
     '''
     Delete a vulnerability model.
     '''
-    TaxonomyMapRepository.delete(session, taxonomymap_oid)
+    with DatabaseSession() as session:
+        TaxonomyMapRepository.delete(session, taxonomymap_oid)
     typer.echo(
         f'Deleted taxonomy map with ID {taxonomymap_oid}.')
-    session.remove()
 
 
 @taxonomymap.command('list')
@@ -313,7 +315,8 @@ def list_taxonomymap():
     '''
     List all vulnerability models.
     '''
-    taxonomy_maps = TaxonomyMapRepository.get_all(session)
+    with DatabaseSession() as session:
+        taxonomy_maps = TaxonomyMapRepository.get_all(session)
 
     typer.echo('List of existing vulnerability models:')
     typer.echo('{0:<10} {1:<25} {2}'.format(
@@ -326,7 +329,6 @@ def list_taxonomymap():
             tm.oid,
             tm.name or "",
             str(tm.creationinfo_creationtime)))
-    session.remove()
 
 
 @taxonomymap.command('create_file')
@@ -335,8 +337,9 @@ def create_taxonomymap(id: int, filename: Path):
     Create input file for a taxonomy mapping.
     '''
     filename = filename.with_suffix('.csv')
-    file_pointer = create_taxonomymap_input(id, session)
-    session.remove()
+
+    with DatabaseSession() as session:
+        file_pointer = create_taxonomymap_input(id, session)
 
     filename.parent.mkdir(exist_ok=True)
     filename.open('w').write(file_pointer.getvalue())
@@ -357,11 +360,12 @@ def add_vulnerability(vulnerability: Path, name: str):
         model = parse_vulnerability(f)
     model.name = name
 
-    vulnerability_model = VulnerabilityModelRepository.create(session, model)
+    with DatabaseSession() as session:
+        vulnerability_model = VulnerabilityModelRepository.create(
+            session, model)
     typer.echo(
         f'Created vulnerability model of type "{vulnerability_model.type}"'
         f' with ID {vulnerability_model.oid}.')
-    session.remove()
     return vulnerability_model.oid
 
 
@@ -370,10 +374,10 @@ def delete_vulnerability(vulnerability_model_oid: int):
     '''
     Delete a vulnerability model.
     '''
-    VulnerabilityModelRepository.delete(session, vulnerability_model_oid)
+    with DatabaseSession() as session:
+        VulnerabilityModelRepository.delete(session, vulnerability_model_oid)
     typer.echo(
         f'Deleted vulnerability model with ID {vulnerability_model_oid}.')
-    session.remove()
 
 
 @vulnerability.command('list')
@@ -381,8 +385,9 @@ def list_vulnerability():
     '''
     List all vulnerability models.
     '''
-    vulnerability_models = \
-        VulnerabilityModelRepository.get_all(session)
+    with DatabaseSession() as session:
+        vulnerability_models = \
+            VulnerabilityModelRepository.get_all(session)
     typer.echo('List of existing vulnerability models:')
     typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
         'ID',
@@ -396,7 +401,6 @@ def list_vulnerability():
             vm.name or "",
             vm.type,
             str(vm.creationinfo_creationtime)))
-    session.remove()
 
 
 @vulnerability.command('create_file')
@@ -405,8 +409,9 @@ def create_vulnerability(id: int, filename: Path):
     Create input file for a vulnerability model.
     '''
     filename = filename.with_suffix('.xml')
-    file_pointer = create_vulnerability_input(id, session)
-    session.remove()
+
+    with DatabaseSession() as session:
+        file_pointer = create_vulnerability_input(id, session)
 
     filename.parent.mkdir(exist_ok=True)
     filename.open('w').write(file_pointer.getvalue())
@@ -429,7 +434,8 @@ def create_calculation_files(target_folder: Path,
     job_file = configparser.ConfigParser()
     job_file.read(settings_file)
 
-    files = assemble_calculation_input(job_file, session)
+    with DatabaseSession() as session:
+        files = assemble_calculation_input(job_file, session)
 
     for file in files:
         with open(target_folder / file.name, 'w') as f:
@@ -437,8 +443,6 @@ def create_calculation_files(target_folder: Path,
 
     typer.echo('Openquake calculation files created '
                f'in folder "{str(target_folder)}".')
-
-    session.remove()
 
 
 @calculation.command('run_test')
@@ -449,11 +453,10 @@ def run_test_calculation(settings_file: Path):
     job_file = configparser.ConfigParser()
     job_file.read(settings_file)
 
-    response = dispatch_openquake_calculation(job_file, session)
+    with DatabaseSession() as session:
+        response = dispatch_openquake_calculation(job_file, session)
 
     typer.echo(response.json())
-
-    session.remove()
 
 
 @calculation.command('run')
@@ -480,9 +483,8 @@ def run_calculation(
             CalculationBranchSettings(
                 weight=s[0], config=job_file))
 
-    run_openquake_calculations(branch_settings, session)
-
-    session.remove()
+    with DatabaseSession() as session:
+        run_openquake_calculations(branch_settings, session)
 
 
 @calculation.command('list')
@@ -490,8 +492,9 @@ def list_calculations(eqtype: EEarthquakeType | None = typer.Option(None)):
     '''
     List all calculations.
     '''
-    calculations = CalculationRepository.get_all_by_type(
-        session, type=eqtype)
+    with DatabaseSession() as session:
+        calculations = CalculationRepository.get_all_by_type(
+            session, type=eqtype)
 
     typer.echo('List of existing calculations:')
     typer.echo('{0:<10} {1:<25} {2:<25} {3:<30} {4}'.format(
@@ -508,7 +511,6 @@ def list_calculations(eqtype: EEarthquakeType | None = typer.Option(None)):
             c.type.name,
             str(c.creationinfo_creationtime),
             c.description))
-    session.remove()
 
 
 @calculation.command('delete')
@@ -516,10 +518,10 @@ def delete_calculation(calculation_oid: int):
     '''
     Delete a calculation.
     '''
-    CalculationRepository.delete(session, calculation_oid)
+    with DatabaseSession() as session:
+        CalculationRepository.delete(session, calculation_oid)
     typer.echo(
         f'Deleted calculation with ID {calculation_oid}.')
-    session.remove()
 
 
 @risk_assessment.command('add')
@@ -532,13 +534,12 @@ def add_risk_assessment(originid: str, loss_id: int, damage_id: int):
         losscalculation_oid=loss_id,
         damagecalculation_oid=damage_id
     )
-    added = RiskAssessmentRepository.create(session, riskassessment)
+    with DatabaseSession() as session:
+        added = RiskAssessmentRepository.create(session, riskassessment)
 
     typer.echo(
         f'added risk_assessment for {added.originid} with '
         f'ID {added.oid}.')
-
-    session.remove()
 
     return added.oid
 
@@ -548,9 +549,9 @@ def delete_risk_assessment(riskassessment_oid: str):
     '''
     Delete a risk assessment.
     '''
-    rowcount = RiskAssessmentRepository.delete(session, riskassessment_oid)
+    with DatabaseSession() as session:
+        rowcount = RiskAssessmentRepository.delete(session, riskassessment_oid)
     typer.echo(f'Deleted {rowcount} risk assessment.')
-    session.remove()
 
 
 @risk_assessment.command('list')
@@ -558,7 +559,8 @@ def list_risk_assessment():
     '''
     List risk assessments.
     '''
-    risk_assessments = RiskAssessmentRepository.get_all(session)
+    with DatabaseSession() as session:
+        risk_assessments = RiskAssessmentRepository.get_all(session)
 
     typer.echo('List of existing risk assessments:')
     typer.echo('{0:<40} {1:<20} {2:<15} {3}'.format(
@@ -573,7 +575,6 @@ def list_risk_assessment():
             c.status.name,
             c.type.name,
             str(c.creationinfo_creationtime)))
-    session.remove()
 
 
 @risk_assessment.command('run')
@@ -592,16 +593,20 @@ def run_risk_assessment(
         type=EEarthquakeType.NATURAL,
         status=EStatus.CREATED
     )
-    risk_assessment = RiskAssessmentRepository.create(session, risk_assessment)
+    with DatabaseSession() as session:
+        risk_assessment = RiskAssessmentRepository.create(
+            session, risk_assessment)
 
     try:
         job_file_loss = configparser.ConfigParser()
         job_file_loss.read(Path(loss))
         loss_branch = CalculationBranchSettings(weight=1, config=job_file_loss)
-        risk_assessment = \
-            RiskAssessmentRepository.update_risk_assessment_status(
-                session, risk_assessment.oid, EStatus.EXECUTING)
-        losscalculation = run_openquake_calculations([loss_branch], session)
+        with DatabaseSession() as session:
+            risk_assessment = \
+                RiskAssessmentRepository.update_risk_assessment_status(
+                    session, risk_assessment.oid, EStatus.EXECUTING)
+            losscalculation = run_openquake_calculations([loss_branch],
+                                                         session)
 
         risk_assessment.losscalculation_oid = losscalculation.oid
 
@@ -610,22 +615,21 @@ def run_risk_assessment(
         job_file_damage.read(Path(damage))
         damage_branch = CalculationBranchSettings(
             weight=1, config=job_file_damage)
-        damagecalculation = run_openquake_calculations(
-            [damage_branch], session)
+        with DatabaseSession() as session:
+            damagecalculation = run_openquake_calculations(
+                [damage_branch], session)
 
         risk_assessment.damagecalculation_oid = damagecalculation.oid
         risk_assessment.status = EStatus(
             min(losscalculation.status.value, damagecalculation.status.value))
-        risk_assessment = RiskAssessmentRepository.update(
-            session, risk_assessment)
+        with DatabaseSession() as session:
+            risk_assessment = RiskAssessmentRepository.update(
+                session, risk_assessment)
     except BaseException as e:
         status = EStatus.ABORTED if isinstance(
             e, KeyboardInterrupt) else EStatus.FAILED
-        risk_assessment = \
-            RiskAssessmentRepository.update_risk_assessment_status(
-                session, risk_assessment.oid, status)
+        with DatabaseSession() as session:
+            risk_assessment = \
+                RiskAssessmentRepository.update_risk_assessment_status(
+                    session, risk_assessment.oid, status)
         traceback.print_exc()
-    finally:
-        session.commit()
-        session.remove()
-        typer.echo('Done.')
