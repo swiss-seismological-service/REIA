@@ -1,15 +1,3 @@
-#    EXAMPLE UPSERT
-#     stmt = insert(dm.EarthquakeInformation).values(**earthquake)
-#     upsert_stmt = stmt.on_conflict_do_update(
-#         constraint='originid_unique', set_=earthquake)
-#     earthquake = session.scalars(
-#         upsert_stmt.returning(
-#             dm.EarthquakeInformation._oid),
-#         execution_options={
-#             "populate_existing": True}).first()
-#     session.commit()
-
-
 import pandas as pd
 from sqlalchemy.orm import Session
 

@@ -4,11 +4,12 @@ from pathlib import Path
 import pytest
 from numpy.testing import assert_almost_equal
 
-from reia.actions import run_openquake_calculations
+from reia.services.calculation import CalculationService
 from reia.cli import (add_exposure, add_fragility, add_risk_assessment,
-                      add_taxonomymap, add_vulnerability)
+                      add_taxonomymap, add_vulnerability, run_risk_assessment)
 from reia.repositories.asset import ExposureModelRepository
-from reia.repositories.calculation import RiskAssessmentRepository
+from reia.repositories.calculation import (CalculationRepository,
+                                           RiskAssessmentRepository)
 from reia.repositories.fragility import (FragilityModelRepository,
                                          TaxonomyMapRepository)
 from reia.repositories.vulnerability import VulnerabilityModelRepository
@@ -44,11 +45,11 @@ def vulnerability(db_session):
 
 
 @pytest.fixture(scope='module')
-def loss_calculation(exposure, vulnerability, db_session):
+def loss_config(exposure, vulnerability):
+    """Create loss calculation config."""
     risk_file = configparser.ConfigParser()
     risk_file.read(str(DATAFOLDER / 'risk.ini'))
 
-    # risk
     risk_file['exposure']['exposure_file'] = str(exposure.oid)
     risk_file['vulnerability']['structural_vulnerability_file'] = str(
         vulnerability.oid)
@@ -56,17 +57,22 @@ def loss_calculation(exposure, vulnerability, db_session):
     risk_file['hazard']['gmfs_csv'] = str(DATAFOLDER / 'gmfs_test.csv')
     risk_file['hazard']['sites_csv'] = str(DATAFOLDER / 'sites.csv')
 
-    settings = [CalculationBranchSettings(weight=1, config=risk_file)]
-
-    return run_openquake_calculations(settings, db_session)
+    return risk_file
 
 
 @pytest.fixture(scope='module')
-def damage_calculation(exposure, fragility, taxonomy, db_session):
+def loss_calculation(loss_config, db_session):
+    settings = [CalculationBranchSettings(weight=1, config=loss_config)]
+    calc_service = CalculationService(db_session)
+    return calc_service.run_calculations(settings)
+
+
+@pytest.fixture(scope='module')
+def damage_config(exposure, fragility, taxonomy):
+    """Create damage calculation config."""
     damage_file = configparser.ConfigParser()
     damage_file.read(str(DATAFOLDER / 'damage.ini'))
 
-    # damage
     damage_file['exposure']['exposure_file'] = str(exposure.oid)
     damage_file['fragility']['structural_fragility_file'] = str(fragility.oid)
     damage_file['fragility']['taxonomy_mapping_csv'] = str(taxonomy.oid)
@@ -74,9 +80,14 @@ def damage_calculation(exposure, fragility, taxonomy, db_session):
     damage_file['hazard']['gmfs_csv'] = str(DATAFOLDER / 'gmfs_test.csv')
     damage_file['hazard']['sites_csv'] = str(DATAFOLDER / 'sites.csv')
 
-    settings = [CalculationBranchSettings(weight=1, config=damage_file)]
+    return damage_file
 
-    return run_openquake_calculations(settings, db_session)
+
+@pytest.fixture(scope='module')
+def damage_calculation(damage_config, db_session):
+    settings = [CalculationBranchSettings(weight=1, config=damage_config)]
+    calc_service = CalculationService(db_session)
+    return calc_service.run_calculations(settings)
 
 
 @pytest.fixture(scope='module')
@@ -84,6 +95,63 @@ def risk_assessment(loss_calculation, damage_calculation, db_session):
     riskassessment_id = add_risk_assessment(
         'smi:ch.ethz.sed/test', loss_calculation.oid, damage_calculation.oid)
     return RiskAssessmentRepository.get_by_id(db_session, riskassessment_id)
+
+
+def test_run_risk_assessment_end_to_end(
+        loss_config, damage_config, db_session):
+    """Test the full run_risk_assessment CLI workflow end-to-end."""
+    import os
+    import tempfile
+
+    # Create temporary config files
+    with tempfile.NamedTemporaryFile(mode='w',
+                                     suffix='.ini',
+                                     delete=False) as loss_file:
+        loss_config.write(loss_file)
+        loss_file_path = loss_file.name
+
+    with tempfile.NamedTemporaryFile(mode='w',
+                                     suffix='.ini',
+                                     delete=False) as damage_file:
+        damage_config.write(damage_file)
+        damage_file_path = damage_file.name
+
+    try:
+        # Call the actual CLI function
+        originid = 'smi:ch.ethz.sed/e2e_test'
+        run_risk_assessment(
+            originid=originid,
+            loss=loss_file_path,
+            damage=damage_file_path
+        )
+
+        # Verify the risk assessment was created properly
+        risk_assessments = RiskAssessmentRepository.get_all(db_session)
+        e2e_assessment = None
+        for ra in risk_assessments:
+            if ra.originid == originid:
+                e2e_assessment = ra
+                break
+
+        assert e2e_assessment is not None, \
+            f"Risk assessment with originid {originid} not found"
+        assert e2e_assessment.status == EStatus.COMPLETE
+        assert e2e_assessment.losscalculation_oid is not None
+        assert e2e_assessment.damagecalculation_oid is not None
+
+        # Verify both calculations completed successfully
+        loss_calc = CalculationRepository.get_by_id(
+            db_session, e2e_assessment.losscalculation_oid)
+        damage_calc = CalculationRepository.get_by_id(
+            db_session, e2e_assessment.damagecalculation_oid)
+
+        assert loss_calc.status == EStatus.COMPLETE
+        assert damage_calc.status == EStatus.COMPLETE
+
+    finally:
+        # Clean up temporary files
+        os.unlink(loss_file_path)
+        os.unlink(damage_file_path)
 
 
 def test_riskassessment(risk_assessment, loss_calculation, damage_calculation):

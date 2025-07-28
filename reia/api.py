@@ -1,7 +1,6 @@
 import io
 import logging
 import sys
-import threading
 import time
 
 import requests
@@ -41,46 +40,50 @@ class OQCalculationAPI(APIConnection):
         self.is_running = False
         self.abortable = False
 
-        self._log_line = 0
+    def submit(self) -> dict:
+        """Submit calculation to OpenQuake without waiting.
 
-    def update_status(self) -> None:
-        while self.status not in ['complete', 'aborted', 'failed']:
-            self.get_status()
-            time.sleep(1)
-
-    def write_log(self) -> None:
-        # TODO: Implement log
-        pass
-
-    def update_log(self) -> None:
-        while self.status not in ['complete', 'aborted', 'failed']:
-            self.write_log()
-            time.sleep(10)
-
-    def run(self) -> str:
+        Returns:
+            Response dictionary with job_id and initial status
+        """
+        if not self.files:
+            raise ValueError(
+                'No calculation files provided. Call add_calc_files() first.')
 
         response = self.session.post(f'{self.url}/run', files=self.files)
-
-        # TODO: Error Handling
         response.raise_for_status()
-        response = response.json()
+        response_data = response.json()
 
-        self.id = response['job_id']
-        self.status = response['status']
+        self.id = response_data['job_id']
+        self.status = response_data['status']
 
-        # TODO: Manage thread or use asyncio
-        status_thread = threading.Thread(target=self.update_status)
-        status_thread.start()
+        return response_data
 
-        log_thread = threading.Thread(target=self.update_log)
-        log_thread.start()
+    def run(self) -> str:
+        """Submit calculation to OpenQuake and wait for completion.
+
+        Returns:
+            Final calculation status
+        """
+        # Submit calculation
+        self.submit()
+
+        # Monitor until completion
+        while self.status not in ['complete', 'aborted', 'failed']:
+            time.sleep(1)
+            self.get_status()
+
         return self.status
 
     def get_status(self) -> str:
+        """Get current calculation status from OpenQuake.
+
+        Returns:
+            Current status string
+        """
         if self.id is None:
             raise ValueError('No calculation dispatched yet.')
 
-        # TODO: Error handling
         response = self.session.get(f'{self.url}/{self.id}/status')
         response.raise_for_status()
         response = response.json()
@@ -97,17 +100,26 @@ class OQCalculationAPI(APIConnection):
         return self.status
 
     def check_failed_status(self) -> None:
+        """Check if failure is due to empty risk
+        table and mark as complete if so.
+        """
         # WORKAROUND: OQ fails if loss calculation produces no values
         empty = 'SystemExit: The risk_by_event table is empty!'
         if any(empty in t for t in self.get_traceback()):
             self.status = 'complete'
 
     def get_traceback(self):
+        """Get traceback information for failed calculations."""
         response = self.session.get(f'{self.url}/{self.id}/traceback')
         response.raise_for_status()
         return response.json()
 
     def abort(self) -> str:
+        """Abort the running calculation.
+
+        Returns:
+            Updated status after abort
+        """
         if self.id is None:
             raise ValueError('No calculation dispatched yet.')
         if not self.abortable:
@@ -116,9 +128,15 @@ class OQCalculationAPI(APIConnection):
         response = self.session.post(f'{self.url}/{self.id}/abort')
         response.raise_for_status()
 
+        self.get_status()  # Update status after abort
         return self.status
 
     def add_calc_files(self, *args: io.StringIO) -> None:
+        """Add calculation files for submission to OpenQuake.
+
+        Args:
+            *args: IO objects representing calculation files
+        """
         args = list(args)
         job_config_index = next(
             (i for i, f in enumerate(args) if f.name == 'job.ini'), None)
@@ -131,6 +149,11 @@ class OQCalculationAPI(APIConnection):
             f'input_model_{i + 1}': v for i, v in enumerate(args)}
 
     def get_result(self) -> datastore.DataStore:
+        """Get calculation results as datastore.
+
+        Returns:
+            OpenQuake datastore with calculation results
+        """
         dbserver.ensure_on()
 
         # if id doesn not exist locally, try getting it on remote

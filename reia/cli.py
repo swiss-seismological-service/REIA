@@ -1,5 +1,4 @@
 import configparser
-import traceback
 from pathlib import Path
 
 import geopandas as gpd
@@ -11,8 +10,9 @@ from shapely.geometry.polygon import Polygon
 from sqlalchemy import text
 from typing_extensions import Annotated
 
-from reia.actions import (dispatch_openquake_calculation,
-                          run_openquake_calculations)
+from reia.services.calculation import CalculationService
+from reia.api import OQCalculationAPI
+from settings import get_config
 from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
                           parse_vulnerability)
 from reia.io.write import (assemble_calculation_input, create_exposure_input,
@@ -28,8 +28,9 @@ from reia.repositories.fragility import (FragilityModelRepository,
 from reia.repositories.vulnerability import VulnerabilityModelRepository
 from reia.schemas.calculation_schemas import (CalculationBranchSettings,
                                               RiskAssessment)
-from reia.schemas.enums import EEarthquakeType, EStatus
+from reia.schemas.enums import EEarthquakeType
 from reia.services.assets import create_assets
+from reia.services.risk_assessment import RiskAssessmentService
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()
@@ -453,10 +454,16 @@ def run_test_calculation(settings_file: Path):
     job_file = configparser.ConfigParser()
     job_file.read(settings_file)
 
-    with DatabaseSession() as session:
-        response = dispatch_openquake_calculation(job_file, session)
+    config = get_config()
+    api_client = OQCalculationAPI(config)
 
-    typer.echo(response.json())
+    with DatabaseSession() as session:
+        files = assemble_calculation_input(job_file, session)
+        api_client.add_calc_files(*files)
+
+        response = api_client.submit()
+
+    typer.echo(response)
 
 
 @calculation.command('run')
@@ -484,7 +491,8 @@ def run_calculation(
                 weight=s[0], config=job_file))
 
     with DatabaseSession() as session:
-        run_openquake_calculations(branch_settings, session)
+        calc_service = CalculationService(session)
+        calc_service.run_calculations(branch_settings)
 
 
 @calculation.command('list')
@@ -588,48 +596,10 @@ def run_risk_assessment(
     typer.echo('Running risk assessment:')
     typer.echo('Starting loss calculations...')
 
-    risk_assessment = RiskAssessment(
-        originid=originid,
-        type=EEarthquakeType.NATURAL,
-        status=EStatus.CREATED
-    )
     with DatabaseSession() as session:
-        risk_assessment = RiskAssessmentRepository.create(
-            session, risk_assessment)
+        service = RiskAssessmentService(session)
+        risk_assessment = service.run_risk_assessment(originid, loss, damage)
 
-    try:
-        job_file_loss = configparser.ConfigParser()
-        job_file_loss.read(Path(loss))
-        loss_branch = CalculationBranchSettings(weight=1, config=job_file_loss)
-        with DatabaseSession() as session:
-            risk_assessment = \
-                RiskAssessmentRepository.update_risk_assessment_status(
-                    session, risk_assessment.oid, EStatus.EXECUTING)
-            losscalculation = run_openquake_calculations([loss_branch],
-                                                         session)
-
-        risk_assessment.losscalculation_oid = losscalculation.oid
-
-        typer.echo('Starting damage calculations...')
-        job_file_damage = configparser.ConfigParser()
-        job_file_damage.read(Path(damage))
-        damage_branch = CalculationBranchSettings(
-            weight=1, config=job_file_damage)
-        with DatabaseSession() as session:
-            damagecalculation = run_openquake_calculations(
-                [damage_branch], session)
-
-        risk_assessment.damagecalculation_oid = damagecalculation.oid
-        risk_assessment.status = EStatus(
-            min(losscalculation.status.value, damagecalculation.status.value))
-        with DatabaseSession() as session:
-            risk_assessment = RiskAssessmentRepository.update(
-                session, risk_assessment)
-    except BaseException as e:
-        status = EStatus.ABORTED if isinstance(
-            e, KeyboardInterrupt) else EStatus.FAILED
-        with DatabaseSession() as session:
-            risk_assessment = \
-                RiskAssessmentRepository.update_risk_assessment_status(
-                    session, risk_assessment.oid, status)
-        traceback.print_exc()
+    typer.echo(
+        'Risk assessment completed with status: '
+        f'{risk_assessment.status.name}')
