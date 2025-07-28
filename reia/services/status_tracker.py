@@ -1,5 +1,3 @@
-import logging
-
 from sqlalchemy.orm import Session
 
 from reia.repositories.calculation import (CalculationBranchRepository,
@@ -8,14 +6,14 @@ from reia.repositories.calculation import (CalculationBranchRepository,
 from reia.schemas.calculation_schemas import (Calculation, CalculationBranch,
                                               RiskAssessment)
 from reia.schemas.enums import EStatus
-
-LOGGER = logging.getLogger(__name__)
+from reia.services.logger import LoggerService
 
 
 class StatusTracker:
     """Centralized status management with validation and consistent logging."""
 
     def __init__(self, session: Session):
+        self.logger = LoggerService.get_logger(__name__)
         self.session = session
 
     def update_status(
@@ -59,7 +57,7 @@ class StatusTracker:
 
         # Log the status change
         reason_msg = f" ({reason})" if reason else ""
-        LOGGER.info(
+        self.logger.info(
             f"{entity_type_name} {entity.oid} status changed: "
             f"{old_status.name} → {new_status.name}{reason_msg}")
 

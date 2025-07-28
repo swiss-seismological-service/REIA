@@ -1,5 +1,3 @@
-import logging
-
 from sqlalchemy.orm import Session
 
 from reia.api import OQCalculationAPI
@@ -9,17 +7,20 @@ from reia.repositories.calculation import (CalculationBranchRepository,
                                            CalculationRepository)
 from reia.schemas.calculation_schemas import CalculationBranchSettings
 from reia.schemas.enums import EStatus
+from reia.services.logger import LoggerService
 from reia.services.results import ResultsService
 from reia.services.status_tracker import StatusTracker
 from settings import get_config
-
-LOGGER = logging.getLogger(__name__)
 
 
 class CalculationService:
     """Service for managing OpenQuake calculations."""
 
     def __init__(self, session: Session):
+        # Initialize logging for calculation workflows
+        LoggerService.setup_logging()
+        self.logger = LoggerService.get_logger(__name__)
+
         self.session = session
         self.config = get_config()
         self.status_tracker = StatusTracker(session)
@@ -39,6 +40,8 @@ class CalculationService:
             Exception: If validation or calculation fails
         """
         # Validate inputs
+        self.logger.info(
+            f"Starting calculation workflow with {len(branch_settings)} branches")
         validate_calculation_input(branch_settings)
 
         # Parse calculation information
@@ -48,6 +51,7 @@ class CalculationService:
         # Create calculation and branches in database
         calculation = CalculationRepository.create(self.session,
                                                    calculation_dict)
+        self.logger.info(f"Created calculation {calculation.oid}")
         for b in branches_dicts:
             b.calculation_oid = calculation.oid
         branches = [CalculationBranchRepository.create(self.session, b)
@@ -61,7 +65,10 @@ class CalculationService:
                 "Starting calculation processing")
 
             # Process each calculation branch
-            for setting, branch in zip(branch_settings, branches):
+            for i, (setting, branch) in enumerate(
+                    zip(branch_settings, branches), 1):
+                self.logger.info(
+                    f"Processing calculation branch {i}/{len(branches)} (ID: {branch.oid})")
                 branch = self._run_single_calculation(setting, branch)
 
             # Determine final status
@@ -77,6 +84,8 @@ class CalculationService:
             calculation = CalculationRepository.get_by_id(
                 self.session, calculation.oid)
 
+            self.logger.info(
+                f"Calculation {calculation.oid} completed with final status: {status.name}")
             return calculation
 
         except BaseException as e:
@@ -106,11 +115,17 @@ class CalculationService:
         api_client = OQCalculationAPI(self.config)
 
         # Prepare calculation files
+        self.logger.debug(
+            f"Preparing calculation files for branch {branch.oid}")
         files = assemble_calculation_input(setting.config, self.session)
         api_client.add_calc_files(*files)
 
         # Run calculation and wait for completion
+        self.logger.info(
+            f"Submitting calculation branch {branch.oid} to OpenQuake engine")
         final_status = api_client.run()
+        self.logger.info(
+            f"OpenQuake calculation for branch {branch.oid} finished with status: {final_status}")
 
         # Update branch status
         status = EStatus[final_status.upper()]
@@ -127,8 +142,9 @@ class CalculationService:
 
         # Save results if calculation completed successfully
         if branch.status == EStatus.COMPLETE:
-            LOGGER.info(f'Saving results for calculation branch {branch.oid} '
-                        f'with weight {branch.weight}')
+            self.logger.info(
+                f'Saving results for calculation branch {branch.oid} '
+                f'with weight {branch.weight}')
             results_service = ResultsService(self.session, api_client)
             results_service.save_calculation_results(branch)
 
