@@ -114,6 +114,12 @@ class CalculationService:
 
         # Update branch status
         status = EStatus[final_status.upper()]
+
+        # Log OpenQuake traceback if calculation failed
+        if status == EStatus.FAILED:
+            api_client.log_error_with_traceback(
+                f"OpenQuake calculation failed for branch {branch.oid}")
+
         branch = self.status_tracker.update_status(
             branch,
             status,

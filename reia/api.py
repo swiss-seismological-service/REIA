@@ -114,6 +114,31 @@ class OQCalculationAPI(APIConnection):
         response.raise_for_status()
         return response.json()
 
+    def log_error_with_traceback(
+            self, context: str = "OpenQuake calculation failed") -> None:
+        """Log calculation error with OpenQuake traceback.
+
+        Args:
+            context: Context message for the error
+        """
+        try:
+            traceback_lines = self.get_traceback()
+
+            if traceback_lines:
+                traceback_text = "\n".join(traceback_lines)
+                self.logger.error(
+                    f"{context} (calc_id: {self.id})\n"
+                    f"OpenQuake Traceback:\n{traceback_text}"
+                )
+            else:
+                self.logger.error(
+                    f"{context} (calc_id: {self.id}) - No traceback available")
+
+        except Exception as e:
+            self.logger.error(
+                f"{context} (calc_id: {self.id}) - "
+                f"Failed to fetch traceback: {e}")
+
     def abort(self) -> str:
         """Abort the running calculation.
 
