@@ -10,6 +10,7 @@ from reia.repositories.calculation import (CalculationBranchRepository,
 from reia.schemas.calculation_schemas import CalculationBranchSettings
 from reia.schemas.enums import EStatus
 from reia.services.results import ResultsService
+from reia.services.status_tracker import StatusTracker
 from settings import get_config
 
 LOGGER = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ class CalculationService:
     def __init__(self, session: Session):
         self.session = session
         self.config = get_config()
+        self.status_tracker = StatusTracker(session)
 
     def run_calculations(
             self,
@@ -53,8 +55,10 @@ class CalculationService:
 
         try:
             # Update calculation status to executing
-            calculation = CalculationRepository.update_status(
-                self.session, calculation.oid, EStatus.EXECUTING)
+            calculation = self.status_tracker.update_status(
+                calculation,
+                EStatus.EXECUTING,
+                "Starting calculation processing")
 
             # Process each calculation branch
             for setting, branch in zip(branch_settings, branches):
@@ -64,12 +68,12 @@ class CalculationService:
             branches = [CalculationBranchRepository.get_by_id(
                 self.session, b.oid) for b in branches]
 
-            status = (EStatus.COMPLETE if all(
-                b.status == EStatus.COMPLETE for b in branches)
-                else EStatus.FAILED)
-
-            calculation = CalculationRepository.update_status(
-                self.session, calculation.oid, status)
+            status = self.status_tracker.validate_calculation_completion(
+                branches)
+            calculation = self.status_tracker.update_status(
+                calculation,
+                status,
+                "All calculation branches completed")
             calculation = CalculationRepository.get_by_id(
                 self.session, calculation.oid)
 
@@ -110,15 +114,15 @@ class CalculationService:
 
         # Update branch status
         status = EStatus[final_status.upper()]
-        branch = CalculationBranchRepository.update_status(
-            self.session, branch.oid, status)
-
-        print(f'Calculation finished with status "{EStatus(branch.status)}".')
+        branch = self.status_tracker.update_status(
+            branch,
+            status,
+            f"OpenQuake calculation completed with status: {final_status}")
 
         # Save results if calculation completed successfully
         if branch.status == EStatus.COMPLETE:
-            print(f'Saving results for calculation branch {branch.oid} '
-                  f'with weight {branch.weight}')
+            LOGGER.info(f'Saving results for calculation branch {branch.oid} '
+                        f'with weight {branch.weight}')
             results_service = ResultsService(self.session, api_client)
             results_service.save_calculation_results(branch)
 

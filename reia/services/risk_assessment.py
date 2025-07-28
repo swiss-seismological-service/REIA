@@ -7,6 +7,7 @@ from reia.schemas.calculation_schemas import (CalculationBranchSettings,
                                               RiskAssessment)
 from reia.schemas.enums import EEarthquakeType, EStatus
 from reia.services.calculation import CalculationService
+from reia.services.status_tracker import StatusTracker
 
 
 class RiskAssessmentService:
@@ -14,6 +15,7 @@ class RiskAssessmentService:
 
     def __init__(self, session):
         self.session = session
+        self.status_tracker = StatusTracker(session)
 
     def run_risk_assessment(self, originid: str, loss_config_path: str,
                             damage_config_path: str) -> RiskAssessment:
@@ -41,28 +43,33 @@ class RiskAssessmentService:
 
         try:
             # Update status to executing
-            risk_assessment = \
-                RiskAssessmentRepository.update_risk_assessment_status(
-                    self.session, risk_assessment.oid, EStatus.EXECUTING)
+            risk_assessment = self.status_tracker.update_status(
+                risk_assessment,
+                EStatus.EXECUTING,
+                "Starting risk assessment processing")
 
             # Run loss calculation
             loss_calculation = self._run_loss_calculation(loss_config_path)
             risk_assessment.losscalculation_oid = loss_calculation.oid
+            risk_assessment = RiskAssessmentRepository.update(
+                self.session, risk_assessment)
 
             # Run damage calculation
             damage_calculation = self._run_damage_calculation(
                 damage_config_path)
             risk_assessment.damagecalculation_oid = damage_calculation.oid
-
-            # Determine final status based on calculation results
-            final_status = EStatus.COMPLETE if all([
-                loss_calculation.status == EStatus.COMPLETE,
-                damage_calculation.status == EStatus.COMPLETE
-            ]) else EStatus.FAILED
-
-            risk_assessment.status = final_status
             risk_assessment = RiskAssessmentRepository.update(
                 self.session, risk_assessment)
+
+            # Determine final status based on calculation results
+            final_status = \
+                self.status_tracker.validate_risk_assessment_completion(
+                    loss_calculation, damage_calculation)
+
+            risk_assessment = self.status_tracker.update_status(
+                risk_assessment,
+                final_status,
+                "Risk assessment calculations completed")
 
             return risk_assessment
 
@@ -70,8 +77,9 @@ class RiskAssessmentService:
             # Handle failures and keyboard interrupts
             status = EStatus.ABORTED if isinstance(
                 e, KeyboardInterrupt) else EStatus.FAILED
-            RiskAssessmentRepository.update_risk_assessment_status(
-                self.session, risk_assessment.oid, status)
+            self.status_tracker.update_status(risk_assessment,
+                                              status,
+                                              f"Exception occurred: {str(e)}")
             traceback.print_exc()
             raise
 
