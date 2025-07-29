@@ -1,5 +1,4 @@
 import os
-import re
 import xml.etree.ElementTree as ET
 from typing import TextIO
 
@@ -9,6 +8,7 @@ from reia.io import ASSETS_COLS_MAPPING
 from reia.schemas.exposure_schema import ExposureModel
 from reia.schemas.fragility_schemas import FragilityModel
 from reia.schemas.vulnerability_schemas import VulnerabilityModel
+from reia.utils import clean_array
 
 
 def parse_assets(file: TextIO, tagnames: list[str]) -> pd.DataFrame:
@@ -82,16 +82,8 @@ def parse_exposure(file: TextIO) -> tuple[ExposureModel, pd.DataFrame]:
     with open(asset_csv, 'r') as f:
         assets = parse_assets(f, model['aggregationtypes'])
 
-    return ExposureModel(**model), assets
-
-
-def clean_array(text: str) -> str:
-    return re.sub("\\s\\s+", " ", text).strip()
-
-
-def parse_taxonomy_map(file: TextIO) -> dict:
-    df = pd.read_csv(file)
-    return df
+    model = ExposureModel.model_validate(model)
+    return model, assets
 
 
 def parse_fragility(file: TextIO) -> dict:

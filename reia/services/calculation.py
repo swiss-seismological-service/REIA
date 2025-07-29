@@ -1,21 +1,21 @@
 import configparser
 from itertools import groupby
-from sqlalchemy.orm import Session
 
 import pandas as pd
+from sqlalchemy.orm import Session
 
-from reia.api import OQCalculationAPI
 from reia.io import (CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING,
                      FRAGILITY_FK_MAPPING, VULNERABILITY_FK_MAPPING)
-from reia.services.file_generation import assemble_calculation_input
-from reia.utils import flatten_config
 from reia.repositories.calculation import (CalculationBranchRepository,
                                            CalculationRepository)
 from reia.schemas.calculation_schemas import CalculationBranchSettings
 from reia.schemas.enums import EStatus
+from reia.services.file_generation import assemble_calculation_input
 from reia.services.logger import LoggerService
+from reia.services.oq_api import OQCalculationAPI
 from reia.services.results import ResultsService
 from reia.services.status_tracker import StatusTracker
+from reia.utils import flatten_config
 from settings import get_config
 
 

@@ -10,9 +10,7 @@ from shapely.geometry.polygon import Polygon
 from sqlalchemy import text
 from typing_extensions import Annotated
 
-from reia.api import OQCalculationAPI
-from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
-                          parse_vulnerability)
+from reia.io.read import parse_exposure, parse_fragility, parse_vulnerability
 from reia.repositories import DatabaseSession, drop_db, init_db, init_db_file
 from reia.repositories.asset import (AggregationGeometryRepository,
                                      ExposureModelRepository, SiteRepository)
@@ -31,6 +29,7 @@ from reia.services.file_generation import (assemble_calculation_input,
                                            create_fragility_input,
                                            create_taxonomymap_input,
                                            create_vulnerability_input)
+from reia.services.oq_api import OQCalculationAPI
 from reia.services.risk_assessment import RiskAssessmentService
 from settings import get_config
 
@@ -290,8 +289,9 @@ def add_taxonomymap(map_file: Path, name: str):
     '''
     Add a taxonomy mapping model.
     '''
-    with open(map_file, 'r') as f:
-        mapping = parse_taxonomy_map(f)
+    # with open(map_file, 'r') as f:
+    #     mapping = parse_taxonomy_map(f)
+    mapping = pd.read_csv(map_file)
 
     with DatabaseSession() as session:
         taxonomy_map = TaxonomyMapRepository.insert_many(session,

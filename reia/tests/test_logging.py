@@ -75,7 +75,7 @@ class TestOQCalculationAPILogging:
 
     def test_log_error_with_traceback_success(self):
         """Test successful traceback logging."""
-        from reia.api import OQCalculationAPI
+        from reia.services.oq_api import OQCalculationAPI
         from settings import get_config
 
         # Create API instance with mocked session
@@ -101,7 +101,7 @@ class TestOQCalculationAPILogging:
 
     def test_log_error_with_traceback_no_traceback(self):
         """Test logging when no traceback is available."""
-        from reia.api import OQCalculationAPI
+        from reia.services.oq_api import OQCalculationAPI
         from settings import get_config
 
         config = get_config()

@@ -6,13 +6,13 @@ from openquake.commonlib.datastore import DataStore
 from openquake.risklib.scientific import LOSSTYPE
 from sqlalchemy.orm import Session
 
-from reia.api import OQCalculationAPI
 from reia.datamodel import CalculationBranch, ELossCategory
 from reia.io import RISK_COLUMNS_MAPPING
 from reia.repositories.asset import AggregationTagRepository
 from reia.repositories.lossvalue import RiskValueRepository
 from reia.schemas.enums import ERiskType
 from reia.services.logger import LoggerService
+from reia.services.oq_api import OQCalculationAPI
 from settings import get_config
 
 

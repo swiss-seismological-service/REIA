@@ -1,6 +1,7 @@
 import ast
 import configparser
 import io
+import re
 import sys
 from pathlib import Path
 from typing import Any, TextIO
@@ -164,3 +165,7 @@ def create_file_pointer_dataframe(df: pd.DataFrame,
     buffer.seek(0)
     buffer.name = name
     return buffer
+
+
+def clean_array(text: str) -> str:
+    return re.sub("\\s\\s+", " ", text).strip()

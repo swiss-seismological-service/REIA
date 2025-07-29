@@ -2,7 +2,7 @@ import time
 from io import StringIO
 from pathlib import Path
 
-from reia.api import OQCalculationAPI
+from reia.services.oq_api import OQCalculationAPI
 from settings import get_config
 
 
