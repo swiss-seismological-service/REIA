@@ -34,8 +34,8 @@ class ResultsService:
             Exception: If result retrieval or saving fails
         """
         # Get calculation data using OQCalculationAPI
-        self.logger.info(
-            f"Retrieving results for calculation branch {calculationbranch.oid}")
+        self.logger.info("Retrieving results for calculation "
+                         f"branch {calculationbranch.oid}")
         dstore = self.api_client.get_result()
         oq_parameter_inputs = dstore['oqparam']
 
@@ -53,8 +53,8 @@ class ResultsService:
         risk_type = ERiskType(oq_parameter_inputs.calculation_mode)
 
         # Retrieve and enrich risk values
-        self.logger.debug(
-            f"Extracting {risk_type.name} risk values from OpenQuake datastore")
+        self.logger.debug(f"Extracting {risk_type.name} risk "
+                          "values from OpenQuake datastore")
         risk_values = get_risk_from_dstore(dstore, risk_type)
         risk_values = risk_values.copy()  # If risk_values is shared elsewhere
         self.logger.debug(f"Retrieved {len(risk_values)} risk value records")
@@ -85,9 +85,10 @@ class ResultsService:
 
         # Save to database
         self.logger.debug(
-            f"Saving {len(risk_values)} risk values and {len(df_agg_val)} aggregation mappings to database")
+            f"Saving {len(risk_values)} risk values and "
+            f"{len(df_agg_val)} aggregation mappings to database")
         RiskValueRepository.insert_many(
             self.session, risk_values, df_agg_val)
 
-        self.logger.info(
-            f"Successfully saved results for calculation branch {calculationbranch.oid}")
+        self.logger.info("Successfully saved results for "
+                         f"calculation branch {calculationbranch.oid}")

@@ -2,11 +2,11 @@ import configparser
 from pathlib import Path
 
 from reia.repositories.calculation import RiskAssessmentRepository
-from reia.services.logger import LoggerService
 from reia.schemas.calculation_schemas import (CalculationBranchSettings,
                                               RiskAssessment)
 from reia.schemas.enums import EEarthquakeType, EStatus
 from reia.services.calculation import CalculationService
+from reia.services.logger import LoggerService
 from reia.services.status_tracker import StatusTracker
 
 
@@ -17,7 +17,7 @@ class RiskAssessmentService:
         # Initialize logging for risk assessment workflows
         LoggerService.setup_logging()
         self.logger = LoggerService.get_logger(__name__)
-        
+
         self.session = session
         self.status_tracker = StatusTracker(session)
 
@@ -38,7 +38,7 @@ class RiskAssessmentService:
         """
         # Create initial risk assessment record
         self.logger.info(f"Starting risk assessment workflow for {originid}")
-        
+
         risk_assessment = RiskAssessment(
             originid=originid,
             type=EEarthquakeType.NATURAL,
@@ -55,21 +55,25 @@ class RiskAssessmentService:
                 "Starting risk assessment processing")
 
             # Run loss calculation
-            self.logger.info(f"Starting loss calculation for risk assessment {risk_assessment.oid}")
+            self.logger.info("Starting loss calculation for risk "
+                             f"assessment {risk_assessment.oid}")
             loss_calculation = self._run_loss_calculation(loss_config_path)
             risk_assessment.losscalculation_oid = loss_calculation.oid
             risk_assessment = RiskAssessmentRepository.update(
                 self.session, risk_assessment)
-            self.logger.info(f"Loss calculation completed with status: {loss_calculation.status.name}")
+            self.logger.info("Loss calculation completed with "
+                             f"status: {loss_calculation.status.name}")
 
             # Run damage calculation
-            self.logger.info(f"Starting damage calculation for risk assessment {risk_assessment.oid}")
+            self.logger.info("Starting damage calculation for "
+                             f"risk assessment {risk_assessment.oid}")
             damage_calculation = self._run_damage_calculation(
                 damage_config_path)
             risk_assessment.damagecalculation_oid = damage_calculation.oid
             risk_assessment = RiskAssessmentRepository.update(
                 self.session, risk_assessment)
-            self.logger.info(f"Damage calculation completed with status: {damage_calculation.status.name}")
+            self.logger.info("Damage calculation completed with "
+                             f"status: {damage_calculation.status.name}")
 
             # Determine final status based on calculation results
             final_status = \
@@ -81,18 +85,19 @@ class RiskAssessmentService:
                 final_status,
                 "Risk assessment calculations completed")
 
-            self.logger.info(f"Risk assessment {originid} completed with final status: {final_status.name}")
+            self.logger.info(f"Risk assessment {originid} completed with "
+                             f"final status: {final_status.name}")
             return risk_assessment
 
         except BaseException as e:
             # Handle failures and keyboard interrupts
             status = EStatus.ABORTED if isinstance(
                 e, KeyboardInterrupt) else EStatus.FAILED
-            
+
             # Log the error with context
-            self.logger.error(f"Risk assessment {originid} failed: {str(e)}", 
-                            exc_info=True)
-                            
+            self.logger.error(f"Risk assessment {originid} failed: {str(e)}",
+                              exc_info=True)
+
             self.status_tracker.update_status(risk_assessment,
                                               status,
                                               f"Exception occurred: {str(e)}")

@@ -40,8 +40,8 @@ class CalculationService:
             Exception: If validation or calculation fails
         """
         # Validate inputs
-        self.logger.info(
-            f"Starting calculation workflow with {len(branch_settings)} branches")
+        self.logger.info("Starting calculation workflow with "
+                         f"{len(branch_settings)} branches")
         validate_calculation_input(branch_settings)
 
         # Parse calculation information
@@ -68,7 +68,8 @@ class CalculationService:
             for i, (setting, branch) in enumerate(
                     zip(branch_settings, branches), 1):
                 self.logger.info(
-                    f"Processing calculation branch {i}/{len(branches)} (ID: {branch.oid})")
+                    "Processing calculation branch "
+                    f"{i}/{len(branches)} (ID: {branch.oid})")
                 branch = self._run_single_calculation(setting, branch)
 
             # Determine final status
@@ -85,7 +86,8 @@ class CalculationService:
                 self.session, calculation.oid)
 
             self.logger.info(
-                f"Calculation {calculation.oid} completed with final status: {status.name}")
+                f"Calculation {calculation.oid} completed "
+                f"with final status: {status.name}")
             return calculation
 
         except BaseException as e:
@@ -124,8 +126,8 @@ class CalculationService:
         self.logger.info(
             f"Submitting calculation branch {branch.oid} to OpenQuake engine")
         final_status = api_client.run()
-        self.logger.info(
-            f"OpenQuake calculation for branch {branch.oid} finished with status: {final_status}")
+        self.logger.info(f"OpenQuake calculation for branch {branch.oid} "
+                         f"finished with status: {final_status}")
 
         # Update branch status
         status = EStatus[final_status.upper()]
