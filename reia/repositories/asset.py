@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from sqlalchemy import case, delete, func, select, true
+from sqlalchemy import case, delete, func, select, text, true
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -94,7 +94,7 @@ class AssetRepository(repository_factory(
                                   assets: pd.DataFrame,
                                   aggregationtags: pd.DataFrame,
                                   assoc_assets_tags: pd.DataFrame
-                                  ) -> list[int]:
+                                  ) -> tuple[list[int], list[int]]:
         """Insert assets and their associated tags into the database.
         Args:
             session: SQLAlchemy session.
@@ -104,7 +104,7 @@ class AssetRepository(repository_factory(
             assoc_assets_tags: DataFrame mapping assets to tags.
 
         Returns:
-            List of OIDs of the inserted assets.
+            List of OIDs of the inserted assets and sites.
         """
 
         sites_oids = SiteRepository.insert_many(session, sites)
@@ -121,7 +121,13 @@ class AssetRepository(repository_factory(
 
         AssetAggregationTagRepository.insert_many(session, assoc_assets_tags)
 
-        return assets_oids
+        # Refresh materialized views after asset insertion
+        session.execute(
+            text('REFRESH MATERIALIZED VIEW CONCURRENTLY '
+                 'loss_buildings_per_municipality'))
+        session.commit()
+
+        return assets_oids, sites_oids
 
 
 class SiteRepository(repository_factory(

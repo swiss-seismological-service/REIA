@@ -1,19 +1,15 @@
 import configparser
 from pathlib import Path
 
-import geopandas as gpd
 import pandas as pd
-import shapely
 import typer
-from shapely.geometry.multipolygon import MultiPolygon
-from shapely.geometry.polygon import Polygon
-from sqlalchemy import text
 from typing_extensions import Annotated
 
-from reia.io.read import parse_exposure, parse_fragility, parse_vulnerability
+from reia.io.read import (parse_exposure, parse_fragility,
+                          parse_shapefile_geometries, parse_vulnerability)
 from reia.repositories import DatabaseSession, drop_db, init_db, init_db_file
 from reia.repositories.asset import (AggregationGeometryRepository,
-                                     ExposureModelRepository, SiteRepository)
+                                     ExposureModelRepository)
 from reia.repositories.calculation import (CalculationRepository,
                                            RiskAssessmentRepository)
 from reia.repositories.fragility import (FragilityModelRepository,
@@ -22,8 +18,8 @@ from reia.repositories.vulnerability import VulnerabilityModelRepository
 from reia.schemas.calculation_schemas import (CalculationBranchSettings,
                                               RiskAssessment)
 from reia.schemas.enums import EEarthquakeType
-from reia.services.assets import create_assets
 from reia.services.calculation import CalculationService
+from reia.services.exposure import create_exposure_with_assets
 from reia.services.file_generation import (assemble_calculation_input,
                                            create_exposure_input,
                                            create_fragility_input,
@@ -92,18 +88,11 @@ def add_exposure(exposure: Path, name: str):
     exposure.name = name
 
     with DatabaseSession() as session:
-        exposuremodel = ExposureModelRepository.create(session, exposure)
-
-        assets_oids = create_assets(assets, exposuremodel.oid, session)
-        sites = SiteRepository.get_by_exposuremodel(session, exposuremodel.oid)
+        exposuremodel, assets_oids, sites_oids = \
+            create_exposure_with_assets(session, exposure, assets)
 
         typer.echo(f'Created asset collection with ID {exposuremodel.oid} and '
-                   f'{len(sites)} sites with {len(assets_oids)} assets.')
-
-        session.execute(
-            text('REFRESH MATERIALIZED VIEW CONCURRENTLY '
-                 'loss_buildings_per_municipality'))
-        session.commit()
+                   f'{len(sites_oids)} sites with {len(assets_oids)} assets.')
 
     return exposuremodel.oid
 
@@ -114,7 +103,6 @@ def delete_exposure(exposuremodel_oid: int):
     Delete an exposure model.
     '''
     with DatabaseSession() as session:
-        # crud.delete_asset_collection(asset_collection_oid, session)
         ExposureModelRepository.delete(session, exposuremodel_oid)
     typer.echo(
         f'Deleted exposure model with ID {exposuremodel_oid}.')
@@ -180,20 +168,14 @@ def add_exposure_geometries(
 
     The geometries are added to the exposuremodel and connected to the
     respective aggregationtag of the given aggregationtype.
-    Required columns in the shapefile are:\n
-    - tag: the aggregationtag\n
-    - name: the name of the geometry\n
+    Required columns in the shapefile are:
+    - tag: the aggregationtag
+    - name: the name of the geometry
     - geometry: the geometry
     '''
-    gdf = pd.DataFrame(gpd.read_file(filename))
-
-    gdf['geometry'] = gdf['geometry'].apply(
-        lambda x: MultiPolygon([x]) if isinstance(x, Polygon) else x)
-    gdf['geometry'] = gdf['geometry'].apply(lambda x: shapely.force_2d(x).wkt)
-
-    gdf = gdf[[tag_column_name, 'geometry', 'name']]
-    gdf = gdf.rename(columns={tag_column_name: 'aggregationtag'})
-    gdf['_aggregationtype'] = aggregationtype
+    gdf = parse_shapefile_geometries(filename,
+                                     tag_column_name,
+                                     aggregationtype)
 
     with DatabaseSession() as session:
         geometry_ids = AggregationGeometryRepository.insert_many(session,
@@ -220,8 +202,8 @@ def add_fragility(fragility: Path, name: str):
 
     with open(fragility, 'r') as f:
         model = parse_fragility(f)
-
     model.name = name
+
     with DatabaseSession() as session:
         fragility_model = FragilityModelRepository.create(session, model)
     typer.echo(
@@ -289,8 +271,6 @@ def add_taxonomymap(map_file: Path, name: str):
     '''
     Add a taxonomy mapping model.
     '''
-    # with open(map_file, 'r') as f:
-    #     mapping = parse_taxonomy_map(f)
     mapping = pd.read_csv(map_file)
 
     with DatabaseSession() as session:

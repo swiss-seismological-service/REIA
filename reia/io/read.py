@@ -1,8 +1,13 @@
 import os
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from typing import TextIO
 
+import geopandas as gpd
 import pandas as pd
+import shapely
+from shapely.geometry.multipolygon import MultiPolygon
+from shapely.geometry.polygon import Polygon
 
 from reia.io import ASSETS_COLS_MAPPING
 from reia.schemas.exposure_schema import ExposureModel
@@ -86,7 +91,7 @@ def parse_exposure(file: TextIO) -> tuple[ExposureModel, pd.DataFrame]:
     return model, assets
 
 
-def parse_fragility(file: TextIO) -> dict:
+def parse_fragility(file: TextIO) -> FragilityModel:
     model = {}
     model['fragilityfunctions'] = []
 
@@ -145,7 +150,7 @@ def parse_fragility(file: TextIO) -> dict:
     return model
 
 
-def parse_vulnerability(file: TextIO) -> dict:
+def parse_vulnerability(file: TextIO) -> VulnerabilityModel:
     model = {}
     model['vulnerabilityfunctions'] = []
 
@@ -187,6 +192,33 @@ def parse_vulnerability(file: TextIO) -> dict:
     model = VulnerabilityModel.model_validate(model)
 
     return model
+
+
+def parse_shapefile_geometries(
+        filename: Path,
+        tag_column_name: str,
+        aggregationtype: str) -> pd.DataFrame:
+    """Parse a shapefile and prepare geometries for database insertion.
+
+    Args:
+        filename: Path to the shapefile.
+        tag_column_name: Name of the aggregation tag column.
+        aggregationtype: Type of the aggregation.
+
+    Returns:
+        DataFrame prepared for AggregationGeometryRepository.insert_many().
+    """
+    gdf = pd.DataFrame(gpd.read_file(filename))
+
+    gdf['geometry'] = gdf['geometry'].apply(
+        lambda x: MultiPolygon([x]) if isinstance(x, Polygon) else x)
+    gdf['geometry'] = gdf['geometry'].apply(lambda x: shapely.force_2d(x).wkt)
+
+    gdf = gdf[[tag_column_name, 'geometry', 'name']]
+    gdf = gdf.rename(columns={tag_column_name: 'aggregationtag'})
+    gdf['_aggregationtype'] = aggregationtype
+
+    return gdf
 
 
 def combine_assets(files: list[str]) -> pd.DataFrame:

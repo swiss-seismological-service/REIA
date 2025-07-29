@@ -54,56 +54,6 @@ def import_string(import_name: str, silent: bool = False) -> Any:
     return None
 
 
-def sites_from_assets(assets: pd.DataFrame) -> tuple[pd.DataFrame, list[int]]:
-    """Extract sites from assets dataframe.
-
-    Args:
-        assets: Dataframe of assets with 'longitude' and 'latitude' column.
-
-    Returns:
-        DataFrame of `n` unique Sites and list of `len(assets)` indices
-        mapping each asset to its corresponding site.
-    """
-    site_keys = list(zip(assets['longitude'], assets['latitude']))
-    group_indices, unique_keys = pd.factorize(site_keys)
-    unique_sites = pd.DataFrame(unique_keys.tolist(),
-                                columns=['longitude', 'latitude'])
-    return unique_sites, group_indices.tolist()
-
-
-def normalize_assets_tags(df: pd.DataFrame,
-                          asset_cols: list[str],
-                          tag_cols: list[str]) -> tuple[pd.DataFrame,
-                                                        pd.DataFrame,
-                                                        pd.DataFrame]:
-    """Split a DataFrame into asset values and normalized tags."""
-    asset_df = df[asset_cols].copy()
-
-    # Melt tag columns into long format
-    tag_df = (
-        df[tag_cols]
-        .reset_index(drop=True)
-        .melt(ignore_index=False, var_name='type', value_name='name')
-        .reset_index().rename(columns={'index': 'asset'})
-    )
-
-    tag_table, mapping_df = normalize_tags(tag_df)
-    return asset_df, tag_table, mapping_df
-
-
-def normalize_tags(tag_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Normalize (type, name) pairs using pd.factorize."""
-    tag_idx, unique_tags = pd.factorize(
-        list(zip(tag_df['type'], tag_df['name'])))
-    tag_table = pd.DataFrame(unique_tags.tolist(), columns=['type', 'name'])
-
-    mapping_df = tag_df[['asset', 'type']].copy()
-    mapping_df['aggregationtag'] = tag_idx
-    mapping_df.rename(columns={'type': 'aggregationtype'}, inplace=True)
-
-    return tag_table, mapping_df
-
-
 def flatten_config(file: TextIO) -> dict:
 
     if not isinstance(file, configparser.ConfigParser):
