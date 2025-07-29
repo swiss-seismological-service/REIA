@@ -10,14 +10,9 @@ from shapely.geometry.polygon import Polygon
 from sqlalchemy import text
 from typing_extensions import Annotated
 
-from reia.services.calculation import CalculationService
 from reia.api import OQCalculationAPI
-from settings import get_config
 from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
                           parse_vulnerability)
-from reia.io.write import (assemble_calculation_input, create_exposure_input,
-                           create_fragility_input, create_taxonomymap_input,
-                           create_vulnerability_input)
 from reia.repositories import DatabaseSession, drop_db, init_db, init_db_file
 from reia.repositories.asset import (AggregationGeometryRepository,
                                      ExposureModelRepository, SiteRepository)
@@ -30,7 +25,14 @@ from reia.schemas.calculation_schemas import (CalculationBranchSettings,
                                               RiskAssessment)
 from reia.schemas.enums import EEarthquakeType
 from reia.services.assets import create_assets
+from reia.services.calculation import CalculationService
+from reia.services.file_generation import (assemble_calculation_input,
+                                           create_exposure_input,
+                                           create_fragility_input,
+                                           create_taxonomymap_input,
+                                           create_vulnerability_input)
 from reia.services.risk_assessment import RiskAssessmentService
+from settings import get_config
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()

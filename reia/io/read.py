@@ -1,20 +1,14 @@
-import configparser
 import os
 import re
 import xml.etree.ElementTree as ET
-from itertools import groupby
 from typing import TextIO
 
 import pandas as pd
 
-from reia.io import (ASSETS_COLS_MAPPING, CALCULATION_BRANCH_MAPPING,
-                     CALCULATION_MAPPING, FRAGILITY_FK_MAPPING,
-                     VULNERABILITY_FK_MAPPING)
-from reia.schemas.calculation_schemas import CalculationBranchSettings
+from reia.io import ASSETS_COLS_MAPPING
 from reia.schemas.exposure_schema import ExposureModel
 from reia.schemas.fragility_schemas import FragilityModel
 from reia.schemas.vulnerability_schemas import VulnerabilityModel
-from reia.utils import flatten_config
 
 
 def parse_assets(file: TextIO, tagnames: list[str]) -> pd.DataFrame:
@@ -201,171 +195,6 @@ def parse_vulnerability(file: TextIO) -> dict:
     model = VulnerabilityModel.model_validate(model)
 
     return model
-
-
-def equal_section_options(configs: list[configparser.ConfigParser], name: str):
-    """Returns True if all configparsers have consistent section options.
-
-    Args:
-        configs: List of configparser objects to compare.
-        name: Name of the section to check.
-
-    Returns:
-        True if all configparsers have:
-            - The same section and the same option keys inside this section.
-            - All don't have the section.
-    """
-
-    has_any = any(c.has_section(name) for c in configs)
-
-    if not has_any:
-        return True
-
-    has_all = all(c.has_section(name) for c in configs)
-
-    if not has_all:
-        return False
-
-    g = groupby(dict(c[name]).keys() for c in configs)
-    return next(g, True) and not next(g, False)
-
-
-def equal_option_value(
-        configs: list[configparser.ConfigParser], section: str, name: str):
-    """Returns True if all configparsers have consistent option values.
-
-    Args:
-        configs: List of configparser objects to compare.
-        section: Name of the section containing the option.
-        name: Name of the option to check.
-
-    Returns:
-        True if all configparsers have:
-            - The same option inside the same section with the same value.
-            - All don't have this option.
-    """
-    has_any = any(c.has_option(section, name) for c in configs)
-
-    if not has_any:
-        return True
-
-    has_all = all(c.has_option(section, name) for c in configs)
-
-    if not has_all:
-        return False
-
-    g = groupby(c[section][name] for c in configs)
-    return next(g, True) and not next(g, False)
-
-
-def validate_calculation_input(
-        branch_settings: list[CalculationBranchSettings]) -> None:
-    """Validate calculation input settings.
-
-    Args:
-        branch_settings: List of calculation branch settings to validate.
-    """
-    # validate weights
-    if not sum([b.weight for b in branch_settings]) == 1:
-        raise ValueError('The sum of the weights for the calculation '
-                         'branches has to be 1.')
-
-    configs = [s.config for s in branch_settings]
-
-    # sort aggregation keys in order to be able to string-compare
-    for config in configs:
-        if config.has_option('general', 'aggregate_by'):
-            sorted_agg = [x.strip() for x in
-                          config['general']['aggregate_by'].split(',')]
-            sorted_agg = ','.join(sorted(sorted_agg))
-            config['general']['aggregate_by'] = sorted_agg
-
-    # validate that the necessary options are consistent over branches
-    if not equal_section_options(configs, 'vulnerability'):
-        raise ValueError('All branches of a calculation need to calculate '
-                         'the same vulnerability loss categories.')
-
-    if not equal_section_options(configs, 'fragility'):
-        raise ValueError('All branches of a calculation need to calculate '
-                         'the same fragility damage categories.')
-
-    if not equal_option_value(configs, 'general', 'aggregate_by'):
-        raise ValueError('Aggregation keys must be the same '
-                         'in all calculation branches.')
-
-    if not equal_option_value(configs, 'general', 'calculation_mode'):
-        raise ValueError('Calculation mode must be the same '
-                         'in all calculation branches.')
-
-
-def parse_calculation_input(branch_settings: list[CalculationBranchSettings]) \
-        -> tuple[dict, list[dict]]:
-    """Parses multiple esloss OQ calculation files.
-
-    Args:
-        branch_settings: List of calculation branch settings to parse.
-
-    Returns:
-        Tuple containing:
-            - Calculation dictionary
-            - List of CalculationBranch dictionaries
-    """
-    calculation = {}
-    calculation_branches = []
-
-    for settings in branch_settings:
-        calculation_branch_setting = {}
-
-        # clean and flatten config
-        flat_job = configparser.ConfigParser()
-        flat_job.read_dict(settings.config)
-        for s in ['vulnerability', 'exposure', 'hazard', 'fragility']:
-            flat_job.remove_section(s)
-        flat_job = flatten_config(flat_job)
-
-        # CALCULATION SETTINGS ###########################################
-        # assign all settings to calculation dict
-        calculation['calculation_mode'] = flat_job.pop('calculation_mode')
-        calculation['description'] = flat_job.pop('description', None)
-        calculation['aggregateby'] = [x.strip() for x in flat_job.pop(
-            'aggregate_by').split(',')] if 'aggregate_by' in flat_job else None
-
-        # BRANCH SETTINGS ###########################################
-        calculation_branch_setting['_exposuremodel_oid'] = \
-            settings.config['exposure']['exposure_file']
-        # vulnerability / fragility functions
-        if calculation['calculation_mode'] == 'scenario_risk':
-            for k, v in settings.config['vulnerability'].items():
-                calculation_branch_setting[VULNERABILITY_FK_MAPPING[k]] = v
-
-        if calculation['calculation_mode'] == 'scenario_damage':
-            for k, v in settings.config['fragility'].items():
-                calculation_branch_setting[FRAGILITY_FK_MAPPING[k]] = v
-
-        # add the mode to distinguish between risk and damage branch
-        calculation_branch_setting['calculation_mode'] = \
-            calculation['calculation_mode']
-
-        # save general config values
-        calculation_branch_setting['config'] = flat_job
-
-        # count number of gmfs of input
-        gmfs = pd.read_csv(settings.config['hazard']['gmfs_csv'])
-        calculation_branch_setting['config'][
-            'number_of_ground_motion_fields'] = len(gmfs.eid.unique())
-
-        # add weight
-        calculation_branch_setting['weight'] = settings.weight
-
-        calculation_branches.append(calculation_branch_setting)
-
-    calculation = CALCULATION_MAPPING[calculation.pop(
-        'calculation_mode')].model_validate(calculation)
-    calculation_branches = [CALCULATION_BRANCH_MAPPING[branch.pop(
-        'calculation_mode')].model_validate(branch)
-        for branch in calculation_branches]
-
-    return (calculation, calculation_branches)
 
 
 def combine_assets(files: list[str]) -> pd.DataFrame:
