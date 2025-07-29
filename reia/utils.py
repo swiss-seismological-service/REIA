@@ -3,10 +3,12 @@ import configparser
 import io
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any, TextIO
 
 import pandas as pd
+import typer
 from jinja2 import Template, select_autoescape
 
 
@@ -119,3 +121,50 @@ def create_file_pointer_dataframe(df: pd.DataFrame,
 
 def clean_array(text: str) -> str:
     return re.sub("\\s\\s+", " ", text).strip()
+
+
+def display_table(title: str, headers: list[str], rows: list[list],
+                  widths: list[int] = None) -> None:
+    """Display a formatted table with automatic column width calculation.
+
+    Args:
+        title: Table title to display above the table.
+        headers: List of column headers.
+        rows: List of rows, where each row is a list of values.
+        widths: Optional list of column widths. If not provided,
+                calculates automatically.
+    """
+    if not rows:
+        typer.echo(title)
+        typer.echo("No items found.")
+        return
+
+    # Calculate column widths if not provided
+    if widths is None:
+        widths = []
+        for i in range(len(headers)):
+            # Get max width needed for this column (header vs data)
+            header_width = len(headers[i])
+            data_width = max(len(str(row[i])) for row in rows)
+            widths.append(max(header_width, data_width) + 2)  # Add padding
+
+    # Format and display title
+    typer.echo(title)
+
+    # Format and display header
+    header_format = ' '.join(f'{{:<{w}}}' for w in widths)
+    typer.echo(header_format.format(*headers))
+
+    # Format and display rows
+    row_format = ' '.join(f'{{:<{w}}}' for w in widths)
+    for row in rows:
+        # Handle None values and format datetime objects
+        formatted_row = []
+        for item in row:
+            if item is None:
+                formatted_row.append('')
+            elif isinstance(item, datetime):
+                formatted_row.append(item.strftime('%Y-%m-%d %H:%M:%S'))
+            else:
+                formatted_row.append(str(item))
+        typer.echo(row_format.format(*formatted_row))

@@ -112,10 +112,9 @@ class CalculationService:
                     self.session.commit()
             raise e
 
-    def _run_single_calculation(
-            self,
-            setting: CalculationBranchSettings,
-            branch):
+    def _run_single_calculation(self,
+                                setting: CalculationBranchSettings,
+                                branch):
         """Run a single calculation branch using OQCalculationAPI.
 
         Args:
@@ -445,3 +444,33 @@ def assemble_calculation_input(session: SessionType,
     calculation_files.append(job_file)
 
     return calculation_files
+
+
+def run_calculation_from_files(session: SessionType,
+                               settings_files: list[str],
+                               weights: list[float]) -> None:
+    """Run OpenQuake calculation from multiple settings files.
+
+    Args:
+        session: Database session.
+        settings_files: List of paths to calculation settings files.
+        weights: List of weights for calculation branches.
+
+    Raises:
+        ValueError: If number of settings files and weights don't match.
+    """
+    # Validate input
+    if len(settings_files) != len(weights):
+        raise ValueError('Number of setting files and weights must be equal.')
+
+    # Parse settings files into CalculationBranchSettings
+    branch_settings = []
+    for weight, settings_file in zip(weights, settings_files):
+        job_file = configparser.ConfigParser()
+        job_file.read(Path(settings_file))
+        branch_settings.append(
+            CalculationBranchSettings(weight=weight, config=job_file))
+
+    # Run calculations using the service
+    calc_service = CalculationService(session)
+    calc_service.run_calculations(branch_settings)

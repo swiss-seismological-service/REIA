@@ -27,20 +27,20 @@ def create_exposure_with_assets(session: SessionType,
         Created ExposureModel with oid and lists of asset and site OIDs.
     """
     exposuremodel = ExposureModelRepository.create(session, exposure)
-    assets_oids, sites_oids = create_assets(assets, exposuremodel.oid, session)
+    assets_oids, sites_oids = create_assets(session, assets, exposuremodel.oid)
     return exposuremodel, assets_oids, sites_oids
 
 
-def create_assets(assets: pd.DataFrame,
-                  exposure_model_oid: int,
-                  session: SessionType) \
+def create_assets(session: SessionType,
+                  assets: pd.DataFrame,
+                  exposure_model_oid: int) \
         -> tuple[list[int], list[int]]:
     """Create assets for an exposure model.
 
     Args:
+        session: Database session.
         assets: DataFrame containing asset data.
         exposure_model_oid: OID of the exposure model.
-        session: Database session.
 
     Returns:
         List of created asset OIDs and site OIDs.
@@ -130,7 +130,7 @@ def _normalize_tag_pairs(
 def add_exposure_from_file(
         session: SessionType,
         file_path: Path,
-        name: str) -> ExposureModel:
+        name: str) -> tuple[ExposureModel, int, int]:
     """Load exposure model from file into data storage layer.
 
     Args:

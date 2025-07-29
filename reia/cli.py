@@ -1,4 +1,3 @@
-import configparser
 from pathlib import Path
 
 import typer
@@ -12,11 +11,10 @@ from reia.repositories.calculation import (CalculationRepository,
 from reia.repositories.fragility import (FragilityModelRepository,
                                          TaxonomyMapRepository)
 from reia.repositories.vulnerability import VulnerabilityModelRepository
-from reia.schemas.calculation_schemas import (CalculationBranchSettings,
-                                              RiskAssessment)
+from reia.schemas.calculation_schemas import RiskAssessment
 from reia.schemas.enums import EEarthquakeType
-from reia.services.calculation import (CalculationService,
-                                       create_calculation_files_to_folder,
+from reia.services.calculation import (create_calculation_files_to_folder,
+                                       run_calculation_from_files,
                                        run_test_calculation)
 from reia.services.exposure import (add_exposure_from_file,
                                     add_geometries_from_shapefile,
@@ -28,6 +26,7 @@ from reia.services.taxonomy import (add_taxonomymap_from_file,
                                     create_taxonomymap_file)
 from reia.services.vulnerability import (add_vulnerability_from_file,
                                          create_vulnerability_file)
+from reia.utils import display_table
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()
@@ -55,80 +54,78 @@ app.add_typer(risk_assessment, name='risk-assessment',
 
 
 @db.command('drop')
-def drop_database():
-    '''
-    Drop all tables.
-    '''
+def drop_database() -> None:
+    """Drop all database tables."""
     drop_db()
-    typer.echo('Tables dropped.')
+    typer.echo('Successfully dropped all database tables.')
 
 
 @db.command('init')
-def initialize_database():
-    '''
-    Create all tables.
-    '''
+def initialize_database() -> None:
+    """Initialize the database by creating all tables."""
     init_db()
-    typer.echo('Tables created.')
+    typer.echo('Successfully initialized database and created all tables.')
 
 
 @db.command('createall')
-def create_all_to_file():
+def create_all_to_file() -> None:
+    """Create all database schema in a file."""
     init_db_file()
+    typer.echo('Successfully created database schema file.')
 
 
 @exposure.command('add')
-def add_exposure(exposure: Path, name: str):
-    '''
-    Add an exposure model.
-    '''
+def add_exposure(
+    exposure: Annotated[Path, typer.Argument(
+        help='Path to exposure model file')],
+    name: Annotated[str, typer.Argument(
+        help='Name for the exposure model')]
+) -> int:
+    """Add an exposure model from file."""
     with DatabaseSession() as session:
         exposuremodel, assets_count, sites_count = add_exposure_from_file(
             session, exposure, name)
 
-    typer.echo(f'Created asset collection with ID {exposuremodel.oid} and '
-               f'{sites_count} sites with {assets_count} assets.')
+    typer.echo(
+        f'Successfully created exposure model with ID {exposuremodel.oid} '
+        f'containing {assets_count} assets across {sites_count} sites.')
 
     return exposuremodel.oid
 
 
 @exposure.command('delete')
-def delete_exposure(exposuremodel_oid: int):
-    '''
-    Delete an exposure model.
-    '''
+def delete_exposure(
+    exposuremodel_oid: Annotated[int, typer.Argument(
+        help='ID of exposure model to delete')]
+) -> None:
+    """Delete an exposure model."""
     with DatabaseSession() as session:
         ExposureModelRepository.delete(session, exposuremodel_oid)
     typer.echo(
-        f'Deleted exposure model with ID {exposuremodel_oid}.')
+        f'Successfully deleted exposure model with ID {exposuremodel_oid}.')
 
 
 @exposure.command('list')
-def list_exposure():
-    '''
-    List all exposure models.
-    '''
+def list_exposure() -> None:
+    """List all exposure models."""
     with DatabaseSession() as session:
         exposuremodels = ExposureModelRepository.get_all(session)
 
-    typer.echo('List of existing asset collections:')
-    typer.echo('{0:<10} {1:<25} {2}'.format(
-        'ID',
-        'Name',
-        'Creationtime'))
+    headers = ['ID', 'Name', 'Created']
+    rows = [[ac.oid, ac.name, ac.creationinfo_creationtime]
+            for ac in exposuremodels]
 
-    for ac in exposuremodels:
-        typer.echo('{0:<10} {1:<25} {2}'.format(
-            ac.oid,
-            ac.name or '',
-            str(ac.creationinfo_creationtime)))
+    display_table('List of existing exposure models:', headers, rows)
 
 
 @exposure.command('create_file')
-def create_exposure(id: int, filename: Path):
-    '''
-    Create input files for an exposure model.
-    '''
+def create_exposure(
+        id: Annotated[int, typer.Argument(
+            help='ID of exposure model')],
+        filename: Annotated[Path, typer.Argument(
+            help='Base path for output files')]
+) -> None:
+    """Create input files for an exposure model."""
     with DatabaseSession() as session:
         success = create_exposure_files(session, id, filename)
 
@@ -136,334 +133,326 @@ def create_exposure(id: int, filename: Path):
         p_xml = filename.with_suffix('.xml')
         p_csv = filename.with_suffix('.csv')
         typer.echo(
-            f'Successfully created file "{str(p_xml)}" and "{str(p_csv)}".')
+            'Successfully created exposure files: '
+            f'"{str(p_xml)}" and "{str(p_csv)}".')
     else:
-        typer.echo('Error occurred, file was not created.')
+        typer.echo('Error: Failed to create exposure files.')
 
 
-@exposure.command('create_geometries')
+@exposure.command('add_geometries')
 def add_exposure_geometries(
-        exposure_id:
-        Annotated[int, typer.Argument(help='ID of the exposure model')],
-        aggregationtype:
-        Annotated[str, typer.Argument(help='type of the aggregation')],
-        tag_column_name:
-        Annotated[str, typer.Argument(
-            help='name of the aggregation tag column')],
-        filename:
-        Annotated[Path, typer.Argument(help='path to the shapefile')]):
-    '''
-    Add geometries to an exposure model.
+        exposure_id: Annotated[int, typer.Argument(
+            help='ID of the exposure model')],
+        aggregationtype: Annotated[str, typer.Argument(
+            help='Type of the aggregation')],
+        tag_column_name: Annotated[str, typer.Argument(
+            help='Name of the aggregation tag column')],
+        filename: Annotated[Path, typer.Argument(
+            help='Path to the shapefile')]
+) -> None:
+    """Add geometries to an exposure model from shapefile.
 
-    The geometries are added to the exposuremodel and connected to the
-    respective aggregationtag of the given aggregationtype.
+    The geometries are added to the exposure model and connected to the
+    respective aggregation tag of the given aggregation type.
     Required columns in the shapefile are:
-    - tag: the aggregationtag
+    - tag: the aggregation tag
     - name: the name of the geometry
     - geometry: the geometry
-    '''
+    """
     with DatabaseSession() as session:
         geometry_count = add_geometries_from_shapefile(
             session, exposure_id, filename, tag_column_name, aggregationtype)
 
     typer.echo(
-        f'Added {geometry_count} geometries to exposure model '
-        f'with ID {exposure_id} and aggregation type "{aggregationtype}".')
+        f'Successfully added {geometry_count} '
+        f'geometries to exposure model {exposure_id} '
+        f'for aggregation type "{aggregationtype}".')
 
 
 @exposure.command('delete_geometries')
-def delete_exposure_geometries(exposure_id: int, aggregationtype: str):
+def delete_exposure_geometries(
+        exposure_id: Annotated[int, typer.Argument(
+            help='ID of exposure model')],
+        aggregationtype: Annotated[str, typer.Argument(
+            help='Aggregation type to delete')]
+) -> None:
+    """Delete geometries from an exposure model."""
     with DatabaseSession() as session:
         AggregationGeometryRepository.delete_by_exposuremodel(
             session, exposure_id, aggregationtype)
+    typer.echo(
+        'Successfully deleted geometries for '
+        f'aggregation type "{aggregationtype}" '
+        f'from exposure model {exposure_id}.')
 
 
 @fragility.command('add')
-def add_fragility(fragility: Path, name: str):
-    '''
-    Add a fragility model.
-    '''
+def add_fragility(
+        fragility: Annotated[Path, typer.Argument(
+            help='Path to fragility model file')],
+        name: Annotated[str, typer.Argument(
+            help='Name for the fragility model')]
+) -> int:
+    """Add a fragility model from file."""
     with DatabaseSession() as session:
         fragility_model = add_fragility_from_file(session, fragility, name)
 
     typer.echo(
-        f'Created fragility model of type "{fragility_model.type}"'
-        f' with ID {fragility_model.oid}.')
+        f'Successfully created fragility model "{fragility_model.type}" '
+        f'with ID {fragility_model.oid}.')
     return fragility_model.oid
 
 
 @fragility.command('delete')
-def delete_fragility(fragility_model_oid: int):
-    '''
-    Delete a fragility model.
-    '''
+def delete_fragility(
+    fragility_model_oid: Annotated[int, typer.Argument(
+        help='ID of fragility model to delete')]
+) -> None:
+    """Delete a fragility model."""
     with DatabaseSession() as session:
         FragilityModelRepository.delete(session, fragility_model_oid)
 
-    typer.echo(f'Deleted fragility model with ID {fragility_model_oid}.')
+    typer.echo(
+        f'Successfully deleted fragility model with ID {fragility_model_oid}.')
 
 
 @fragility.command('list')
-def list_fragility():
-    '''
-    List all fragility models.
-    '''
+def list_fragility() -> None:
+    """List all fragility models."""
     with DatabaseSession() as session:
         fragility_models = FragilityModelRepository.get_all(session)
 
-    typer.echo('List of existing fragility models:')
-    typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
-        'ID',
-        'Name',
-        'Type',
-        'Creationtime'))
+    headers = ['ID', 'Name', 'Type', 'Created']
+    rows = [[vm.oid, vm.name, vm.type, vm.creationinfo_creationtime]
+            for vm in fragility_models]
 
-    for vm in fragility_models:
-        typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
-            vm.oid,
-            vm.name or "",
-            vm.type,
-            str(vm.creationinfo_creationtime)))
+    display_table('List of existing fragility models:', headers, rows)
 
 
 @fragility.command('create_file')
-def create_fragility(id: int, filename: Path):
-    '''
-    Create input file for a fragility model.
-    '''
+def create_fragility(
+        id: Annotated[int, typer.Argument(help='ID of fragility model')],
+        filename: Annotated[Path, typer.Argument(help='Output file path')]
+) -> None:
+    """Create input file for a fragility model."""
     with DatabaseSession() as session:
         success = create_fragility_file(session, id, filename)
 
     if success:
         filename = filename.with_suffix('.xml')
         typer.echo(
-            f'Successfully created file "{str(filename)}".')
+            f'Successfully created fragility file: "{str(filename)}".')
     else:
-        typer.echo('Error occurred, file was not created.')
+        typer.echo('Error: Failed to create fragility file.')
 
 
 @taxonomymap.command('add')
-def add_taxonomymap(map_file: Path, name: str):
-    '''
-    Add a taxonomy mapping model.
-    '''
+def add_taxonomymap(
+        map_file: Annotated[Path, typer.Argument(
+            help='Path to taxonomy mapping CSV file')],
+        name: Annotated[str, typer.Argument(
+            help='Name for the taxonomy mapping')]
+) -> int:
+    """Add a taxonomy mapping from file."""
     with DatabaseSession() as session:
         taxonomy_map = add_taxonomymap_from_file(session, map_file, name)
 
     typer.echo(
-        f'Created taxonomy map with ID {taxonomy_map.oid}.')
+        f'Successfully created taxonomy mapping with ID {taxonomy_map.oid}.')
     return taxonomy_map.oid
 
 
 @taxonomymap.command('delete')
-def delete_taxonomymap(taxonomymap_oid: int):
-    '''
-    Delete a vulnerability model.
-    '''
+def delete_taxonomymap(
+    taxonomymap_oid: Annotated[int, typer.Argument(
+        help='ID of taxonomy mapping to delete')]
+) -> None:
+    """Delete a taxonomy mapping."""
     with DatabaseSession() as session:
         TaxonomyMapRepository.delete(session, taxonomymap_oid)
     typer.echo(
-        f'Deleted taxonomy map with ID {taxonomymap_oid}.')
+        f'Successfully deleted taxonomy mapping with ID {taxonomymap_oid}.')
 
 
 @taxonomymap.command('list')
-def list_taxonomymap():
-    '''
-    List all vulnerability models.
-    '''
+def list_taxonomymap() -> None:
+    """List all taxonomy mappings."""
     with DatabaseSession() as session:
         taxonomy_maps = TaxonomyMapRepository.get_all(session)
 
-    typer.echo('List of existing vulnerability models:')
-    typer.echo('{0:<10} {1:<25} {2}'.format(
-        'ID',
-        'Name',
-        'Creationtime'))
+    headers = ['ID', 'Name', 'Created']
+    rows = [[tm.oid, tm.name, tm.creationinfo_creationtime]
+            for tm in taxonomy_maps]
 
-    for tm in taxonomy_maps:
-        typer.echo('{0:<10} {1:<25} {2}'.format(
-            tm.oid,
-            tm.name or "",
-            str(tm.creationinfo_creationtime)))
+    display_table('List of existing taxonomy mappings:', headers, rows)
 
 
 @taxonomymap.command('create_file')
-def create_taxonomymap(id: int, filename: Path):
-    '''
-    Create input file for a taxonomy mapping.
-    '''
+def create_taxonomymap(
+        id: Annotated[int, typer.Argument(help='ID of taxonomy mapping')],
+        filename: Annotated[Path, typer.Argument(help='Output file path')]
+) -> None:
+    """Create input file for a taxonomy mapping."""
     with DatabaseSession() as session:
         success = create_taxonomymap_file(session, id, filename)
 
     if success:
         filename = filename.with_suffix('.csv')
         typer.echo(
-            f'Successfully created file "{str(filename)}".')
+            f'Successfully created taxonomy mapping file: "{str(filename)}".')
     else:
-        typer.echo('Error occurred, file was not created.')
+        typer.echo('Error: Failed to create taxonomy mapping file.')
 
 
 @vulnerability.command('add')
-def add_vulnerability(vulnerability: Path, name: str):
-    '''
-    Add a vulnerability model.
-    '''
+def add_vulnerability(
+        vulnerability: Annotated[Path, typer.Argument(
+            help='Path to vulnerability model file')],
+        name: Annotated[str, typer.Argument(
+            help='Name for the vulnerability model')]
+) -> int:
+    """Add a vulnerability model from file."""
     with DatabaseSession() as session:
         vulnerability_model = add_vulnerability_from_file(
             session, vulnerability, name)
 
     typer.echo(
-        f'Created vulnerability model of type "{vulnerability_model.type}"'
-        f' with ID {vulnerability_model.oid}.')
+        'Successfully created vulnerability '
+        f'model "{vulnerability_model.type}" '
+        f'with ID {vulnerability_model.oid}.')
     return vulnerability_model.oid
 
 
 @vulnerability.command('delete')
-def delete_vulnerability(vulnerability_model_oid: int):
-    '''
-    Delete a vulnerability model.
-    '''
+def delete_vulnerability(
+    vulnerability_model_oid: Annotated[int, typer.Argument(
+        help='ID of vulnerability model to delete')]
+) -> None:
+    """Delete a vulnerability model."""
     with DatabaseSession() as session:
         VulnerabilityModelRepository.delete(session, vulnerability_model_oid)
     typer.echo(
-        f'Deleted vulnerability model with ID {vulnerability_model_oid}.')
+        'Successfully deleted vulnerability '
+        f'model with ID {vulnerability_model_oid}.')
 
 
 @vulnerability.command('list')
-def list_vulnerability():
-    '''
-    List all vulnerability models.
-    '''
+def list_vulnerability() -> None:
+    """List all vulnerability models."""
     with DatabaseSession() as session:
-        vulnerability_models = \
-            VulnerabilityModelRepository.get_all(session)
-    typer.echo('List of existing vulnerability models:')
-    typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
-        'ID',
-        'Name',
-        'Type',
-        'Creationtime'))
+        vulnerability_models = VulnerabilityModelRepository.get_all(session)
 
-    for vm in vulnerability_models:
-        typer.echo('{0:<10} {1:<25} {2:<50} {3}'.format(
-            vm.oid,
-            vm.name or "",
-            vm.type,
-            str(vm.creationinfo_creationtime)))
+    headers = ['ID', 'Name', 'Type', 'Created']
+    rows = [[vm.oid, vm.name, vm.type, vm.creationinfo_creationtime]
+            for vm in vulnerability_models]
+
+    display_table('List of existing vulnerability models:', headers, rows)
 
 
 @vulnerability.command('create_file')
-def create_vulnerability(id: int, filename: Path):
-    '''
-    Create input file for a vulnerability model.
-    '''
+def create_vulnerability(
+        id: Annotated[int, typer.Argument(help='ID of vulnerability model')],
+        filename: Annotated[Path, typer.Argument(help='Output file path')]
+) -> None:
+    """Create input file for a vulnerability model."""
     with DatabaseSession() as session:
         success = create_vulnerability_file(session, id, filename)
 
     if success:
         filename = filename.with_suffix('.xml')
         typer.echo(
-            f'Successfully created file "{str(filename)}".')
+            f'Successfully created vulnerability file: "{str(filename)}".')
     else:
-        typer.echo('Error occurred, file was not created.')
+        typer.echo('Error: Failed to create vulnerability file.')
 
 
 @calculation.command('create_files')
-def create_calculation_files(target_folder: Path,
-                             settings_file: Path):
-    '''
-    Create all files for an OpenQuake calculation.
-    '''
+def create_calculation_files(
+        target_folder: Annotated[Path, typer.Argument(
+            help='Target folder for calculation files')],
+        settings_file: Annotated[Path, typer.Argument(
+            help='Path to calculation settings file')]
+) -> None:
+    """Create all files for an OpenQuake calculation."""
     with DatabaseSession() as session:
         create_calculation_files_to_folder(
             session, settings_file, target_folder)
 
-    typer.echo('Openquake calculation files created '
-               f'in folder "{str(target_folder)}".')
+    typer.echo(
+        'Successfully created OpenQuake calculation '
+        f'files in folder "{str(target_folder)}".')
 
 
 @calculation.command('run_test')
-def run_test_calculation_cmd(settings_file: Path):
-    '''
-    Send a calculation to OpenQuake as a test.
-    '''
+def run_test_calculation_cmd(
+    settings_file: Annotated[Path, typer.Argument(
+        help='Path to calculation settings file')]
+) -> None:
+    """Send a calculation to OpenQuake as a test."""
     with DatabaseSession() as session:
         response = run_test_calculation(session, settings_file)
 
-    typer.echo(response)
+    typer.echo(
+        f'Test calculation submitted successfully. Response: {response}')
 
 
 @calculation.command('run')
 def run_calculation(
-        settings: list[str] = typer.Option(...),
-        weights: list[float] = typer.Option(...)):
-    '''
-    Run an OpenQuake calculation.
-    '''
-    # console input validation
-    if settings and not len(settings) == len(weights):
-        typer.echo('Error: Number of setting files and weights provided '
-                   'have to be equal. Exiting...')
+    settings: Annotated[list[str], typer.Option(
+        help='List of calculation settings files')] = ...,
+    weights: Annotated[list[float], typer.Option(
+        help='List of weights for calculation branches')] = ...
+) -> None:
+    """Run an OpenQuake calculation with multiple branches."""
+    try:
+        with DatabaseSession() as session:
+            run_calculation_from_files(session, settings, weights)
+
+        typer.echo(
+            'Successfully completed OpenQuake calculation.')
+    except ValueError as e:
+        typer.echo(f'Error: {str(e)} Exiting...')
         raise typer.Exit(code=1)
-
-    # input parsing
-    settings = zip(weights, settings)
-
-    branch_settings = []
-    for s in settings:
-        job_file = configparser.ConfigParser()
-        job_file.read(Path(s[1]))
-        branch_settings.append(
-            CalculationBranchSettings(
-                weight=s[0], config=job_file))
-
-    with DatabaseSession() as session:
-        calc_service = CalculationService(session)
-        calc_service.run_calculations(branch_settings)
 
 
 @calculation.command('list')
-def list_calculations(eqtype: EEarthquakeType | None = typer.Option(None)):
-    '''
-    List all calculations.
-    '''
+def list_calculations(eqtype: Annotated[EEarthquakeType | None, typer.Option(
+        help='Filter by earthquake type')] = None) -> None:
+    """List all calculations, optionally filtered by earthquake type."""
     with DatabaseSession() as session:
         calculations = CalculationRepository.get_all_by_type(
             session, type=eqtype)
 
-    typer.echo('List of existing calculations:')
-    typer.echo('{0:<10} {1:<25} {2:<25} {3:<30} {4}'.format(
-        'ID',
-        'Status',
-        'Type',
-        'Created',
-        'Description'))
+    headers = ['ID', 'Status', 'Type', 'Created', 'Description']
+    rows = [[c.oid, c.status.name, c.type.name,
+             c.creationinfo_creationtime, c.description]
+            for c in calculations]
 
-    for c in calculations:
-        typer.echo('{0:<10} {1:<25} {2:<25} {3:<30} {4}'.format(
-            c.oid,
-            c.status.name,
-            c.type.name,
-            str(c.creationinfo_creationtime),
-            c.description))
+    display_table('List of existing calculations:', headers, rows)
 
 
 @calculation.command('delete')
-def delete_calculation(calculation_oid: int):
-    '''
-    Delete a calculation.
-    '''
+def delete_calculation(
+    calculation_oid: Annotated[int, typer.Argument(
+        help='ID of calculation to delete')]
+) -> None:
+    """Delete a calculation."""
     with DatabaseSession() as session:
         CalculationRepository.delete(session, calculation_oid)
     typer.echo(
-        f'Deleted calculation with ID {calculation_oid}.')
+        f'Successfully deleted calculation with ID {calculation_oid}.')
 
 
 @risk_assessment.command('add')
-def add_risk_assessment(originid: str, loss_id: int, damage_id: int):
-    '''
-    Add a risk assessment.
-    '''
+def add_risk_assessment(
+        originid: Annotated[str, typer.Argument(
+            help='Origin ID for the risk assessment')],
+        loss_id: Annotated[int, typer.Argument(
+            help='ID of loss calculation')],
+        damage_id: Annotated[int, typer.Argument(
+            help='ID of damage calculation')]
+) -> int:
+    """Add a risk assessment linking loss and damage calculations."""
     riskassessment = RiskAssessment(
         originid=originid,
         losscalculation_oid=loss_id,
@@ -473,53 +462,46 @@ def add_risk_assessment(originid: str, loss_id: int, damage_id: int):
         added = RiskAssessmentRepository.create(session, riskassessment)
 
     typer.echo(
-        f'added risk_assessment for {added.originid} with '
-        f'ID {added.oid}.')
+        f'Successfully created risk assessment for {added.originid} '
+        f'with ID {added.oid}.')
 
     return added.oid
 
 
 @risk_assessment.command('delete')
-def delete_risk_assessment(riskassessment_oid: str):
-    '''
-    Delete a risk assessment.
-    '''
+def delete_risk_assessment(
+    riskassessment_oid: Annotated[str, typer.Argument(
+        help='ID of risk assessment to delete')]
+) -> None:
+    """Delete a risk assessment."""
     with DatabaseSession() as session:
         rowcount = RiskAssessmentRepository.delete(session, riskassessment_oid)
-    typer.echo(f'Deleted {rowcount} risk assessment.')
+    typer.echo(f'Successfully deleted {rowcount} risk assessment(s).')
 
 
 @risk_assessment.command('list')
-def list_risk_assessment():
-    '''
-    List risk assessments.
-    '''
+def list_risk_assessment() -> None:
+    """List all risk assessments."""
     with DatabaseSession() as session:
         risk_assessments = RiskAssessmentRepository.get_all(session)
 
-    typer.echo('List of existing risk assessments:')
-    typer.echo('{0:<40} {1:<20} {2:<15} {3}'.format(
-        'ID',
-        'Status',
-        'Type',
-        'Created'))
+    headers = ['ID', 'Status', 'Type', 'Created']
+    rows = [[c.oid, c.status.name, c.type.name, c.creationinfo_creationtime]
+            for c in risk_assessments]
 
-    for c in risk_assessments:
-        typer.echo('{0:<40} {1:<20} {2:<15} {3}'.format(
-            str(c.oid),
-            c.status.name,
-            c.type.name,
-            str(c.creationinfo_creationtime)))
+    display_table('List of existing risk assessments:', headers, rows)
 
 
 @risk_assessment.command('run')
 def run_risk_assessment(
-        originid: str,
-        loss: str = typer.Option(...),
-        damage: str = typer.Option(...)):
-    '''
-    Run a risk assessment.
-    '''
+    originid: Annotated[str, typer.Argument(
+        help='Origin ID for the risk assessment')],
+    loss: Annotated[str, typer.Option(
+        help='Path to loss calculation configuration file')] = ...,
+    damage: Annotated[str, typer.Option(
+        help='Path to damage calculation configuration file')] = ...
+) -> None:
+    """Run a complete risk assessment with loss and damage calculations."""
     typer.echo('Running risk assessment:')
     typer.echo('Starting loss calculations...')
 
@@ -528,5 +510,5 @@ def run_risk_assessment(
         risk_assessment = service.run_risk_assessment(originid, loss, damage)
 
     typer.echo(
-        'Risk assessment completed with status: '
+        f'Successfully completed risk assessment with status: '
         f'{risk_assessment.status.name}')
