@@ -4,12 +4,12 @@ from operator import attrgetter
 import pandas as pd
 from openquake.commonlib.datastore import DataStore
 from openquake.risklib.scientific import LOSSTYPE
-from sqlalchemy.orm import Session
 
 from reia.datamodel import CalculationBranch, ELossCategory
 from reia.io import RISK_COLUMNS_MAPPING
 from reia.repositories.asset import AggregationTagRepository
 from reia.repositories.lossvalue import RiskValueRepository
+from reia.repositories.types import SessionType
 from reia.schemas.enums import ERiskType
 from reia.services.logger import LoggerService
 from reia.services.oq_api import OQCalculationAPI
@@ -19,7 +19,7 @@ from settings import get_config
 class ResultsService:
     """Service for handling OpenQuake calculation results."""
 
-    def __init__(self, session: Session, api_client: OQCalculationAPI):
+    def __init__(self, session: SessionType, api_client: OQCalculationAPI):
         self.logger = LoggerService.get_logger(__name__)
         self.session = session
         self.config = get_config()

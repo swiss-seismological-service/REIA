@@ -1,12 +1,18 @@
+import io
+from pathlib import Path
+
 import pandas as pd
-from sqlalchemy.orm import Session
 
 from reia.io import ASSETS_COLS_MAPPING
-from reia.repositories.asset import AssetRepository, ExposureModelRepository
+from reia.io.read import parse_exposure, parse_shapefile_geometries
+from reia.repositories.asset import (AggregationGeometryRepository,
+                                     AssetRepository, ExposureModelRepository)
+from reia.repositories.types import SessionType
 from reia.schemas.exposure_schema import ExposureModel
+from reia.utils import create_file_pointer_dataframe, create_file_pointer_jinja
 
 
-def create_exposure_with_assets(session: Session,
+def create_exposure_with_assets(session: SessionType,
                                 exposure: ExposureModel,
                                 assets: pd.DataFrame) \
         -> tuple[ExposureModel, list[int], list[int]]:
@@ -27,7 +33,7 @@ def create_exposure_with_assets(session: Session,
 
 def create_assets(assets: pd.DataFrame,
                   exposure_model_oid: int,
-                  session: Session) \
+                  session: SessionType) \
         -> tuple[list[int], list[int]]:
     """Create assets for an exposure model.
 
@@ -119,3 +125,126 @@ def _normalize_tag_pairs(
     mapping_df.rename(columns={'type': 'aggregationtype'}, inplace=True)
 
     return tag_table, mapping_df
+
+
+def add_exposure_from_file(
+        session: SessionType,
+        file_path: Path,
+        name: str) -> ExposureModel:
+    """Load exposure model from file into data storage layer.
+
+    Args:
+        session: Database session.
+        file_path: Path to the exposure file.
+        name: Name for the exposure model.
+
+    Returns:
+        Created ExposureModel with counts.
+    """
+    with open(file_path, 'r') as f:
+        exposure, assets = parse_exposure(f)
+
+    exposure.name = name
+
+    exposuremodel, assets_oids, sites_oids = create_exposure_with_assets(
+        session, exposure, assets)
+
+    return exposuremodel, len(assets_oids), len(sites_oids)
+
+
+def create_exposure_files(
+        session: SessionType,
+        exposure_oid: int,
+        output_path: Path) -> bool:
+    """Export exposure model from data storage layer to disk files.
+
+    Args:
+        session: Database session.
+        exposure_oid: ID of the exposure model.
+        output_path: Base path where to save the files.
+
+    Returns:
+        True if files were created successfully.
+    """
+    p_xml = output_path.with_suffix('.xml')
+    p_csv = output_path.with_suffix('.csv')
+
+    fp_xml, fp_csv = create_exposure_input(
+        session, exposure_oid, assets_csv_name=p_csv)
+
+    p_xml.parent.mkdir(exist_ok=True)
+    p_xml.open('w').write(fp_xml.getvalue())
+    p_csv.open('w').write(fp_csv.getvalue())
+
+    return p_xml.exists() and p_csv.exists()
+
+
+def add_geometries_from_shapefile(session: SessionType,
+                                  exposure_oid: int,
+                                  file_path: Path,
+                                  tag_column_name: str,
+                                  aggregation_type: str) -> int:
+    """Load geometries from shapefile into data storage layer.
+
+    Args:
+        session: Database session.
+        exposure_oid: ID of the exposure model.
+        file_path: Path to the shapefile.
+        tag_column_name: Name of the aggregation tag column.
+        aggregation_type: Type of the aggregation.
+
+    Returns:
+        Number of geometries added.
+    """
+    gdf = parse_shapefile_geometries(
+        file_path, tag_column_name, aggregation_type)
+
+    geometry_ids = AggregationGeometryRepository.insert_many(
+        session, exposure_oid, gdf)
+
+    return len(geometry_ids)
+
+
+def create_exposure_input(
+        session: SessionType,
+        asset_collection_oid: int,
+        template_name: Path = Path('reia/templates/exposure.xml'),
+        assets_csv_name: Path = Path('exposure_assets.csv')) \
+        -> tuple[io.StringIO, io.StringIO]:
+    """Generate exposure model from data storage layer to in-memory files.
+
+    Args:
+        session: Database session.
+        asset_collection_oid: ID of the ExposureModel to be used.
+        template_name: Template to be used for the exposure file.
+        assets_csv_name: Name for the assets CSV file.
+
+    Returns:
+        In-memory file objects for exposure XML and assets CSV.
+    """
+    exposuremodel = ExposureModelRepository.get_by_id(
+        session, asset_collection_oid)
+
+    data = exposuremodel.model_dump(mode='json')
+    data['assets_csv_name'] = assets_csv_name.name
+
+    exposure_xml = create_file_pointer_jinja(template_name, data=data)
+
+    exposure_df = AssetRepository.get_by_exposuremodel(
+        session, asset_collection_oid)
+    exposure_df.index.name = 'id'
+
+    columns_map = {**{'longitude': 'lon', 'latitude': 'lat'},
+                   **{v: k for k, v in ASSETS_COLS_MAPPING.items()}}
+
+    exposure_df = exposure_df.rename(columns=columns_map)
+
+    exposure_df = exposure_df[[*columns_map.values(),
+                               *exposuremodel.aggregationtypes]] \
+        .dropna(axis=1, how='all') \
+        .fillna(0)
+
+    exposure_csv = create_file_pointer_dataframe(
+        exposure_df, name=assets_csv_name.name)
+
+    return (exposure_xml, exposure_csv)

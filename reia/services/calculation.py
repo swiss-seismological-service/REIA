@@ -1,28 +1,34 @@
 import configparser
+import io
+import pickle
 from itertools import groupby
+from pathlib import Path
 
 import pandas as pd
-from sqlalchemy.orm import Session
 
 from reia.io import (CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING,
                      FRAGILITY_FK_MAPPING, VULNERABILITY_FK_MAPPING)
 from reia.repositories.calculation import (CalculationBranchRepository,
                                            CalculationRepository)
+from reia.repositories.types import SessionType
 from reia.schemas.calculation_schemas import CalculationBranchSettings
 from reia.schemas.enums import EStatus
-from reia.services.file_generation import assemble_calculation_input
+from reia.services.exposure import create_exposure_input
+from reia.services.fragility import create_fragility_input
 from reia.services.logger import LoggerService
 from reia.services.oq_api import OQCalculationAPI
 from reia.services.results import ResultsService
 from reia.services.status_tracker import StatusTracker
-from reia.utils import flatten_config
+from reia.services.taxonomy import create_taxonomymap_input
+from reia.services.vulnerability import create_vulnerability_input
+from reia.utils import create_file_pointer_configparser, flatten_config
 from settings import get_config
 
 
 class CalculationService:
     """Service for managing OpenQuake calculations."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: SessionType):
         # Initialize logging for calculation workflows
         LoggerService.setup_logging()
         self.logger = LoggerService.get_logger(__name__)
@@ -125,7 +131,7 @@ class CalculationService:
         # Prepare calculation files
         self.logger.debug(
             f"Preparing calculation files for branch {branch.oid}")
-        files = assemble_calculation_input(setting.config, self.session)
+        files = assemble_calculation_input(self.session, setting.config)
         api_client.add_calc_files(*files)
 
         # Run calculation and wait for completion
@@ -324,3 +330,118 @@ class CalculationService:
             for branch in calculation_branches]
 
         return (calculation, calculation_branches)
+
+
+def create_calculation_files_to_folder(session: SessionType,
+                                       settings_file: Path,
+                                       target_folder: Path) -> bool:
+    """Export calculation configuration from data storage layer to disk files.
+
+    Args:
+        session: Database session.
+        settings_file: Path to the settings file.
+        target_folder: Folder where to create the files.
+
+    Returns:
+        True if files were created successfully.
+    """
+    target_folder.mkdir(exist_ok=True)
+
+    job_file = configparser.ConfigParser()
+    job_file.read(settings_file)
+
+    files = assemble_calculation_input(session, job_file)
+
+    for file in files:
+        with open(target_folder / file.name, 'w') as f:
+            f.write(file.getvalue())
+
+    return True
+
+
+def run_test_calculation(session: SessionType, settings_file: Path) -> str:
+    """Generate calculation from data storage layer and submit to OpenQuake.
+
+    Args:
+        session: Database session.
+        settings_file: Path to the settings file.
+
+    Returns:
+        Response from OpenQuake API.
+    """
+    job_file = configparser.ConfigParser()
+    job_file.read(settings_file)
+
+    config = get_config()
+    api_client = OQCalculationAPI(config)
+
+    files = assemble_calculation_input(session, job_file)
+    api_client.add_calc_files(*files)
+
+    response = api_client.submit()
+    return response
+
+
+def assemble_calculation_input(session: SessionType,
+                               job: configparser.ConfigParser
+                               ) -> list[io.StringIO]:
+    """Generate calculation input files from data storage
+    layer to in-memory files.
+
+    Creates in-memory file objects for all calculation inputs including
+    exposure, vulnerability/fragility, taxonomy mapping, hazard files,
+    and the job configuration file.
+
+    Args:
+        session: Database session.
+        job: ConfigParser object containing calculation configuration.
+
+    Returns:
+        List of in-memory file objects for the calculation.
+    """
+    # create deep copy of configparser
+    tmp = pickle.dumps(job)
+    working_job = pickle.loads(tmp)
+
+    calculation_files = []
+
+    exposure_xml, exposure_csv = create_exposure_input(
+        session, working_job['exposure']['exposure_file'])
+    exposure_xml.name = 'exposure.xml'
+    working_job['exposure']['exposure_file'] = exposure_xml.name
+
+    calculation_files.extend([exposure_xml, exposure_csv])
+
+    if 'vulnerability' in working_job.keys():
+        for k, v in working_job['vulnerability'].items():
+            if k == 'taxonomy_mapping_csv':
+                file = create_taxonomymap_input(session, v)
+                file.name = "{}.csv".format(k.replace('_file', ''))
+            else:
+                file = create_vulnerability_input(session, v)
+                file.name = "{}.xml".format(k.replace('_file', ''))
+            working_job['vulnerability'][k] = file.name
+            calculation_files.append(file)
+
+    elif 'fragility' in working_job.keys():
+        for k, v in working_job['fragility'].items():
+            if k == 'taxonomy_mapping_csv':
+                file = create_taxonomymap_input(session, v)
+            else:
+                file = create_fragility_input(session, v)
+                file.name = "{}.xml".format(k.replace('_file', ''))
+            working_job['fragility'][k] = file.name
+            calculation_files.append(file)
+
+    for k, v in working_job['hazard'].items():
+        with open(v, 'r') as f:
+            file = io.StringIO(f.read())
+        file.name = Path(v).name
+        working_job['hazard'][k] = file.name
+        calculation_files.append(file)
+
+    job_file = create_file_pointer_configparser(working_job, 'job.ini')
+
+    calculation_files.append(job_file)
+
+    return calculation_files

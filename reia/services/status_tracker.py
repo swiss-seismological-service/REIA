@@ -1,8 +1,7 @@
-from sqlalchemy.orm import Session
-
 from reia.repositories.calculation import (CalculationBranchRepository,
                                            CalculationRepository,
                                            RiskAssessmentRepository)
+from reia.repositories.types import SessionType
 from reia.schemas.calculation_schemas import (Calculation, CalculationBranch,
                                               RiskAssessment)
 from reia.schemas.enums import EStatus
@@ -12,7 +11,7 @@ from reia.services.logger import LoggerService
 class StatusTracker:
     """Centralized status management with validation and consistent logging."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: SessionType):
         self.logger = LoggerService.get_logger(__name__)
         self.session = session
 

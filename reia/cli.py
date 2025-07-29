@@ -1,12 +1,9 @@
 import configparser
 from pathlib import Path
 
-import pandas as pd
 import typer
 from typing_extensions import Annotated
 
-from reia.io.read import (parse_exposure, parse_fragility,
-                          parse_shapefile_geometries, parse_vulnerability)
 from reia.repositories import DatabaseSession, drop_db, init_db, init_db_file
 from reia.repositories.asset import (AggregationGeometryRepository,
                                      ExposureModelRepository)
@@ -18,16 +15,19 @@ from reia.repositories.vulnerability import VulnerabilityModelRepository
 from reia.schemas.calculation_schemas import (CalculationBranchSettings,
                                               RiskAssessment)
 from reia.schemas.enums import EEarthquakeType
-from reia.services.calculation import CalculationService
-from reia.services.exposure import create_exposure_with_assets
-from reia.services.file_generation import (assemble_calculation_input,
-                                           create_exposure_input,
-                                           create_fragility_input,
-                                           create_taxonomymap_input,
-                                           create_vulnerability_input)
-from reia.services.oq_api import OQCalculationAPI
-from reia.services.risk_assessment import RiskAssessmentService
-from settings import get_config
+from reia.services.calculation import (CalculationService,
+                                       create_calculation_files_to_folder,
+                                       run_test_calculation)
+from reia.services.exposure import (add_exposure_from_file,
+                                    add_geometries_from_shapefile,
+                                    create_exposure_files)
+from reia.services.fragility import (add_fragility_from_file,
+                                     create_fragility_file)
+from reia.services.riskassessment import RiskAssessmentService
+from reia.services.taxonomy import (add_taxonomymap_from_file,
+                                    create_taxonomymap_file)
+from reia.services.vulnerability import (add_vulnerability_from_file,
+                                         create_vulnerability_file)
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()
@@ -82,17 +82,12 @@ def add_exposure(exposure: Path, name: str):
     '''
     Add an exposure model.
     '''
-    with open(exposure, 'r') as f:
-        exposure, assets = parse_exposure(f)
-
-    exposure.name = name
-
     with DatabaseSession() as session:
-        exposuremodel, assets_oids, sites_oids = \
-            create_exposure_with_assets(session, exposure, assets)
+        exposuremodel, assets_count, sites_count = add_exposure_from_file(
+            session, exposure, name)
 
-        typer.echo(f'Created asset collection with ID {exposuremodel.oid} and '
-                   f'{len(sites_oids)} sites with {len(assets_oids)} assets.')
+    typer.echo(f'Created asset collection with ID {exposuremodel.oid} and '
+               f'{sites_count} sites with {assets_count} assets.')
 
     return exposuremodel.oid
 
@@ -134,18 +129,12 @@ def create_exposure(id: int, filename: Path):
     '''
     Create input files for an exposure model.
     '''
-    p_xml = filename.with_suffix('.xml')
-    p_csv = filename.with_suffix('.csv')
-
     with DatabaseSession() as session:
-        fp_xml, fp_csv = create_exposure_input(
-            id, session, assets_csv_name=p_csv)
+        success = create_exposure_files(session, id, filename)
 
-    p_xml.parent.mkdir(exist_ok=True)
-    p_xml.open('w').write(fp_xml.getvalue())
-    p_csv.open('w').write(fp_csv.getvalue())
-
-    if p_xml.exists() and p_csv.exists():
+    if success:
+        p_xml = filename.with_suffix('.xml')
+        p_csv = filename.with_suffix('.csv')
         typer.echo(
             f'Successfully created file "{str(p_xml)}" and "{str(p_csv)}".')
     else:
@@ -173,17 +162,12 @@ def add_exposure_geometries(
     - name: the name of the geometry
     - geometry: the geometry
     '''
-    gdf = parse_shapefile_geometries(filename,
-                                     tag_column_name,
-                                     aggregationtype)
-
     with DatabaseSession() as session:
-        geometry_ids = AggregationGeometryRepository.insert_many(session,
-                                                                 exposure_id,
-                                                                 gdf)
+        geometry_count = add_geometries_from_shapefile(
+            session, exposure_id, filename, tag_column_name, aggregationtype)
 
     typer.echo(
-        f'Added {len(geometry_ids)} geometries to exposure model '
+        f'Added {geometry_count} geometries to exposure model '
         f'with ID {exposure_id} and aggregation type "{aggregationtype}".')
 
 
@@ -199,13 +183,9 @@ def add_fragility(fragility: Path, name: str):
     '''
     Add a fragility model.
     '''
-
-    with open(fragility, 'r') as f:
-        model = parse_fragility(f)
-    model.name = name
-
     with DatabaseSession() as session:
-        fragility_model = FragilityModelRepository.create(session, model)
+        fragility_model = add_fragility_from_file(session, fragility, name)
+
     typer.echo(
         f'Created fragility model of type "{fragility_model.type}"'
         f' with ID {fragility_model.oid}.')
@@ -251,15 +231,11 @@ def create_fragility(id: int, filename: Path):
     '''
     Create input file for a fragility model.
     '''
-    filename = filename.with_suffix('.xml')
-
     with DatabaseSession() as session:
-        file_pointer = create_fragility_input(id, session)
+        success = create_fragility_file(session, id, filename)
 
-    filename.parent.mkdir(exist_ok=True)
-    filename.open('w').write(file_pointer.getvalue())
-
-    if filename.exists():
+    if success:
+        filename = filename.with_suffix('.xml')
         typer.echo(
             f'Successfully created file "{str(filename)}".')
     else:
@@ -271,12 +247,9 @@ def add_taxonomymap(map_file: Path, name: str):
     '''
     Add a taxonomy mapping model.
     '''
-    mapping = pd.read_csv(map_file)
-
     with DatabaseSession() as session:
-        taxonomy_map = TaxonomyMapRepository.insert_many(session,
-                                                         mapping,
-                                                         name)
+        taxonomy_map = add_taxonomymap_from_file(session, map_file, name)
+
     typer.echo(
         f'Created taxonomy map with ID {taxonomy_map.oid}.')
     return taxonomy_map.oid
@@ -319,15 +292,11 @@ def create_taxonomymap(id: int, filename: Path):
     '''
     Create input file for a taxonomy mapping.
     '''
-    filename = filename.with_suffix('.csv')
-
     with DatabaseSession() as session:
-        file_pointer = create_taxonomymap_input(id, session)
+        success = create_taxonomymap_file(session, id, filename)
 
-    filename.parent.mkdir(exist_ok=True)
-    filename.open('w').write(file_pointer.getvalue())
-
-    if filename.exists():
+    if success:
+        filename = filename.with_suffix('.csv')
         typer.echo(
             f'Successfully created file "{str(filename)}".')
     else:
@@ -339,13 +308,10 @@ def add_vulnerability(vulnerability: Path, name: str):
     '''
     Add a vulnerability model.
     '''
-    with open(vulnerability, 'r') as f:
-        model = parse_vulnerability(f)
-    model.name = name
-
     with DatabaseSession() as session:
-        vulnerability_model = VulnerabilityModelRepository.create(
-            session, model)
+        vulnerability_model = add_vulnerability_from_file(
+            session, vulnerability, name)
+
     typer.echo(
         f'Created vulnerability model of type "{vulnerability_model.type}"'
         f' with ID {vulnerability_model.oid}.')
@@ -391,15 +357,11 @@ def create_vulnerability(id: int, filename: Path):
     '''
     Create input file for a vulnerability model.
     '''
-    filename = filename.with_suffix('.xml')
-
     with DatabaseSession() as session:
-        file_pointer = create_vulnerability_input(id, session)
+        success = create_vulnerability_file(session, id, filename)
 
-    filename.parent.mkdir(exist_ok=True)
-    filename.open('w').write(file_pointer.getvalue())
-
-    if filename.exists():
+    if success:
+        filename = filename.with_suffix('.xml')
         typer.echo(
             f'Successfully created file "{str(filename)}".')
     else:
@@ -412,38 +374,21 @@ def create_calculation_files(target_folder: Path,
     '''
     Create all files for an OpenQuake calculation.
     '''
-    target_folder.mkdir(exist_ok=True)
-
-    job_file = configparser.ConfigParser()
-    job_file.read(settings_file)
-
     with DatabaseSession() as session:
-        files = assemble_calculation_input(job_file, session)
-
-    for file in files:
-        with open(target_folder / file.name, 'w') as f:
-            f.write(file.getvalue())
+        create_calculation_files_to_folder(
+            session, settings_file, target_folder)
 
     typer.echo('Openquake calculation files created '
                f'in folder "{str(target_folder)}".')
 
 
 @calculation.command('run_test')
-def run_test_calculation(settings_file: Path):
+def run_test_calculation_cmd(settings_file: Path):
     '''
     Send a calculation to OpenQuake as a test.
     '''
-    job_file = configparser.ConfigParser()
-    job_file.read(settings_file)
-
-    config = get_config()
-    api_client = OQCalculationAPI(config)
-
     with DatabaseSession() as session:
-        files = assemble_calculation_input(job_file, session)
-        api_client.add_calc_files(*files)
-
-        response = api_client.submit()
+        response = run_test_calculation(session, settings_file)
 
     typer.echo(response)
 
