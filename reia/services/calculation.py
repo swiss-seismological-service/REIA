@@ -1,13 +1,9 @@
 import configparser
 import io
 import pickle
-from itertools import groupby
 from pathlib import Path
 
-import pandas as pd
-
-from reia.io import (CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING,
-                     FRAGILITY_FK_MAPPING, VULNERABILITY_FK_MAPPING)
+from reia.io.calculation import validate_and_parse_calculation_input
 from reia.repositories.calculation import (CalculationBranchRepository,
                                            CalculationRepository)
 from reia.repositories.types import SessionType
@@ -21,7 +17,7 @@ from reia.services.results import ResultsService
 from reia.services.status_tracker import StatusTracker
 from reia.services.taxonomy import create_taxonomymap_input
 from reia.services.vulnerability import create_vulnerability_input
-from reia.utils import create_file_buffer_configparser, flatten_config
+from reia.utils import create_file_buffer_configparser
 from settings import get_config
 
 
@@ -51,18 +47,14 @@ class CalculationService:
         Raises:
             Exception: If validation or calculation fails
         """
-        # Validate inputs
+        # Validate and parse inputs using io layer
         self.logger.info("Starting calculation workflow with "
                          f"{len(branch_settings)} branches")
-        self._validate_calculation_input(branch_settings)
-
-        # Parse calculation information
-        calculation_dict, branches_dicts = self._parse_calculation_input(
+        calculation, branches_dicts = validate_and_parse_calculation_input(
             branch_settings)
 
         # Create calculation and branches in database
-        calculation = CalculationRepository.create(self.session,
-                                                   calculation_dict)
+        calculation = CalculationRepository.create(self.session, calculation)
         self.logger.info(f"Created calculation {calculation.oid}")
         for b in branches_dicts:
             b.calculation_oid = calculation.oid
@@ -163,173 +155,6 @@ class CalculationService:
 
         return branch
 
-    def _equal_section_options(self,
-                               configs: list[configparser.ConfigParser],
-                               name: str) -> bool:
-        """Returns True if all configparsers have consistent section options.
-
-        Args:
-            configs: List of configparser objects to compare.
-            name: Name of the section to check.
-
-        Returns:
-            True if all configparsers have:
-                - The same section and the same option keys inside section.
-                - All don't have the section.
-        """
-        has_any = any(c.has_section(name) for c in configs)
-
-        if not has_any:
-            return True
-
-        has_all = all(c.has_section(name) for c in configs)
-
-        if not has_all:
-            return False
-
-        g = groupby(dict(c[name]).keys() for c in configs)
-        return next(g, True) and not next(g, False)
-
-    def _equal_option_value(self,
-                            configs: list[configparser.ConfigParser],
-                            section: str, name: str) -> bool:
-        """Returns True if all configparsers have consistent option values.
-
-        Args:
-            configs: List of configparser objects to compare.
-            section: Name of the section containing the option.
-            name: Name of the option to check.
-
-        Returns:
-            True if all configparsers have:
-                - The same option inside the same section with the same value.
-                - All don't have this option.
-        """
-        has_any = any(c.has_option(section, name) for c in configs)
-
-        if not has_any:
-            return True
-
-        has_all = all(c.has_option(section, name) for c in configs)
-
-        if not has_all:
-            return False
-
-        g = groupby(c[section][name] for c in configs)
-        return next(g, True) and not next(g, False)
-
-    def _validate_calculation_input(
-            self,
-            branch_settings: list[CalculationBranchSettings]) -> None:
-        """Validate calculation input settings.
-
-        Args:
-            branch_settings: List of calculation branch settings to validate.
-        """
-        # validate weights
-        if not sum([b.weight for b in branch_settings]) == 1:
-            raise ValueError('The sum of the weights for the calculation '
-                             'branches has to be 1.')
-
-        configs = [s.config for s in branch_settings]
-
-        # sort aggregation keys in order to be able to string-compare
-        for config in configs:
-            if config.has_option('general', 'aggregate_by'):
-                sorted_agg = [x.strip() for x in
-                              config['general']['aggregate_by'].split(',')]
-                sorted_agg = ','.join(sorted(sorted_agg))
-                config['general']['aggregate_by'] = sorted_agg
-
-        # validate that the necessary options are consistent over branches
-        if not self._equal_section_options(configs, 'vulnerability'):
-            raise ValueError('All branches of a calculation need to calculate '
-                             'the same vulnerability loss categories.')
-
-        if not self._equal_section_options(configs, 'fragility'):
-            raise ValueError('All branches of a calculation need to calculate '
-                             'the same fragility damage categories.')
-
-        if not self._equal_option_value(configs, 'general', 'aggregate_by'):
-            raise ValueError('Aggregation keys must be the same '
-                             'in all calculation branches.')
-
-        if not self._equal_option_value(configs, 'general',
-                                        'calculation_mode'):
-            raise ValueError('Calculation mode must be the same '
-                             'in all calculation branches.')
-
-    def _parse_calculation_input(
-            self, branch_settings: list[CalculationBranchSettings]) \
-            -> tuple[dict, list[dict]]:
-        """Parses multiple esloss OQ calculation files.
-
-        Args:
-            branch_settings: List of calculation branch settings to parse.
-
-        Returns:
-            Tuple containing:
-                - Calculation dictionary
-                - List of CalculationBranch dictionaries
-        """
-        calculation = {}
-        calculation_branches = []
-
-        for settings in branch_settings:
-            calculation_branch_setting = {}
-
-            # clean and flatten config
-            flat_job = configparser.ConfigParser()
-            flat_job.read_dict(settings.config)
-            for s in ['vulnerability', 'exposure', 'hazard', 'fragility']:
-                flat_job.remove_section(s)
-            flat_job = flatten_config(flat_job)
-
-            # CALCULATION SETTINGS ###########################################
-            # assign all settings to calculation dict
-            calculation['calculation_mode'] = flat_job.pop('calculation_mode')
-            calculation['description'] = flat_job.pop('description', None)
-            calculation['aggregateby'] = [
-                x.strip() for x in flat_job.pop('aggregate_by').split(',')
-            ] if 'aggregate_by' in flat_job else None
-
-            # BRANCH SETTINGS ###########################################
-            calculation_branch_setting['_exposuremodel_oid'] = \
-                settings.config['exposure']['exposure_file']
-            # vulnerability / fragility functions
-            if calculation['calculation_mode'] == 'scenario_risk':
-                for k, v in settings.config['vulnerability'].items():
-                    calculation_branch_setting[VULNERABILITY_FK_MAPPING[k]] = v
-
-            if calculation['calculation_mode'] == 'scenario_damage':
-                for k, v in settings.config['fragility'].items():
-                    calculation_branch_setting[FRAGILITY_FK_MAPPING[k]] = v
-
-            # add the mode to distinguish between risk and damage branch
-            calculation_branch_setting['calculation_mode'] = \
-                calculation['calculation_mode']
-
-            # save general config values
-            calculation_branch_setting['config'] = flat_job
-
-            # count number of gmfs of input
-            gmfs = pd.read_csv(settings.config['hazard']['gmfs_csv'])
-            calculation_branch_setting['config'][
-                'number_of_ground_motion_fields'] = len(gmfs.eid.unique())
-
-            # add weight
-            calculation_branch_setting['weight'] = settings.weight
-
-            calculation_branches.append(calculation_branch_setting)
-
-        calculation = CALCULATION_MAPPING[calculation.pop(
-            'calculation_mode')].model_validate(calculation)
-        calculation_branches = [CALCULATION_BRANCH_MAPPING[branch.pop(
-            'calculation_mode')].model_validate(branch)
-            for branch in calculation_branches]
-
-        return (calculation, calculation_branches)
-
 
 def create_calculation_files_to_folder(session: SessionType,
                                        settings_file: Path,
@@ -379,6 +204,36 @@ def run_test_calculation(session: SessionType, settings_file: Path) -> str:
 
     response = api_client.submit()
     return response
+
+
+def run_calculation_from_files(session: SessionType,
+                               settings_files: list[str],
+                               weights: list[float]) -> None:
+    """Run OpenQuake calculation from multiple settings files.
+
+    Args:
+        session: Database session.
+        settings_files: List of paths to calculation settings files.
+        weights: List of weights for calculation branches.
+
+    Raises:
+        ValueError: If number of settings files and weights don't match.
+    """
+    # Validate input
+    if len(settings_files) != len(weights):
+        raise ValueError('Number of setting files and weights must be equal.')
+
+    # Parse settings files into CalculationBranchSettings
+    branch_settings = []
+    for weight, settings_file in zip(weights, settings_files):
+        job_file = configparser.ConfigParser()
+        job_file.read(Path(settings_file))
+        branch_settings.append(
+            CalculationBranchSettings(weight=weight, config=job_file))
+
+    # Run calculations using the service
+    calc_service = CalculationService(session)
+    calc_service.run_calculations(branch_settings)
 
 
 def assemble_calculation_input(session: SessionType,
@@ -444,33 +299,3 @@ def assemble_calculation_input(session: SessionType,
     calculation_files.append(job_file)
 
     return calculation_files
-
-
-def run_calculation_from_files(session: SessionType,
-                               settings_files: list[str],
-                               weights: list[float]) -> None:
-    """Run OpenQuake calculation from multiple settings files.
-
-    Args:
-        session: Database session.
-        settings_files: List of paths to calculation settings files.
-        weights: List of weights for calculation branches.
-
-    Raises:
-        ValueError: If number of settings files and weights don't match.
-    """
-    # Validate input
-    if len(settings_files) != len(weights):
-        raise ValueError('Number of setting files and weights must be equal.')
-
-    # Parse settings files into CalculationBranchSettings
-    branch_settings = []
-    for weight, settings_file in zip(weights, settings_files):
-        job_file = configparser.ConfigParser()
-        job_file.read(Path(settings_file))
-        branch_settings.append(
-            CalculationBranchSettings(weight=weight, config=job_file))
-
-    # Run calculations using the service
-    calc_service = CalculationService(session)
-    calc_service.run_calculations(branch_settings)
