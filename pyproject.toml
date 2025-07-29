@@ -5,16 +5,27 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["reia*", "settings*"]
-# exclude = ["web"]
+# exclude = [""]
 
 [project]
 name = "reia"
-version = "0.1"
-description = ""
+version = "1.0.0"
+description = "Rapid Earthquake Impact Assessment"
 readme = { file = "README.md", content-type = "text/markdown" }
-license = { text = "GNU AFFERO GENERAL PUBLIC LICENSE Version 3" }
-authors = [{ name = "Nicolas Schmid", email = "nicolas.schmid@sed.ethz.ch" }]
-classifiers = ["Programming Language :: Python :: 3"]
+authors = [{ name = "Nicolas Schmid" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics",
+]
 requires-python = "<=3.12"
 dependencies = [
     "fiona<1.10",
@@ -35,7 +46,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["flake8", "pytest", "pytest-cov", "pytest-env"]
+dev = ["flake8", "pytest", "pytest-cov", "pytest-env", "isort"]
 
 [project.scripts]
 reia = "reia.cli:app"
