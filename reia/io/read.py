@@ -16,7 +16,7 @@ from reia.schemas.vulnerability_schemas import VulnerabilityModel
 from reia.utils import clean_array
 
 
-def parse_assets(file: TextIO, tagnames: list[str]) -> pd.DataFrame:
+def parse_exposure_assets(file: TextIO, tagnames: list[str]) -> pd.DataFrame:
     """Reads an exposure file with assets into a dataframe.
 
     Args:
@@ -49,7 +49,8 @@ def parse_assets(file: TextIO, tagnames: list[str]) -> pd.DataFrame:
     return df
 
 
-def parse_exposure(file: TextIO) -> tuple[ExposureModel, pd.DataFrame]:
+def parse_exposure_metadata(file: TextIO
+                            ) -> tuple[ExposureModel, str]:
     tree = ET.iterparse(file)
 
     # strip namespace for easier querying
@@ -81,14 +82,11 @@ def parse_exposure(file: TextIO) -> tuple[ExposureModel, pd.DataFrame]:
     model['aggregationtypes'] = root.find(
         'exposureModel/tagNames').text.split(' ')
 
-    asset_csv = root.find('exposureModel/assets').text
-    asset_csv = os.path.join(os.path.dirname(file.name), asset_csv)
-
-    with open(asset_csv, 'r') as f:
-        assets = parse_assets(f, model['aggregationtypes'])
+    assets_path = root.find('exposureModel/assets').text
+    assets_path = os.path.join(os.path.dirname(file.name), assets_path)
 
     model = ExposureModel.model_validate(model)
-    return model, assets
+    return model, assets_path
 
 
 def parse_fragility(file: TextIO) -> FragilityModel:
@@ -221,11 +219,92 @@ def parse_shapefile_geometries(
     return gdf
 
 
-def combine_assets(files: list[str]) -> pd.DataFrame:
-    combined_assets = pd.DataFrame()
+def _extract_sites(assets: pd.DataFrame) -> tuple[pd.DataFrame, list[int]]:
+    """Extract sites from assets dataframe.
 
-    for exposure in files:
-        with open(exposure, 'r') as f:
-            _, assets = parse_exposure(f)
-            combined_assets = pd.concat([combined_assets, assets])
-    return combined_assets
+    Args:
+        assets: Dataframe of assets with 'longitude' and 'latitude' column.
+
+    Returns:
+        DataFrame of `n` unique Sites and list of `len(assets)` indices
+        mapping each asset to its corresponding site.
+    """
+    site_keys = list(zip(assets['longitude'], assets['latitude']))
+    group_indices, unique_keys = pd.factorize(site_keys)
+    unique_sites = pd.DataFrame(unique_keys.tolist(),
+                                columns=['longitude', 'latitude'])
+    return unique_sites, group_indices.tolist()
+
+
+def _normalize_tags(df: pd.DataFrame,
+                    asset_cols: list[str],
+                    tag_cols: list[str]) -> tuple[pd.DataFrame,
+                                                  pd.DataFrame,
+                                                  pd.DataFrame]:
+    """Split a DataFrame into asset values and normalized tags."""
+    asset_df = df[asset_cols].copy()
+
+    # Melt tag columns into long format
+    tag_df = (
+        df[tag_cols]
+        .reset_index(drop=True)
+        .melt(ignore_index=False, var_name='type', value_name='name')
+        .reset_index().rename(columns={'index': 'asset'})
+    )
+
+    tag_table, mapping_df = _normalize_tag_pairs(tag_df)
+    return asset_df, tag_table, mapping_df
+
+
+def _normalize_tag_pairs(
+        tag_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Normalize (type, name) pairs using pd.factorize."""
+    tag_idx, unique_tags = pd.factorize(
+        list(zip(tag_df['type'], tag_df['name'])))
+    tag_table = pd.DataFrame(unique_tags.tolist(), columns=['type', 'name'])
+
+    mapping_df = tag_df[['asset', 'type']].copy()
+    mapping_df['aggregationtag'] = tag_idx
+    mapping_df.rename(columns={'type': 'aggregationtype'}, inplace=True)
+
+    return tag_table, mapping_df
+
+
+def parse_exposure(file: TextIO
+                   ) -> tuple[ExposureModel, pd.DataFrame, pd.DataFrame,
+                              pd.DataFrame, pd.DataFrame]:
+    """Parse exposure file and return database-ready DataFrames.
+
+    Args:
+        file: Open file object containing exposure XML.
+
+    Returns:
+        Tuple containing:
+        - ExposureModel pydantic object
+        - Sites DataFrame ready for database insertion
+        - Assets DataFrame ready for database insertion
+        - AggregationTags DataFrame ready for database insertion
+        - Asset-Tag association DataFrame ready for database insertion
+    """
+    # Parse the exposure file
+    exposure_model, assets_path = parse_exposure_metadata(file)
+
+    with open(assets_path, 'r') as f:
+        assets = parse_exposure_assets(f, exposure_model.aggregationtypes)
+
+    # Get aggregation types from the DataFrame
+    aggregation_types = [
+        x for x in assets.columns if x not in list(
+            ASSETS_COLS_MAPPING.values()) + ['longitude', 'latitude']]
+
+    # Asset columns for database insertion
+    asset_cols = list(ASSETS_COLS_MAPPING.values()) + ['_site_oid']
+
+    # Extract sites and get site mapping
+    sites, assets['_site_oid'] = _extract_sites(assets)
+
+    # Normalize aggregation tags
+    assets_clean, aggregationtags, assoc_table = _normalize_tags(
+        assets, asset_cols, aggregation_types)
+
+    return exposure_model, sites, assets_clean, aggregationtags, assoc_table

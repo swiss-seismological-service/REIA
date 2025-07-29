@@ -13,7 +13,7 @@ from reia.repositories.calculation import (CalculationBranchRepository,
 from reia.repositories.types import SessionType
 from reia.schemas.calculation_schemas import CalculationBranchSettings
 from reia.schemas.enums import EStatus
-from reia.services.exposure import create_exposure_input
+from reia.services.exposure import create_exposure_inputs
 from reia.services.fragility import create_fragility_input
 from reia.services.logger import LoggerService
 from reia.services.oq_api import OQCalculationAPI
@@ -404,7 +404,7 @@ def assemble_calculation_input(session: SessionType,
 
     calculation_files = []
 
-    exposure_xml, exposure_csv = create_exposure_input(
+    exposure_xml, exposure_csv = create_exposure_inputs(
         session, working_job['exposure']['exposure_file'])
     exposure_xml.name = 'exposure.xml'
     working_job['exposure']['exposure_file'] = exposure_xml.name
