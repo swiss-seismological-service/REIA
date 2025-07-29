@@ -5,11 +5,11 @@ import pandas as pd
 
 from reia.io import ASSETS_COLS_MAPPING
 from reia.io.read import parse_exposure, parse_shapefile_geometries
+from reia.io.write import create_exposure_buffer
 from reia.repositories.asset import (AggregationGeometryRepository,
                                      AssetRepository, ExposureModelRepository)
 from reia.repositories.types import SessionType
 from reia.schemas.exposure_schema import ExposureModel
-from reia.utils import create_file_pointer_dataframe, create_file_pointer_jinja
 
 
 def create_exposure_with_assets(session: SessionType,
@@ -225,26 +225,10 @@ def create_exposure_input(
     exposuremodel = ExposureModelRepository.get_by_id(
         session, asset_collection_oid)
 
-    data = exposuremodel.model_dump(mode='json')
-    data['assets_csv_name'] = assets_csv_name.name
-
-    exposure_xml = create_file_pointer_jinja(template_name, data=data)
-
     exposure_df = AssetRepository.get_by_exposuremodel(
         session, asset_collection_oid)
-    exposure_df.index.name = 'id'
 
-    columns_map = {**{'longitude': 'lon', 'latitude': 'lat'},
-                   **{v: k for k, v in ASSETS_COLS_MAPPING.items()}}
-
-    exposure_df = exposure_df.rename(columns=columns_map)
-
-    exposure_df = exposure_df[[*columns_map.values(),
-                               *exposuremodel.aggregationtypes]] \
-        .dropna(axis=1, how='all') \
-        .fillna(0)
-
-    exposure_csv = create_file_pointer_dataframe(
-        exposure_df, name=assets_csv_name.name)
-
-    return (exposure_xml, exposure_csv)
+    return create_exposure_buffer(exposuremodel,
+                                  exposure_df,
+                                  assets_csv_name,
+                                  template_name)

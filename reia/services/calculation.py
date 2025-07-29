@@ -21,7 +21,7 @@ from reia.services.results import ResultsService
 from reia.services.status_tracker import StatusTracker
 from reia.services.taxonomy import create_taxonomymap_input
 from reia.services.vulnerability import create_vulnerability_input
-from reia.utils import create_file_pointer_configparser, flatten_config
+from reia.utils import create_file_buffer_configparser, flatten_config
 from settings import get_config
 
 
@@ -439,7 +439,7 @@ def assemble_calculation_input(session: SessionType,
         working_job['hazard'][k] = file.name
         calculation_files.append(file)
 
-    job_file = create_file_pointer_configparser(working_job, 'job.ini')
+    job_file = create_file_buffer_configparser(working_job, 'job.ini')
 
     calculation_files.append(job_file)
 

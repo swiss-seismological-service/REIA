@@ -83,7 +83,7 @@ def flatten_config(file: TextIO) -> dict:
     return mydict
 
 
-def create_file_pointer_jinja(template_name: str, **kwargs) -> io.StringIO:
+def create_file_buffer_jinja(template_name: str, **kwargs) -> io.StringIO:
     """Create file pointer."""
     sio = io.StringIO()
     with open(Path(get_project_root(), template_name)) as t:
@@ -98,8 +98,8 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent
 
 
-def create_file_pointer_configparser(settings: configparser.ConfigParser,
-                                     name: str) -> io.StringIO:
+def create_file_buffer_configparser(settings: configparser.ConfigParser,
+                                    name: str) -> io.StringIO:
     job_ini = io.StringIO()
     settings.write(job_ini)
     job_ini.seek(0)
@@ -108,9 +108,9 @@ def create_file_pointer_configparser(settings: configparser.ConfigParser,
     return job_ini
 
 
-def create_file_pointer_dataframe(df: pd.DataFrame,
-                                  name: str,
-                                  **kwargs) -> io.StringIO:
+def create_file_buffer_dataframe(df: pd.DataFrame,
+                                 name: str,
+                                 **kwargs) -> io.StringIO:
     """Creates a file pointer for a DataFrame."""
     buffer = io.StringIO()
     df.to_csv(buffer, **kwargs)

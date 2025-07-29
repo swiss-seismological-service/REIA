@@ -4,10 +4,10 @@ from pathlib import Path
 import pandas as pd
 
 from reia.datamodel.fragility import TaxonomyMap
+from reia.io.write import create_taxonomymap_buffer
 from reia.repositories.fragility import (MappingRepository,
                                          TaxonomyMapRepository)
 from reia.repositories.types import SessionType
-from reia.utils import create_file_pointer_dataframe
 
 
 def add_taxonomymap_from_file(session: SessionType,
@@ -69,5 +69,4 @@ def create_taxonomymap_input(session: SessionType,
     """
     mappings = MappingRepository.get_by_taxonomymap_oid(session,
                                                         taxonomymap_oid)
-    mappings = mappings[['taxonomy', 'conversion', 'weight']]
-    return create_file_pointer_dataframe(mappings, name=name, index=False)
+    return create_taxonomymap_buffer(mappings, name)

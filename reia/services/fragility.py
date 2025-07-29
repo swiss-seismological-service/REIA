@@ -2,10 +2,10 @@ import io
 from pathlib import Path
 
 from reia.io.read import parse_fragility
+from reia.io.write import create_fragility_buffer
 from reia.repositories.fragility import FragilityModelRepository
 from reia.repositories.types import SessionType
 from reia.schemas.fragility_schemas import FragilityModel
-from reia.utils import create_file_pointer_jinja
 
 
 def add_fragility_from_file(
@@ -72,6 +72,4 @@ def create_fragility_input(
     fragility_model = FragilityModelRepository.get_by_id(
         session, fragility_model_oid)
 
-    data = fragility_model.model_dump(mode='json')
-
-    return create_file_pointer_jinja(template_name, data=data)
+    return create_fragility_buffer(fragility_model, template_name)
