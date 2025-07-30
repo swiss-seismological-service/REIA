@@ -70,7 +70,7 @@ class OQCalculationAPI(APIConnection):
 
         # Monitor until completion
         while self.status not in ['complete', 'aborted', 'failed']:
-            time.sleep(1)
+            time.sleep(5)
             self.get_status()
 
         return self.status

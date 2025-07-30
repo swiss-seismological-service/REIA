@@ -76,11 +76,8 @@ def create_calculation(
         if aggregate_by else None
     }
 
-    calculation = CALCULATION_MAPPING[calculation_mode].model_validate(
-        calculation_dict
-    )
-
-    return calculation
+    return CALCULATION_MAPPING[calculation_mode].model_validate(
+        calculation_dict)
 
 
 def create_calculation_branch(config: configparser.ConfigParser,
