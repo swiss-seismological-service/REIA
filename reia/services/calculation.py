@@ -57,8 +57,8 @@ class CalculationService:
                          f"{len(branch_settings)} branches.")
 
         self.logger.info(
-            f"Created calculation {calculation.oid} and "
-            f"branches with ids {[b.branch.oid for b in branch_settings]}.")
+            f"Running calculation {calculation.oid} with "
+            f"branches {[b.branch.oid for b in branch_settings]}.")
 
         try:
             # Update calculation status to executing
@@ -70,7 +70,7 @@ class CalculationService:
             # Process each calculation branch
             for i, b in enumerate(branch_settings):
                 self.logger.info(
-                    "Processing calculation branch "
+                    "Executing calculation branch "
                     f"{i}/{len(branch_settings)} (ID: {b.branch.oid})")
                 b = self._run_single_calculation(b)
 
