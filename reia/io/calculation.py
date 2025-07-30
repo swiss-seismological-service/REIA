@@ -8,29 +8,6 @@ from reia.schemas.calculation_schemas import (Calculation, CalculationBranch,
 from reia.utils import flatten_config
 
 
-def validate_and_parse_calculation_input(
-    branch_settings: list[CalculationBranchSettings]
-) -> tuple[Calculation, list[CalculationBranch]]:
-    """Validates input and returns existing database Pydantic schemas.
-
-    Args:
-        branch_settings: List of calculation branch settings.
-
-    Returns:
-        Tuple containing calculation and branches ready for database insertion
-    """
-    validate_calculation_input(branch_settings)
-
-    # Create calculation
-    calculation = create_calculation(branch_settings)
-
-    # Create branches
-    branches = [create_calculation_branch(setting) for
-                setting in branch_settings]
-
-    return calculation, branches
-
-
 def validate_calculation_input(
         branch_settings: list[CalculationBranchSettings]) -> None:
     """Cross-branch validation,
@@ -47,6 +24,7 @@ def validate_calculation_input(
     if abs(total_weight - 1.0) > 1e-6:
         raise ValueError(
             'The sum of the weights for calculation branches must be 1.')
+
     # Validate cross-branch consistency
     configs = [s.config for s in branch_settings]
 
@@ -105,7 +83,8 @@ def create_calculation(
     return calculation
 
 
-def create_calculation_branch(setting: CalculationBranchSettings
+def create_calculation_branch(config: configparser.ConfigParser,
+                              weight: float
                               ) -> CalculationBranch:
     """Create calculation branch directly from settings.
 
@@ -115,7 +94,6 @@ def create_calculation_branch(setting: CalculationBranchSettings
     Returns:
         Validated CalculationBranch object.
     """
-    config = setting.config
 
     # Clean and flatten config
     flat_job = configparser.ConfigParser()
@@ -135,7 +113,7 @@ def create_calculation_branch(setting: CalculationBranchSettings
     branch_dict = {
         '_exposuremodel_oid': exposuremodel_oid,
         'config': flat_job,
-        'weight': setting.weight
+        'weight': weight
     }
 
     # Add model references using unified mapping approach

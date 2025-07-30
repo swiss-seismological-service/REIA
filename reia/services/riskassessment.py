@@ -1,11 +1,10 @@
-import configparser
 from pathlib import Path
 
 from reia.repositories.calculation import RiskAssessmentRepository
-from reia.schemas.calculation_schemas import (CalculationBranchSettings,
-                                              RiskAssessment)
+from reia.schemas.calculation_schemas import RiskAssessment
 from reia.schemas.enums import EEarthquakeType, EStatus
-from reia.services.calculation import CalculationService
+from reia.services.calculation import (CalculationDataService,
+                                       CalculationService)
 from reia.services.logger import LoggerService
 from reia.services.status_tracker import StatusTracker
 
@@ -21,8 +20,8 @@ class RiskAssessmentService:
         self.session = session
         self.status_tracker = StatusTracker(session)
 
-    def run_risk_assessment(self, originid: str, loss_config_path: str,
-                            damage_config_path: str) -> RiskAssessment:
+    def run_risk_assessment(self, originid: str, loss_config_path: Path,
+                            damage_config_path: Path) -> RiskAssessment:
         """Run a complete risk assessment with loss and damage calculations.
 
         Args:
@@ -57,7 +56,7 @@ class RiskAssessmentService:
             # Run loss calculation
             self.logger.info("Starting loss calculation for risk "
                              f"assessment {risk_assessment.oid}")
-            loss_calculation = self._run_loss_calculation(loss_config_path)
+            loss_calculation = self._run_calculation(loss_config_path)
             risk_assessment.losscalculation_oid = loss_calculation.oid
             risk_assessment = RiskAssessmentRepository.update(
                 self.session, risk_assessment)
@@ -67,7 +66,7 @@ class RiskAssessmentService:
             # Run damage calculation
             self.logger.info("Starting damage calculation for "
                              f"risk assessment {risk_assessment.oid}")
-            damage_calculation = self._run_damage_calculation(
+            damage_calculation = self._run_calculation(
                 damage_config_path)
             risk_assessment.damagecalculation_oid = damage_calculation.oid
             risk_assessment = RiskAssessmentRepository.update(
@@ -103,20 +102,11 @@ class RiskAssessmentService:
                                               f"Exception occurred: {str(e)}")
             raise
 
-    def _run_loss_calculation(self, config_path: str):
-        """Run loss calculation from config file."""
-        job_file = configparser.ConfigParser()
-        job_file.read(Path(config_path))
-        branch_settings = CalculationBranchSettings(weight=1, config=job_file)
+    def _run_calculation(self, config_path: Path):
+        """Run calculation from config file."""
+
+        calculation, branch_settings = CalculationDataService.import_from_file(
+            self.session, [config_path], [1])
 
         calc_service = CalculationService(self.session)
-        return calc_service.run_calculations([branch_settings])
-
-    def _run_damage_calculation(self, config_path: str):
-        """Run damage calculation from config file."""
-        job_file = configparser.ConfigParser()
-        job_file.read(Path(config_path))
-        branch_settings = CalculationBranchSettings(weight=1, config=job_file)
-
-        calc_service = CalculationService(self.session)
-        return calc_service.run_calculations([branch_settings])
+        return calc_service.run_calculations(calculation, branch_settings)

@@ -1,10 +1,10 @@
 import configparser
+import tempfile
 from pathlib import Path
 
 import pytest
 from numpy.testing import assert_almost_equal
 
-from reia.services.calculation import CalculationService
 from reia.cli import (add_exposure, add_fragility, add_risk_assessment,
                       add_taxonomymap, add_vulnerability, run_risk_assessment)
 from reia.repositories.asset import ExposureModelRepository
@@ -13,8 +13,9 @@ from reia.repositories.calculation import (CalculationRepository,
 from reia.repositories.fragility import (FragilityModelRepository,
                                          TaxonomyMapRepository)
 from reia.repositories.vulnerability import VulnerabilityModelRepository
-from reia.schemas.calculation_schemas import CalculationBranchSettings
 from reia.schemas.enums import ECalculationType, EStatus
+from reia.services.calculation import (CalculationDataService,
+                                       CalculationService)
 
 DATAFOLDER = Path(__file__).parent / 'data' / 'ria_test'
 
@@ -57,14 +58,23 @@ def loss_config(exposure, vulnerability):
     risk_file['hazard']['gmfs_csv'] = str(DATAFOLDER / 'gmfs_test.csv')
     risk_file['hazard']['sites_csv'] = str(DATAFOLDER / 'sites.csv')
 
-    return risk_file
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        # Write to temporary file
+        loss_file_path = Path(tmpdirname) / 'loss_calculation.ini'
+        with open(loss_file_path, 'w') as f:
+            risk_file.write(f)
+
+        yield loss_file_path
 
 
 @pytest.fixture(scope='module')
 def loss_calculation(loss_config, db_session):
-    settings = [CalculationBranchSettings(weight=1, config=loss_config)]
+
+    calculation, branch_settings = CalculationDataService.import_from_file(
+        db_session, [loss_config], [1])
+
     calc_service = CalculationService(db_session)
-    return calc_service.run_calculations(settings)
+    return calc_service.run_calculations(calculation, branch_settings)
 
 
 @pytest.fixture(scope='module')
@@ -80,14 +90,23 @@ def damage_config(exposure, fragility, taxonomy):
     damage_file['hazard']['gmfs_csv'] = str(DATAFOLDER / 'gmfs_test.csv')
     damage_file['hazard']['sites_csv'] = str(DATAFOLDER / 'sites.csv')
 
-    return damage_file
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        # Write to temporary file
+        damage_file_path = Path(tmpdirname) / 'damage_calculation.ini'
+        with open(damage_file_path, 'w') as f:
+            damage_file.write(f)
+
+        yield damage_file_path
 
 
 @pytest.fixture(scope='module')
 def damage_calculation(damage_config, db_session):
-    settings = [CalculationBranchSettings(weight=1, config=damage_config)]
+
+    calculation, branch_settings = CalculationDataService.import_from_file(
+        db_session, [damage_config], [1])
+
     calc_service = CalculationService(db_session)
-    return calc_service.run_calculations(settings)
+    return calc_service.run_calculations(calculation, branch_settings)
 
 
 @pytest.fixture(scope='module')
@@ -100,58 +119,33 @@ def risk_assessment(loss_calculation, damage_calculation, db_session):
 def test_run_risk_assessment_end_to_end(
         loss_config, damage_config, db_session):
     """Test the full run_risk_assessment CLI workflow end-to-end."""
-    import os
-    import tempfile
 
-    # Create temporary config files
-    with tempfile.NamedTemporaryFile(mode='w',
-                                     suffix='.ini',
-                                     delete=False) as loss_file:
-        loss_config.write(loss_file)
-        loss_file_path = loss_file.name
+    # Call the actual CLI function
+    originid = 'smi:ch.ethz.sed/e2e_test'
+    oid = run_risk_assessment(
+        originid=originid,
+        loss=loss_config,
+        damage=damage_config
+    )
 
-    with tempfile.NamedTemporaryFile(mode='w',
-                                     suffix='.ini',
-                                     delete=False) as damage_file:
-        damage_config.write(damage_file)
-        damage_file_path = damage_file.name
+    # Verify the risk assessment was created properly
+    e2e_assessment = RiskAssessmentRepository.get_by_id(
+        db_session, oid)
 
-    try:
-        # Call the actual CLI function
-        originid = 'smi:ch.ethz.sed/e2e_test'
-        run_risk_assessment(
-            originid=originid,
-            loss=loss_file_path,
-            damage=damage_file_path
-        )
+    assert e2e_assessment is not None, \
+        f"Risk assessment with originid {originid} not found"
+    assert e2e_assessment.status == EStatus.COMPLETE
+    assert e2e_assessment.losscalculation_oid is not None
+    assert e2e_assessment.damagecalculation_oid is not None
 
-        # Verify the risk assessment was created properly
-        risk_assessments = RiskAssessmentRepository.get_all(db_session)
-        e2e_assessment = None
-        for ra in risk_assessments:
-            if ra.originid == originid:
-                e2e_assessment = ra
-                break
+    # Verify both calculations completed successfully
+    loss_calc = CalculationRepository.get_by_id(
+        db_session, e2e_assessment.losscalculation_oid)
+    damage_calc = CalculationRepository.get_by_id(
+        db_session, e2e_assessment.damagecalculation_oid)
 
-        assert e2e_assessment is not None, \
-            f"Risk assessment with originid {originid} not found"
-        assert e2e_assessment.status == EStatus.COMPLETE
-        assert e2e_assessment.losscalculation_oid is not None
-        assert e2e_assessment.damagecalculation_oid is not None
-
-        # Verify both calculations completed successfully
-        loss_calc = CalculationRepository.get_by_id(
-            db_session, e2e_assessment.losscalculation_oid)
-        damage_calc = CalculationRepository.get_by_id(
-            db_session, e2e_assessment.damagecalculation_oid)
-
-        assert loss_calc.status == EStatus.COMPLETE
-        assert damage_calc.status == EStatus.COMPLETE
-
-    finally:
-        # Clean up temporary files
-        os.unlink(loss_file_path)
-        os.unlink(damage_file_path)
+    assert loss_calc.status == EStatus.COMPLETE
+    assert damage_calc.status == EStatus.COMPLETE
 
 
 def test_riskassessment(risk_assessment, loss_calculation, damage_calculation):

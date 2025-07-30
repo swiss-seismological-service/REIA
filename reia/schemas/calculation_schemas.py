@@ -38,7 +38,6 @@ class CalculationBranch(Model):
 
 
 class LossCalculationBranch(CalculationBranch):
-    losses: list[LossValue] = Field(default=[], exclude=True)
     occupantsvulnerabilitymodel_oid: int | None = Field(
         default=None, alias='_occupantsvulnerabilitymodel_oid')
     contentsvulnerabilitymodel_oid: int | None = Field(
@@ -54,7 +53,6 @@ class LossCalculationBranch(CalculationBranch):
 
 
 class DamageCalculationBranch(CalculationBranch):
-    damages: list[DamageValue] = Field(default=[], exclude=True)
     contentsfragilitymodel_oid: int | None = Field(
         default=None, alias='_contentsfragilitymodel_oid')
     structuralfragilitymodel_oid: int | None = Field(
@@ -95,3 +93,4 @@ class CalculationBranchSettings(Model):
     """ Contains the weight and a OQ settings file for a calculation"""
     weight: float
     config: configparser.ConfigParser
+    branch: CalculationBranch | None = None

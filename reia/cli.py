@@ -14,7 +14,7 @@ from reia.repositories.fragility import (FragilityModelRepository,
 from reia.repositories.vulnerability import VulnerabilityModelRepository
 from reia.schemas.calculation_schemas import RiskAssessment
 from reia.schemas.enums import EEarthquakeType
-from reia.services.calculation import (create_calculation_files_to_folder,
+from reia.services.calculation import (CalculationDataService,
                                        run_calculation_from_files,
                                        run_test_calculation)
 from reia.services.exposure import (ExposureService,
@@ -128,7 +128,8 @@ def create_exposure(
 ) -> None:
     """Create input files for an exposure model."""
     with DatabaseSession() as session:
-        xml_path, csv_path = ExposureService.export_to_file(session, id, str(filename))
+        xml_path, csv_path = ExposureService.export_to_file(
+            session, id, str(filename))
 
     typer.echo(
         f'Successfully created exposure files: "{xml_path}" and "{csv_path}".')
@@ -362,7 +363,7 @@ def create_calculation_files(
 ) -> None:
     """Create all files for an OpenQuake calculation."""
     with DatabaseSession() as session:
-        create_calculation_files_to_folder(
+        CalculationDataService.export_branch_to_directory(
             session, settings_file, target_folder)
 
     typer.echo(
@@ -393,10 +394,13 @@ def run_calculation(
     """Run an OpenQuake calculation with multiple branches."""
     try:
         with DatabaseSession() as session:
-            run_calculation_from_files(session, settings, weights)
+            calculation = run_calculation_from_files(session,
+                                                     settings,
+                                                     weights)
 
         typer.echo(
             'Successfully completed OpenQuake calculation.')
+        return calculation.oid
     except ValueError as e:
         typer.echo(f'Error: {str(e)} Exiting...')
         raise typer.Exit(code=1)
@@ -483,9 +487,9 @@ def list_risk_assessment() -> None:
 def run_risk_assessment(
     originid: Annotated[str, typer.Argument(
         help='Origin ID for the risk assessment')],
-    loss: Annotated[str, typer.Option(
+    loss: Annotated[Path, typer.Option(
         help='Path to loss calculation configuration file')] = ...,
-    damage: Annotated[str, typer.Option(
+    damage: Annotated[Path, typer.Option(
         help='Path to damage calculation configuration file')] = ...
 ) -> None:
     """Run a complete risk assessment with loss and damage calculations."""
@@ -499,3 +503,5 @@ def run_risk_assessment(
     typer.echo(
         f'Successfully completed risk assessment with status: '
         f'{risk_assessment.status.name}')
+
+    return risk_assessment.oid
