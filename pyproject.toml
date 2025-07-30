@@ -26,7 +26,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Physics",
 ]
-requires-python = "<=3.12"
+requires-python = "~=3.10"
 dependencies = [
     "fiona<1.10",
     "geoalchemy2",

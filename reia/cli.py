@@ -5,7 +5,8 @@ from typing_extensions import Annotated
 
 from reia.repositories import DatabaseSession, drop_db, init_db, init_db_file
 from reia.repositories.asset import (AggregationGeometryRepository,
-                                     ExposureModelRepository)
+                                     AssetRepository, ExposureModelRepository,
+                                     SiteRepository)
 from reia.repositories.calculation import (CalculationRepository,
                                            RiskAssessmentRepository)
 from reia.repositories.fragility import (FragilityModelRepository,
@@ -16,16 +17,12 @@ from reia.schemas.enums import EEarthquakeType
 from reia.services.calculation import (create_calculation_files_to_folder,
                                        run_calculation_from_files,
                                        run_test_calculation)
-from reia.services.exposure import (add_exposure_from_file,
-                                    add_geometries_from_shapefile,
-                                    create_exposure_files)
-from reia.services.fragility import (add_fragility_from_file,
-                                     create_fragility_file)
+from reia.services.exposure import (ExposureService,
+                                    add_geometries_from_shapefile)
+from reia.services.fragility import FragilityService
 from reia.services.riskassessment import RiskAssessmentService
-from reia.services.taxonomy import (add_taxonomymap_from_file,
-                                    create_taxonomymap_file)
-from reia.services.vulnerability import (add_vulnerability_from_file,
-                                         create_vulnerability_file)
+from reia.services.taxonomy import TaxonomyService
+from reia.services.vulnerability import VulnerabilityService
 from reia.utils import display_table
 
 app = typer.Typer(add_completion=False)
@@ -83,8 +80,12 @@ def add_exposure(
 ) -> int:
     """Add an exposure model from file."""
     with DatabaseSession() as session:
-        exposuremodel, assets_count, sites_count = add_exposure_from_file(
+        exposuremodel = ExposureService.import_from_file(
             session, exposure, name)
+        assets_count = AssetRepository.count_by_exposuremodel(
+            session, exposuremodel.oid)
+        sites_count = SiteRepository.count_by_exposuremodel(
+            session, exposuremodel.oid)
 
     typer.echo(
         f'Successfully created exposure model with ID {exposuremodel.oid} '
@@ -127,16 +128,10 @@ def create_exposure(
 ) -> None:
     """Create input files for an exposure model."""
     with DatabaseSession() as session:
-        success = create_exposure_files(session, id, filename)
+        xml_path, csv_path = ExposureService.export_to_file(session, id, str(filename))
 
-    if success:
-        p_xml = filename.with_suffix('.xml')
-        p_csv = filename.with_suffix('.csv')
-        typer.echo(
-            'Successfully created exposure files: '
-            f'"{str(p_xml)}" and "{str(p_csv)}".')
-    else:
-        typer.echo('Error: Failed to create exposure files.')
+    typer.echo(
+        f'Successfully created exposure files: "{xml_path}" and "{csv_path}".')
 
 
 @exposure.command('add_geometries')
@@ -195,7 +190,8 @@ def add_fragility(
 ) -> int:
     """Add a fragility model from file."""
     with DatabaseSession() as session:
-        fragility_model = add_fragility_from_file(session, fragility, name)
+        fragility_model = FragilityService.import_from_file(
+            session, fragility, name)
 
     typer.echo(
         f'Successfully created fragility model "{fragility_model.type}" '
@@ -236,14 +232,10 @@ def create_fragility(
 ) -> None:
     """Create input file for a fragility model."""
     with DatabaseSession() as session:
-        success = create_fragility_file(session, id, filename)
+        created_filename = FragilityService.export_to_file(
+            session, id, str(filename))
 
-    if success:
-        filename = filename.with_suffix('.xml')
-        typer.echo(
-            f'Successfully created fragility file: "{str(filename)}".')
-    else:
-        typer.echo('Error: Failed to create fragility file.')
+    typer.echo(f'Successfully created fragility file: "{created_filename}".')
 
 
 @taxonomymap.command('add')
@@ -255,7 +247,8 @@ def add_taxonomymap(
 ) -> int:
     """Add a taxonomy mapping from file."""
     with DatabaseSession() as session:
-        taxonomy_map = add_taxonomymap_from_file(session, map_file, name)
+        taxonomy_map = TaxonomyService.import_from_file(
+            session, map_file, name)
 
     typer.echo(
         f'Successfully created taxonomy mapping with ID {taxonomy_map.oid}.')
@@ -294,14 +287,11 @@ def create_taxonomymap(
 ) -> None:
     """Create input file for a taxonomy mapping."""
     with DatabaseSession() as session:
-        success = create_taxonomymap_file(session, id, filename)
+        created_filename = TaxonomyService.export_to_file(
+            session, id, str(filename))
 
-    if success:
-        filename = filename.with_suffix('.csv')
-        typer.echo(
-            f'Successfully created taxonomy mapping file: "{str(filename)}".')
-    else:
-        typer.echo('Error: Failed to create taxonomy mapping file.')
+    typer.echo(
+        f'Successfully created taxonomy mapping file: "{created_filename}".')
 
 
 @vulnerability.command('add')
@@ -313,7 +303,7 @@ def add_vulnerability(
 ) -> int:
     """Add a vulnerability model from file."""
     with DatabaseSession() as session:
-        vulnerability_model = add_vulnerability_from_file(
+        vulnerability_model = VulnerabilityService.import_from_file(
             session, vulnerability, name)
 
     typer.echo(
@@ -356,14 +346,11 @@ def create_vulnerability(
 ) -> None:
     """Create input file for a vulnerability model."""
     with DatabaseSession() as session:
-        success = create_vulnerability_file(session, id, filename)
+        created_filename = VulnerabilityService.export_to_file(
+            session, id, str(filename))
 
-    if success:
-        filename = filename.with_suffix('.xml')
-        typer.echo(
-            f'Successfully created vulnerability file: "{str(filename)}".')
-    else:
-        typer.echo('Error: Failed to create vulnerability file.')
+    typer.echo(
+        f'Successfully created vulnerability file: "{created_filename}".')
 
 
 @calculation.command('create_files')

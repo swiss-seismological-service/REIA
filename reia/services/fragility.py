@@ -6,70 +6,69 @@ from reia.io.write import create_fragility_buffer
 from reia.repositories.fragility import FragilityModelRepository
 from reia.repositories.types import SessionType
 from reia.schemas.fragility_schemas import FragilityModel
+from reia.services import DataService
 
 
-def add_fragility_from_file(
-        session: SessionType,
-        file_path: Path,
-        name: str) -> FragilityModel:
-    """Load fragility model from file into data storage layer.
+class FragilityService(DataService):
+    @classmethod
+    def import_from_file(
+            cls,
+            session: SessionType,
+            file_path: Path,
+            name: str) -> FragilityModel:
+        """Load fragility model from file into data storage layer.
 
-    Args:
-        session: Database session.
-        file_path: Path to the fragility file.
-        name: Name for the fragility model.
+        Args:
+            session: Database session.
+            file_path: Path to the fragility file.
+            name: Name for the fragility model.
 
-    Returns:
-        Created FragilityModel.
-    """
-    with open(file_path, 'r') as f:
-        model = parse_fragility(f)
-    model.name = name
+        Returns:
+            Created FragilityModel.
+        """
+        with open(file_path, 'r') as f:
+            model = parse_fragility(f)
+        model.name = name
 
-    fragility_model = FragilityModelRepository.create(session, model)
-    return fragility_model
+        fragility_model = FragilityModelRepository.create(session, model)
+        return fragility_model
 
+    @classmethod
+    def export_to_file(
+            cls,
+            session: SessionType,
+            oid: int,
+            file_path: str) -> str:
+        """Export fragility model from data storage layer to disk file.
 
-def create_fragility_file(
-        session: SessionType,
-        fragility_oid: int,
-        output_path: Path) -> bool:
-    """Export fragility model from data storage layer to disk file.
+        Args:
+            session: Database session.
+            oid: ID of the fragility model.
+            file_path: Path where to save the file.
 
-    Args:
-        session: Database session.
-        fragility_oid: ID of the fragility model.
-        output_path: Path where to save the file.
+        Returns:
+            The filename of the created file.
+        """
+        output_path = Path(file_path).with_suffix('.xml')
 
-    Returns:
-        True if file was created successfully.
-    """
-    output_path = output_path.with_suffix('.xml')
+        file_pointer = cls.export_to_buffer(session, oid)
 
-    file_pointer = create_fragility_input(session, fragility_oid)
+        output_path.parent.mkdir(exist_ok=True)
+        output_path.open('w').write(file_pointer.getvalue())
 
-    output_path.parent.mkdir(exist_ok=True)
-    output_path.open('w').write(file_pointer.getvalue())
+        return str(output_path)
 
-    return output_path.exists()
+    @classmethod
+    def export_to_buffer(cls, session: SessionType, oid: int) -> io.StringIO:
+        """Generate fragility model from data storage layer to in-memory file.
 
+        Args:
+            session: Database session.
+            oid: ID of the FragilityModel to be used.
 
-def create_fragility_input(
-        session: SessionType,
-        fragility_model_oid: int,
-        template_name: Path = Path('reia/templates/fragility.xml')) \
-        -> io.StringIO:
-    """Generate fragility model from data storage layer to in-memory file.
-
-    Args:
-        session: Database session.
-        fragility_model_oid: ID of the FragilityModel to be used.
-        template_name: Template to be used for the fragility file.
-
-    Returns:
-        In-memory file object for fragility input.
-    """
-    fragility_model = FragilityModelRepository.get_by_id(
-        session, fragility_model_oid)
-
-    return create_fragility_buffer(fragility_model, template_name)
+        Returns:
+            In-memory file object for fragility input.
+        """
+        fragility_model = FragilityModelRepository.get_by_id(session, oid)
+        template_name = Path('reia/templates/fragility.xml')
+        return create_fragility_buffer(fragility_model, template_name)

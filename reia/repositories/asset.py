@@ -129,6 +129,16 @@ class AssetRepository(repository_factory(
 
         return assets_oids, sites_oids
 
+    @classmethod
+    def count_by_exposuremodel(cls, session: Session,
+                               exposuremodel_oid: int) -> int:
+        """Count the number of assets associated with an exposure model."""
+        stmt = select(func.count(AssetORM._oid)).where(
+            AssetORM._exposuremodel_oid == exposuremodel_oid)
+        result = session.execute(stmt).scalar_one()
+        session.commit()
+        return result
+
 
 class SiteRepository(repository_factory(
         Site, SiteORM)):
@@ -149,6 +159,15 @@ class SiteRepository(repository_factory(
         result = session.execute(stmt).unique().scalars().all()
         session.commit()
         return [cls.model.model_validate(row) for row in result]
+
+    @classmethod
+    def count_by_exposuremodel(cls, session: Session,
+                               exposuremodel_oid: int) -> int:
+        stmt = select(func.count(SiteORM._oid)).where(
+            SiteORM._exposuremodel_oid == exposuremodel_oid)
+        result = session.execute(stmt).scalar_one()
+        session.commit()
+        return result
 
 
 class AggregationTagRepository(repository_factory(

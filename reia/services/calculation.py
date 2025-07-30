@@ -9,14 +9,14 @@ from reia.repositories.calculation import (CalculationBranchRepository,
 from reia.repositories.types import SessionType
 from reia.schemas.calculation_schemas import CalculationBranchSettings
 from reia.schemas.enums import EStatus
-from reia.services.exposure import create_exposure_inputs
-from reia.services.fragility import create_fragility_input
+from reia.services.exposure import ExposureService
+from reia.services.fragility import FragilityService
 from reia.services.logger import LoggerService
 from reia.services.oq_api import OQCalculationAPI
 from reia.services.results import ResultsService
 from reia.services.status_tracker import StatusTracker
-from reia.services.taxonomy import create_taxonomymap_input
-from reia.services.vulnerability import create_vulnerability_input
+from reia.services.taxonomy import TaxonomyService
+from reia.services.vulnerability import VulnerabilityService
 from reia.utils import create_file_buffer_configparser
 from settings import get_config
 
@@ -262,7 +262,7 @@ def assemble_calculation_input(session: SessionType,
 
     calculation_files = []
 
-    exposure_xml, exposure_csv = create_exposure_inputs(
+    exposure_xml, exposure_csv = ExposureService.export_to_buffer(
         session, working_job['exposure']['exposure_file'])
     exposure_xml.name = 'exposure.xml'
     working_job['exposure']['exposure_file'] = exposure_xml.name
@@ -272,10 +272,10 @@ def assemble_calculation_input(session: SessionType,
     if 'vulnerability' in working_job.keys():
         for k, v in working_job['vulnerability'].items():
             if k == 'taxonomy_mapping_csv':
-                file = create_taxonomymap_input(session, v)
+                file = TaxonomyService.export_to_buffer(session, v)
                 file.name = "{}.csv".format(k.replace('_file', ''))
             else:
-                file = create_vulnerability_input(session, v)
+                file = VulnerabilityService.export_to_buffer(session, v)
                 file.name = "{}.xml".format(k.replace('_file', ''))
             working_job['vulnerability'][k] = file.name
             calculation_files.append(file)
@@ -283,9 +283,9 @@ def assemble_calculation_input(session: SessionType,
     elif 'fragility' in working_job.keys():
         for k, v in working_job['fragility'].items():
             if k == 'taxonomy_mapping_csv':
-                file = create_taxonomymap_input(session, v)
+                file = TaxonomyService.export_to_buffer(session, v)
             else:
-                file = create_fragility_input(session, v)
+                file = FragilityService.export_to_buffer(session, v)
                 file.name = "{}.xml".format(k.replace('_file', ''))
             working_job['fragility'][k] = file.name
             calculation_files.append(file)
