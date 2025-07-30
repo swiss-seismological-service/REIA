@@ -7,7 +7,8 @@ from reia.io.calculation import validate_and_parse_calculation_input
 from reia.repositories.calculation import (CalculationBranchRepository,
                                            CalculationRepository)
 from reia.repositories.types import SessionType
-from reia.schemas.calculation_schemas import CalculationBranchSettings
+from reia.schemas.calculation_schemas import (Calculation, CalculationBranch,
+                                              CalculationBranchSettings)
 from reia.schemas.enums import EStatus
 from reia.services.exposure import ExposureService
 from reia.services.fragility import FragilityService
@@ -35,7 +36,7 @@ class CalculationService:
 
     def run_calculations(
             self,
-            branch_settings: list[CalculationBranchSettings]):
+            branch_settings: list[CalculationBranchSettings]) -> Calculation:
         """Run OpenQuake calculations using the existing workflow.
 
         Args:
@@ -109,7 +110,8 @@ class CalculationService:
 
     def _run_single_calculation(self,
                                 setting: CalculationBranchSettings,
-                                branch):
+                                branch: CalculationBranch
+                                ) -> CalculationBranch:
         """Run a single calculation branch using OQCalculationAPI.
 
         Args:
@@ -211,7 +213,7 @@ def run_test_calculation(session: SessionType, settings_file: Path) -> str:
 
 def run_calculation_from_files(session: SessionType,
                                settings_files: list[str],
-                               weights: list[float]) -> None:
+                               weights: list[float]) -> Calculation:
     """Run OpenQuake calculation from multiple settings files.
 
     Args:
@@ -236,7 +238,8 @@ def run_calculation_from_files(session: SessionType,
 
     # Run calculations using the service
     calc_service = CalculationService(session)
-    calc_service.run_calculations(branch_settings)
+    calculation = calc_service.run_calculations(branch_settings)
+    return calculation
 
 
 def assemble_calculation_input(session: SessionType,
