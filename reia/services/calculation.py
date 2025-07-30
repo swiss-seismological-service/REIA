@@ -293,11 +293,13 @@ class CalculationDataService(DataService):
         # Read and create deep copy of configparser
 
         if isinstance(config, Path):
-            job = configparser.ConfigParser()
-            config = job.read(config)
-
-        tmp = pickle.dumps(config)
-        working_job = pickle.loads(tmp)
+            working_job = configparser.ConfigParser()
+            working_job.read(str(config))
+        elif isinstance(config, configparser.ConfigParser):
+            tmp = pickle.dumps(config)
+            working_job = pickle.loads(tmp)
+        else:
+            raise ValueError("config must be a Path or ConfigParser instance.")
 
         calculation_files = []
 
