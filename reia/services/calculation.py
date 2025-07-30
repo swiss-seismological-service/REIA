@@ -49,17 +49,20 @@ class CalculationService:
         """
         # Validate and parse inputs using io layer
         self.logger.info("Starting calculation workflow with "
-                         f"{len(branch_settings)} branches")
-        calculation, branches_dicts = validate_and_parse_calculation_input(
-            branch_settings)
+                         f"{len(branch_settings)} branches.")
+        calculation, calculation_branches = \
+            validate_and_parse_calculation_input(branch_settings)
 
         # Create calculation and branches in database
         calculation = CalculationRepository.create(self.session, calculation)
+
         self.logger.info(f"Created calculation {calculation.oid}")
-        for b in branches_dicts:
+
+        for b in calculation_branches:
             b.calculation_oid = calculation.oid
+
         branches = [CalculationBranchRepository.create(self.session, b)
-                    for b in branches_dicts]
+                    for b in calculation_branches]
 
         try:
             # Update calculation status to executing

@@ -1,22 +1,16 @@
-from reia.io import FRAGILITY_FK_MAPPING, VULNERABILITY_FK_MAPPING
 import configparser
 from itertools import groupby
 
-import pandas as pd
-
-from reia.schemas.calculation_schemas import (BranchInputSchema,
-                                              CalculationBranchSettings,
-                                              DamageCalculation,
-                                              DamageCalculationBranch,
-                                              LossCalculation,
-                                              LossCalculationBranch)
+from reia.io import (CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING,
+                     MODEL_FIELD_MAPPINGS)
+from reia.schemas.calculation_schemas import (Calculation, CalculationBranch,
+                                              CalculationBranchSettings)
 from reia.utils import flatten_config
 
 
 def validate_and_parse_calculation_input(
-        branch_settings: list[CalculationBranchSettings]
-) -> tuple[LossCalculation | DamageCalculation,
-           list[LossCalculationBranch | DamageCalculationBranch]]:
+    branch_settings: list[CalculationBranchSettings]
+) -> tuple[Calculation, list[CalculationBranch]]:
     """Validates input and returns existing database Pydantic schemas.
 
     Args:
@@ -26,16 +20,27 @@ def validate_and_parse_calculation_input(
         Tuple containing calculation and branches ready for database insertion
     """
     validate_calculation_input(branch_settings)
-    parsed_data = parse_calculation_branches(branch_settings)
-    return map_to_database_schemas(parsed_data)
+
+    # Create calculation
+    calculation = create_calculation(branch_settings)
+
+    # Create branches
+    branches = [create_calculation_branch(setting) for
+                setting in branch_settings]
+
+    return calculation, branches
 
 
 def validate_calculation_input(
         branch_settings: list[CalculationBranchSettings]) -> None:
-    """Validate calculation input settings.
+    """Cross-branch validation,
+    (sections, calculation_mode, aggregate_by, weights).
 
     Args:
         branch_settings: List of calculation branch settings to validate.
+
+    Raises:
+        ValueError: If branches are inconsistent in required ways.
     """
     # Validate weights sum to 1
     total_weight = sum(branch.weight for branch in branch_settings)
@@ -44,124 +49,7 @@ def validate_calculation_input(
             'The sum of the weights for calculation branches must be 1.')
     # Validate cross-branch consistency
     configs = [s.config for s in branch_settings]
-    validate_branch_consistency(configs)
 
-
-def parse_calculation_branches(branch_settings: list[CalculationBranchSettings]
-                               ) -> tuple[dict, list[dict]]:
-    """Parse calculation branches into clean data structures.
-
-    Args:
-        branch_settings: List of calculation branch settings to parse.
-
-    Returns:
-        Tuple of (calculation_dict, branches_dicts)
-    """
-    # Parse each branch
-    parsed_branches = [parse_single_branch(
-        setting) for setting in branch_settings]
-
-    # Extract calculation-level metadata from first branch
-    first_branch = parsed_branches[0]
-    calculation_dict = {
-        'calculation_mode': first_branch.calculation_mode,
-        'description': first_branch.description,
-        'aggregateby': [x.strip() for x in
-                        first_branch.aggregate_by.split(',')]
-        if first_branch.aggregate_by else None
-    }
-
-    # Convert parsed branches to database format
-    branches_dicts = [_map_branch_to_database_dict(
-        branch) for branch in parsed_branches]
-
-    return calculation_dict, branches_dicts
-
-
-def map_to_database_schemas(
-        parsed_data: tuple[dict, list[dict]]
-) -> tuple[LossCalculation | DamageCalculation,
-           list[LossCalculationBranch | DamageCalculationBranch]]:
-    """Convert parsed data to database Pydantic schemas.
-
-    Args:
-        parsed_data: Tuple of (calculation_dict, branches_dicts)
-
-    Returns:
-        Tuple containing calculation and branch objects
-    """
-    from reia.io import CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING
-
-    calculation_dict, branches_dicts = parsed_data
-
-    calculation_mode = calculation_dict.pop('calculation_mode')
-    calculation = CALCULATION_MAPPING[calculation_mode].model_validate(
-        calculation_dict)
-
-    calculation_branches = []
-    for branch_dict in branches_dicts:
-        branch_mode = branch_dict.pop('calculation_mode')
-        branch = CALCULATION_BRANCH_MAPPING[branch_mode].model_validate(
-            branch_dict)
-        calculation_branches.append(branch)
-
-    return calculation, calculation_branches
-
-
-def _map_branch_to_database_dict(parsed_branch: BranchInputSchema) -> dict:
-    """Map a parsed branch to database dictionary format.
-
-    Args:
-        parsed_branch: Parsed branch schema
-
-    Returns:
-        Dictionary ready for database schema validation
-    """
-
-    branch_dict = {
-        '_exposuremodel_oid': parsed_branch.exposuremodel_oid,
-        'calculation_mode': parsed_branch.calculation_mode,
-        'config': parsed_branch.config_dict,
-        'weight': parsed_branch.weight
-    }
-
-    # Add model references based on calculation mode
-    if parsed_branch.calculation_mode == 'scenario_risk' and \
-            parsed_branch.vulnerability_models:
-        for model_key, model_oid in parsed_branch.vulnerability_models.items():
-            branch_dict[VULNERABILITY_FK_MAPPING[
-                f'{model_key}_vulnerability_file']] = model_oid
-
-    if parsed_branch.calculation_mode == 'scenario_damage' and \
-            parsed_branch.fragility_models:
-        for model_key, model_oid in parsed_branch.fragility_models.items():
-            branch_dict[FRAGILITY_FK_MAPPING[
-                f'{model_key}_fragility_file']] = model_oid
-
-    # Add taxonomy mapping if present
-    if parsed_branch.taxonomymap_oid:
-        if parsed_branch.calculation_mode == 'scenario_risk':
-            branch_dict[VULNERABILITY_FK_MAPPING['taxonomy_mapping_csv']
-                        ] = parsed_branch.taxonomymap_oid
-        else:
-            branch_dict[FRAGILITY_FK_MAPPING['taxonomy_mapping_csv']
-                        ] = parsed_branch.taxonomymap_oid
-
-    return branch_dict
-
-
-def validate_branch_consistency(
-        configs: list[configparser.ConfigParser]) -> None:
-    """Cross-branch validation logic
-    (sections, calculation_mode, aggregate_by).
-
-    Args:
-        configs: List of configparser objects to validate for consistency.
-
-    Raises:
-        ValueError: If branches are inconsistent in required ways.
-    """
-    # Sort aggregation keys in order to be able to string-compare
     for config in configs:
         if config.has_option('general', 'aggregate_by'):
             sorted_agg = [x.strip() for x in
@@ -187,15 +75,45 @@ def validate_branch_consistency(
                          'in all calculation branches.')
 
 
-def parse_single_branch(
-        setting: CalculationBranchSettings) -> BranchInputSchema:
-    """Parse one branch config into validated schema.
+def create_calculation(
+        branch_settings: list[CalculationBranchSettings]) -> Calculation:
+    """Extract calculation-level metadata from branch settings.
+
+    Args:
+        branch_settings: List of calculation branch settings.
+
+    Returns:
+        Dictionary with calculation metadata ready for schema validation.
+    """
+    # Use first branch to extract calculation-level metadata
+    first_config = branch_settings[0].config
+
+    calculation_mode = first_config['general']['calculation_mode']
+    description = first_config['general'].get('description')
+    aggregate_by = first_config['general'].get('aggregate_by')
+
+    calculation_dict = {
+        'description': description,
+        'aggregateby': [x.strip() for x in aggregate_by.split(',')]
+        if aggregate_by else None
+    }
+
+    calculation = CALCULATION_MAPPING[calculation_mode].model_validate(
+        calculation_dict
+    )
+
+    return calculation
+
+
+def create_calculation_branch(setting: CalculationBranchSettings
+                              ) -> CalculationBranch:
+    """Create calculation branch directly from settings.
 
     Args:
         setting: Single calculation branch setting to parse.
 
     Returns:
-        Validated BranchInputSchema object.
+        Validated CalculationBranch object.
     """
     config = setting.config
 
@@ -207,55 +125,36 @@ def parse_single_branch(
             flat_job.remove_section(s)
     flat_job = flatten_config(flat_job)
 
-    # Extract basic metadata
+    # Extract calculation mode
     calculation_mode = flat_job.pop('calculation_mode')
-    description = flat_job.pop('description', None)
-    aggregate_by = flat_job.pop('aggregate_by', None)
 
     # Get exposure model OID
     exposuremodel_oid = config['exposure']['exposure_file']
 
-    # Count number of GMFs
-    gmfs = pd.read_csv(config['hazard']['gmfs_csv'])
-    number_of_ground_motion_fields = len(gmfs.eid.unique())
+    # Build branch data dictionary
+    branch_dict = {
+        '_exposuremodel_oid': exposuremodel_oid,
+        'config': flat_job,
+        'weight': setting.weight
+    }
 
-    # Parse model references based on calculation mode
-    vulnerability_models = None
-    fragility_models = None
-    taxonomymap_oid = None
+    # Add model references using unified mapping approach
+    if calculation_mode in MODEL_FIELD_MAPPINGS:
+        mapping_config = MODEL_FIELD_MAPPINGS[calculation_mode]
+        model_section = mapping_config['model_section']
+        model_suffix = mapping_config['model_suffix']
+        field_mapping = mapping_config['field_mapping']
 
-    if calculation_mode == 'scenario_risk' and config.has_section(
-            'vulnerability'):
-        vulnerability_models = {}
-        for k, v in config['vulnerability'].items():
-            if k != 'taxonomy_mapping_csv':
-                model_key = k.replace('_vulnerability_file', '')
-                vulnerability_models[model_key] = v
-            else:
-                taxonomymap_oid = v
+        if config.has_section(model_section):
+            for k, v in config[model_section].items():
+                if k == 'taxonomy_mapping_csv':
+                    branch_dict[mapping_config['taxonomy_field']] = v
+                elif k.endswith(model_suffix):
+                    branch_dict[field_mapping[k]] = v
 
-    if calculation_mode == 'scenario_damage' and config.has_section(
-            'fragility'):
-        fragility_models = {}
-        for k, v in config['fragility'].items():
-            if k != 'taxonomy_mapping_csv':
-                model_key = k.replace('_fragility_file', '')
-                fragility_models[model_key] = v
-            else:
-                taxonomymap_oid = v
-
-    return BranchInputSchema(
-        weight=setting.weight,
-        calculation_mode=calculation_mode,
-        description=description,
-        aggregate_by=aggregate_by,
-        exposuremodel_oid=exposuremodel_oid,
-        config_dict=flat_job,
-        number_of_ground_motion_fields=number_of_ground_motion_fields,
-        vulnerability_models=vulnerability_models,
-        fragility_models=fragility_models,
-        taxonomymap_oid=taxonomymap_oid
-    )
+    # Get appropriate branch class and create instance
+    branch_class = CALCULATION_BRANCH_MAPPING[calculation_mode]
+    return branch_class.model_validate(branch_dict)
 
 
 def _equal_section_options(configs: list[configparser.ConfigParser],

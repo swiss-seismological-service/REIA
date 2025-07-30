@@ -13,8 +13,8 @@ from reia.datamodel.fragility import (BusinessInterruptionFragilityModel,
                                       LimitState, Mapping,
                                       NonstructuralFragilityModel,
                                       StructuralFragilityModel, TaxonomyMap)
-from reia.datamodel.lossvalues import (DamageValue, ELossCategory, LossValue,
-                                       RiskValue, riskvalue_aggregationtag)
+from reia.datamodel.lossvalues import (DamageValue, LossValue, RiskValue,
+                                       riskvalue_aggregationtag)
 from reia.datamodel.vulnerability import (
     BusinessInterruptionVulnerabilityModel, ContentsVulnerabilityModel,
     LossRatio, NonstructuralVulnerabilityModel, OccupantsVulnerabilityModel,

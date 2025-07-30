@@ -3,10 +3,10 @@ from sqlalchemy.sql.schema import Column, ForeignKey
 from sqlalchemy.sql.sqltypes import BigInteger, Enum, Float, String
 
 from reia.datamodel.base import ORMBase
-from reia.datamodel.lossvalues import ELossCategory
 from reia.datamodel.mixins import (ClassificationMixin, CompatibleFloatArray,
                                    CompatibleStringArray, CreationInfoMixin,
                                    PublicIdMixin)
+from reia.schemas.enums import ELossCategory
 
 
 class FragilityModel(ORMBase, PublicIdMixin, CreationInfoMixin):

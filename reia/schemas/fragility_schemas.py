@@ -2,7 +2,7 @@
 from pydantic import Field
 
 from reia.schemas.base import CreationInfoMixin, Model, TaxonomyMixin
-from reia.schemas.vulnerability_schemas import ELossCategory
+from reia.schemas.enums import ELossCategory
 
 
 class LimitState(Model):

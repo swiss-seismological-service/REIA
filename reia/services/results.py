@@ -5,12 +5,12 @@ import pandas as pd
 from openquake.commonlib.datastore import DataStore
 from openquake.risklib.scientific import LOSSTYPE
 
-from reia.datamodel import CalculationBranch, ELossCategory
 from reia.io import RISK_COLUMNS_MAPPING
 from reia.repositories.asset import AggregationTagRepository
 from reia.repositories.lossvalue import RiskValueRepository
 from reia.repositories.types import SessionType
-from reia.schemas.enums import ERiskType
+from reia.schemas.calculation_schemas import CalculationBranch
+from reia.schemas.enums import ELossCategory, ERiskType
 from reia.services.logger import LoggerService
 from reia.services.oq_api import OQCalculationAPI
 from settings import get_config
@@ -96,7 +96,9 @@ class ResultsService:
         self.logger.info("Successfully saved results for "
                          f"calculation branch {calculationbranch.oid}")
 
-    def _get_risk_from_dstore(self, dstore: DataStore, risk_type: ERiskType):
+    def _get_risk_from_dstore(self,
+                              dstore: DataStore,
+                              risk_type: ERiskType) -> pd.DataFrame:
         """Extract risk data from OpenQuake datastore.
 
         Args:

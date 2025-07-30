@@ -3,11 +3,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from reia.datamodel.fragility import TaxonomyMap
 from reia.io.write import create_taxonomymap_buffer
 from reia.repositories.fragility import (MappingRepository,
                                          TaxonomyMapRepository)
 from reia.repositories.types import SessionType
+from reia.schemas.fragility_schemas import TaxonomyMap
 
 
 def add_taxonomymap_from_file(session: SessionType,

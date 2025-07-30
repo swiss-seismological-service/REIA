@@ -37,6 +37,21 @@ FRAGILITY_FK_MAPPING = {
     '_businessinterruptionfragilitymodel_oid',
     'taxonomy_mapping_csv': '_taxonomymap_oid'}
 
+MODEL_FIELD_MAPPINGS = {
+    'scenario_risk': {
+        'model_section': 'vulnerability',
+        'model_suffix': '_vulnerability_file',
+        'field_mapping': VULNERABILITY_FK_MAPPING,
+        'taxonomy_field': '_taxonomymap_oid'
+    },
+    'scenario_damage': {
+        'model_section': 'fragility',
+        'model_suffix': '_fragility_file',
+        'field_mapping': FRAGILITY_FK_MAPPING,
+        'taxonomy_field': '_taxonomymap_oid'
+    }
+}
+
 
 RISK_COLUMNS_MAPPING = {
     ERiskType.LOSS: {'event_id': 'eventid',

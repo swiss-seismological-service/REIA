@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import configparser
 import uuid
-from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field
 
 from reia.schemas.base import CreationInfoMixin, Model
 from reia.schemas.enums import ECalculationType, EEarthquakeType, EStatus
@@ -96,24 +95,3 @@ class CalculationBranchSettings(Model):
     """ Contains the weight and a OQ settings file for a calculation"""
     weight: float
     config: configparser.ConfigParser
-
-
-class BranchInputSchema(BaseModel):
-    """Schema for validating and parsing individual branch configuration."""
-    weight: float
-    calculation_mode: str
-    description: str | None = None
-    aggregate_by: str | None = None
-    exposuremodel_oid: int
-    config_dict: dict[str, Any]  # Flattened general config
-    number_of_ground_motion_fields: int
-    vulnerability_models: dict[str, int] | None = None
-    fragility_models: dict[str, int] | None = None
-    taxonomymap_oid: int | None = None
-
-    @field_validator('weight')
-    def validate_weight_range(cls, v):
-        """Ensure weight is between 0 and 1"""
-        if not 0 < v <= 1:
-            raise ValueError('Weight must be between 0 and 1')
-        return v

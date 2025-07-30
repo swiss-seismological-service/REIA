@@ -5,8 +5,7 @@ from sqlalchemy.sql.sqltypes import BigInteger, Enum, Float, Integer, String
 
 from reia.datamodel.base import ORMBase
 from reia.datamodel.mixins import RealQuantityMixin
-from reia.schemas import ELossCategory
-from reia.schemas.enums import ECalculationType
+from reia.schemas.enums import ECalculationType, ELossCategory
 
 riskvalue_aggregationtag = Table(
     'loss_assoc_riskvalue_aggregationtag',
