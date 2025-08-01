@@ -101,7 +101,7 @@ reia db migrate          # Run database migrations
 reia db current          # Show current migration
 reia db history          # Show migration history
 reia db downgrade <revision>    # Rollback to previous migration
-
+reia db downgrade -- -1 # Rollback to by 1 migration
 # Legacy operations (for compatibility)
 reia db init            # Initialize database (old method)
 reia db drop            # Drop all tables

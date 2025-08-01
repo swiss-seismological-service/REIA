@@ -106,8 +106,8 @@ def run_alembic_upgrade() -> None:
 @db.command('downgrade')
 def run_alembic_downgrade(
     revision: Annotated[str, typer.Argument(
-        help='Target revision to downgrade to (e.g., -1 '
-        'for previous, base for empty DB)')] = "-1"
+        help='Target revision to downgrade to (use "-- -1" '
+        'for previous revision, base for empty DB)')] = "-1"
 ) -> None:
     """Run Alembic downgrade to a specific revision."""
     import os
