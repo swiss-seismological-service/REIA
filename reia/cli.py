@@ -15,7 +15,7 @@ from typing_extensions import Annotated
 from reia.actions import (dispatch_openquake_calculation,
                           run_openquake_calculations)
 from reia.datamodel import EEarthquakeType, EStatus
-from reia.db import crud, drop_db, init_db, init_db_file, session
+from reia.db import crud, session
 from reia.io import CalculationBranchSettings
 from reia.io.read import (parse_exposure, parse_fragility, parse_taxonomy_map,
                           parse_vulnerability)
@@ -28,11 +28,12 @@ def _get_alembic_directory():
     """Find the Alembic configuration directory."""
     import os
     from pathlib import Path
-    
-    # For installed package, alembic files should be in the same directory as this module
+
+    # For installed package, alembic files should be in the same directory as
+    # this module
     package_alembic = Path(__file__).parent.parent / "alembic.ini"
     current_dir_alembic = Path(os.getcwd()) / "alembic.ini"
-    
+
     if package_alembic.exists():
         # Package is installed, use package location
         return package_alembic.parent
@@ -40,8 +41,11 @@ def _get_alembic_directory():
         # Development mode, use current directory
         return current_dir_alembic.parent
     else:
-        typer.echo("❌ Cannot find alembic.ini. Make sure REIA is properly installed or run from project root.")
+        typer.echo(
+            "Cannot find alembic.ini. Make sure REIA is properly "
+            "installed or run from project root.")
         raise typer.Exit(code=1)
+
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()
@@ -68,29 +72,6 @@ app.add_typer(risk_assessment, name='risk-assessment',
               help='Manage Risk Assessments')
 
 
-@db.command('drop')
-def drop_database():
-    '''
-    Drop all tables.
-    '''
-    drop_db()
-    typer.echo('Tables dropped.')
-
-
-@db.command('init')
-def initialize_database():
-    '''
-    Create all tables.
-    '''
-    init_db()
-    typer.echo('Tables created.')
-
-
-@db.command('createall')
-def create_all_to_file():
-    init_db_file()
-
-
 @db.command('migrate')
 def run_alembic_upgrade() -> None:
     """Run Alembic migrations to upgrade database to latest version."""
@@ -112,11 +93,11 @@ def run_alembic_upgrade() -> None:
                                 capture_output=True,
                                 text=True)
         if result.returncode == 0:
-            typer.echo('✅ Database migration completed successfully.')
+            typer.echo('Database migration completed successfully.')
             if result.stdout:
                 typer.echo(result.stdout)
         else:
-            typer.echo(f'❌ Migration failed: {result.stderr}')
+            typer.echo(f'Migration failed: {result.stderr}')
             raise typer.Exit(code=1)
     finally:
         os.chdir(original_cwd)
@@ -137,7 +118,7 @@ def run_alembic_downgrade(
     original_cwd = os.getcwd()
     project_root = _get_alembic_directory()
     os.chdir(project_root)
-
+    typer.echo(f'Downgrading database to revision: {revision}')
     try:
         result = subprocess.run([sys.executable,
                                  '-m',
@@ -148,11 +129,11 @@ def run_alembic_downgrade(
                                 text=True)
         if result.returncode == 0:
             typer.echo(
-                f'✅ Database downgrade to {revision} completed successfully.')
+                f'Database downgrade to {revision} completed successfully.')
             if result.stdout:
                 typer.echo(result.stdout)
         else:
-            typer.echo(f'❌ Downgrade failed: {result.stderr}')
+            typer.echo(f'Downgrade failed: {result.stderr}')
             raise typer.Exit(code=1)
     finally:
         os.chdir(original_cwd)
@@ -182,7 +163,7 @@ def show_migration_history() -> None:
             typer.echo('Migration History:')
             typer.echo(result.stdout)
         else:
-            typer.echo(f'❌ Failed to get history: {result.stderr}')
+            typer.echo(f'Failed to get history: {result.stderr}')
             raise typer.Exit(code=1)
     finally:
         os.chdir(original_cwd)
@@ -209,7 +190,7 @@ def show_current_revision() -> None:
                 result.stdout if result.stdout else
                 'No revision (empty database)')
         else:
-            typer.echo(f'❌ Failed to get current revision: {result.stderr}')
+            typer.echo(f'Failed to get current revision: {result.stderr}')
             raise typer.Exit(code=1)
     finally:
         os.chdir(original_cwd)
@@ -240,11 +221,11 @@ def stamp_database(
                                 capture_output=True,
                                 text=True)
         if result.returncode == 0:
-            typer.echo(f'✅ Database stamped with revision: {revision}')
+            typer.echo(f'Database stamped with revision: {revision}')
             if result.stdout:
                 typer.echo(result.stdout)
         else:
-            typer.echo(f'❌ Stamp failed: {result.stderr}')
+            typer.echo(f'Stamp failed: {result.stderr}')
             raise typer.Exit(code=1)
     finally:
         os.chdir(original_cwd)

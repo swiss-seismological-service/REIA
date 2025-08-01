@@ -5,8 +5,8 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool  # noqa
 
 from alembic import context
-from reia.datamodel import (asset, calculations, exposure, fragility,  # noqa
-                            lossvalues, vulnerability)
+from reia.datamodel import (asset, calculations, fragility, lossvalues,  # noqa
+                            vulnerability)
 from reia.datamodel.base import ORMBase
 from settings import get_config
 
@@ -70,7 +70,7 @@ def run_migrations_online() -> None:
 
     """
     # Use REIA's database configuration
-    from reia.repositories import engine
+    from reia.db import engine
 
     with engine.connect() as connection:
         context.configure(

@@ -100,7 +100,7 @@ See `.env.example` for all available configuration options.
 reia db migrate          # Run database migrations
 reia db current          # Show current migration
 reia db history          # Show migration history
-reia db downgrade -1     # Rollback to previous migration
+reia db downgrade <revision>    # Rollback to previous migration
 
 # Legacy operations (for compatibility)
 reia db init            # Initialize database (old method)

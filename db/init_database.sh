@@ -2,7 +2,15 @@
 set -e
 
 psql -v ON_ERROR_STOP=1 --user "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-    CREATE USER $DB_USER with encrypted password '$DB_PASSWORD';
+    -- Create user only if it doesn't exist
+    DO \$\$
+    BEGIN
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '$DB_USER') THEN
+            CREATE USER $DB_USER with encrypted password '$DB_PASSWORD';
+        END IF;
+    END
+    \$\$;
+    
     CREATE DATABASE $DB_NAME;
     \c $DB_NAME;
     CREATE EXTENSION IF NOT EXISTS POSTGIS;

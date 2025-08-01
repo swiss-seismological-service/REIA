@@ -5,9 +5,8 @@ services:
     container_name: reia_postgres
     environment:
       # PostgreSQL superuser credentials (required by PostgreSQL image)
-      POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_SUPERUSER_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       # REIA database credentials (used by init script)
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}

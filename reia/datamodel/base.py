@@ -10,7 +10,7 @@ from sqlalchemy.sql.sqltypes import BigInteger
 
 class Base(object):
 
-    @ declared_attr
+    @declared_attr
     def __tablename__(cls):
         return f'loss_{cls.__name__.lower()}'
 
