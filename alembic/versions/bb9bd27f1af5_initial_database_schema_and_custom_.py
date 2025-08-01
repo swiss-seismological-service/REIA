@@ -5,7 +5,6 @@ Revises:
 Create Date: 2025-07-31 10:18:10.972965
 
 """
-import sys
 from pathlib import Path
 from typing import Sequence, Union
 
@@ -13,32 +12,23 @@ import sqlalchemy as sa  # noqa
 
 from alembic import op  # noqa
 
-# Add migration_utils to path for helper functions
-sys.path.append(str(Path(__file__).parent.parent))
-
-try:
-    from migration_utils import (drop_functions, drop_indexes,
-                                 drop_materialized_views, drop_triggers,
-                                 execute_sql_file)
-except ImportError:
-    # Fallback for when running from installed package
-    import importlib.util
-    utils_path = Path(__file__).parent.parent / "migration_utils.py"
-    spec = importlib.util.spec_from_file_location(
-        "migration_utils", utils_path)
-    migration_utils = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(migration_utils)
-    execute_sql_file = migration_utils.execute_sql_file
-    drop_indexes = migration_utils.drop_indexes
-    drop_triggers = migration_utils.drop_triggers
-    drop_functions = migration_utils.drop_functions
-    drop_materialized_views = migration_utils.drop_materialized_views
-
 # revision identifiers, used by Alembic.
 revision: str = 'bb9bd27f1af5'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+
+
+def execute_sql_file(filename: str, directory: str = "functions") -> None:
+    """Execute a SQL file from the db directory."""
+    sql_file = Path(__file__).parent.parent.parent / "db" / directory / filename
+    if sql_file.exists():
+        with open(sql_file, 'r') as f:
+            sql_content = f.read()
+        op.execute(sql_content)
+        print(f"Executed SQL file: {filename}")
+    else:
+        raise FileNotFoundError(f"SQL file not found: {sql_file}")
 
 
 def upgrade() -> None:
@@ -91,11 +81,11 @@ def downgrade() -> None:
         # Drop custom triggers explicitly
         conn.execute(sa.text("""
             DROP TRIGGER IF EXISTS
-            refresh_materialized_loss_buildings_trigger ON loss_asset CASCADE;
+            refresh_materialized_loss_buildings_trigger ON loss_asset;
             DROP TRIGGER IF EXISTS
-            insert_calculation_trigger ON loss_calculation CASCADE;
+            insert_calculation_trigger ON loss_calculation;
             DROP TRIGGER IF EXISTS
-            insert_aggregationtag_trigger ON loss_exposuremodel CASCADE;
+            insert_aggregationtag_trigger ON loss_exposuremodel;
         """))
         print("Dropped custom triggers")
 
