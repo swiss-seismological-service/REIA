@@ -1,0 +1,33 @@
+# Include Alembic configuration and migrations
+include alembic.ini
+recursive-include alembic *.py *.mako
+include alembic/README
+recursive-include alembic/versions *.py
+
+# Include database scripts and configuration
+recursive-include db *.sql *.sh *.conf
+include db/track_changes.sql
+
+# Include settings
+recursive-include settings *.py *.ini
+
+# Include documentation
+include README.md
+include LICENSE
+include MIGRATION_GUIDE.md
+include .env.example
+
+# Include package metadata
+include pyproject.toml
+include requirements.txt
+
+# Exclude development files
+exclude .env
+exclude docker-compose.yml
+exclude setup.sh
+exclude tox.ini
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude logs *
+recursive-exclude env *
+recursive-exclude .git *

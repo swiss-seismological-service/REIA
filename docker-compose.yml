@@ -1,0 +1,74 @@
+services:
+  # PostgreSQL database with PostGIS extension
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: reia_postgres
+    environment:
+      # PostgreSQL superuser credentials (required by PostgreSQL image)
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_SUPERUSER_DB:-postgres}
+      # REIA database credentials (used by init script)
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    env_file:
+      - .env
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Custom PostgreSQL configuration
+      - ./db/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./db/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      # Database initialization script
+      - ./db/init_database.sh:/docker-entrypoint-initdb.d/00_init_database.sh:ro
+      # Persistent data storage
+      - postgres_data:/var/lib/postgresql/data
+    command: 
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
+      - -c
+      - hba_file=/etc/postgresql/pg_hba.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - reia_network
+
+  # OpenQuake Engine
+  openquake:
+    image: openquake/engine:3.16
+    container_name: reia_openquake
+    environment:
+      # OpenQuake configuration from README.md
+      LOCKDOWN: "True"
+      OQ_ADMIN_LOGIN: ${OQ_USER}
+      OQ_ADMIN_PASSWORD: ${OQ_PASSWORD}
+      OQ_ADMIN_EMAIL: ${OQ_ADMIN_EMAIL:-user@domain.ch}
+    env_file:
+      - .env
+    ports:
+      - "${OQ_PORT:-8800}:8800"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8800"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - reia_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  # Persistent PostgreSQL data
+  postgres_data:
+    driver: local
+
+networks:
+  # Internal network for services
+  reia_network:
+    driver: bridge
