@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Sequence, Union
 
 import sqlalchemy as sa  # noqa
-
 from alembic import op  # noqa
 
 # revision identifiers, used by Alembic.
@@ -19,9 +18,11 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def execute_sql_file(filename: str, directory: str = "functions") -> None:
-    """Execute a SQL file from the db directory."""
-    sql_file = Path(__file__).parent.parent.parent / "db" / directory / filename
+def execute_sql_file(filename: str) -> None:
+    """Execute a SQL file from the scripts directory."""
+    sql_file = Path(__file__).parent.parent / \
+        "scripts" / filename
+
     if sql_file.exists():
         with open(sql_file, 'r') as f:
             sql_content = f.read()
@@ -46,18 +47,16 @@ def upgrade() -> None:
     ORMBase.metadata.create_all(engine)
     print("SQLAlchemy tables created")
 
-    # Apply REIA custom SQL scripts in the correct order
     print("Applying REIA custom SQL scripts...")
-
-    # 1. Create materialized views
+    # materialized view
     execute_sql_file("materialized_loss_buildings.sql")
 
-    # 2. Create triggers and functions
+    # triggers and functions
     execute_sql_file("trigger_refresh_materialized.sql")
     execute_sql_file("trigger_partition_aggregationtags.sql")
     execute_sql_file("trigger_partition_losstype.sql")
 
-    # 3. Create performance indexes
+    # indexes
     execute_sql_file("indexes.sql")
 
     print("All REIA custom SQL scripts applied successfully")
