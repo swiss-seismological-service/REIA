@@ -56,4 +56,4 @@ reia = "reia.cli:app"
 
 [tool.setuptools.package-data]
 "*" = ["*.xml", "*.ini"]
-"reia" = ["alembic.ini", "alembic/**/*", "alembic/db_resources/**/*"]
+"reia" = ["alembic/**/*"]

@@ -29,11 +29,9 @@ def _get_alembic_directory():
     import os
     from pathlib import Path
 
-    # For installed package, alembic files are now in the reia package
-    package_alembic = Path(__file__).parent / "alembic.ini"
+    # For installed package, alembic files are now in the reia/alembic package
+    package_alembic = Path(__file__).parent / "alembic" / "alembic.ini"
     current_dir_alembic = Path(os.getcwd()) / "alembic.ini"
-    # Fallback to old location for backward compatibility
-    old_package_alembic = Path(__file__).parent.parent / "alembic.ini"
 
     if package_alembic.exists():
         # Package is installed, use package location
@@ -41,9 +39,6 @@ def _get_alembic_directory():
     elif current_dir_alembic.exists():
         # Development mode, use current directory
         return current_dir_alembic.parent
-    elif old_package_alembic.exists():
-        # Backward compatibility with old package structure
-        return old_package_alembic.parent
     else:
         typer.echo(
             "Cannot find alembic.ini. Make sure REIA is properly "
