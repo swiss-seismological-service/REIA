@@ -36,7 +36,7 @@ dependencies = [
     "geopandas",
     "Jinja2",
     "numpy<2",
-    "openquake.engine @ git+https://github.com/gem/oq-engine.git@engine-3.16",
+    "openquake.engine==3.16.7",
     "pandas<1.5",
     "psycopg2",
     "pydantic",

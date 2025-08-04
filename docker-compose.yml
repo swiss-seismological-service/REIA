@@ -35,7 +35,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - reia_network
+      - network
 
   # OpenQuake Engine
   openquake:
@@ -57,7 +57,7 @@ services:
       timeout: 10s
       retries: 3
     networks:
-      - reia_network
+      - network
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,5 +69,5 @@ volumes:
 
 networks:
   # Internal network for services
-  reia_network:
+  network:
     driver: bridge
