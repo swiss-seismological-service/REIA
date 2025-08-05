@@ -3,7 +3,7 @@ from pathlib import Path
 import typer
 from typing_extensions import Annotated
 
-from reia.repositories import DatabaseSession, drop_db, init_db, init_db_file
+from reia.repositories import DatabaseSession
 from reia.repositories.asset import (AggregationGeometryRepository,
                                      AssetRepository, ExposureModelRepository,
                                      SiteRepository)
@@ -24,6 +24,29 @@ from reia.services.riskassessment import RiskAssessmentService
 from reia.services.taxonomy import TaxonomyService
 from reia.services.vulnerability import VulnerabilityService
 from reia.utils import display_table
+
+
+def _get_alembic_directory():
+    """Find the Alembic configuration directory."""
+    import os
+    from pathlib import Path
+
+    # For installed package, alembic files are now in the reia/alembic package
+    package_alembic = Path(__file__).parent / "alembic" / "alembic.ini"
+    current_dir_alembic = Path(os.getcwd()) / "alembic.ini"
+
+    if package_alembic.exists():
+        # Package is installed, use package location
+        return package_alembic.parent
+    elif current_dir_alembic.exists():
+        # Development mode, use current directory
+        return current_dir_alembic.parent
+    else:
+        typer.echo(
+            "Cannot find alembic.ini. Make sure REIA is properly "
+            "installed or run from project root.")
+        raise typer.Exit(code=1)
+
 
 app = typer.Typer(add_completion=False)
 db = typer.Typer()
@@ -50,25 +73,163 @@ app.add_typer(risk_assessment, name='risk-assessment',
               help='Manage Risk Assessments')
 
 
-@db.command('drop')
-def drop_database() -> None:
-    """Drop all database tables."""
-    drop_db()
-    typer.echo('Successfully dropped all database tables.')
+@db.command('migrate')
+def run_alembic_upgrade() -> None:
+    """Run Alembic migrations to upgrade database to latest version."""
+    import os
+    import subprocess
+    import sys
+
+    # Find Alembic configuration directory
+    original_cwd = os.getcwd()
+    project_root = _get_alembic_directory()
+    os.chdir(project_root)
+
+    try:
+        result = subprocess.run([sys.executable,
+                                 '-m',
+                                 'alembic',
+                                 'upgrade',
+                                 'head'],
+                                capture_output=True,
+                                text=True)
+        if result.returncode == 0:
+            typer.echo('Database migration completed successfully.')
+            if result.stdout:
+                typer.echo(result.stdout)
+        else:
+            typer.echo(f'Migration failed: {result.stderr}')
+            raise typer.Exit(code=1)
+    finally:
+        os.chdir(original_cwd)
 
 
-@db.command('init')
-def initialize_database() -> None:
-    """Initialize the database by creating all tables."""
-    init_db()
-    typer.echo('Successfully initialized database and created all tables.')
+@db.command('downgrade')
+def run_alembic_downgrade(
+    revision: Annotated[str, typer.Argument(
+        help='Target revision to downgrade to (use "-- -1" '
+        'for previous revision, base for empty DB)')] = "-1"
+) -> None:
+    """Run Alembic downgrade to a specific revision."""
+    import os
+    import subprocess
+    import sys
+
+    # Find Alembic configuration directory
+    original_cwd = os.getcwd()
+    project_root = _get_alembic_directory()
+    os.chdir(project_root)
+    typer.echo(f'Downgrading database to revision: {revision}')
+    try:
+        result = subprocess.run([sys.executable,
+                                 '-m',
+                                 'alembic',
+                                 'downgrade',
+                                 revision],
+                                capture_output=True,
+                                text=True)
+        if result.returncode == 0:
+            typer.echo(
+                f'Database downgrade to {revision} completed successfully.')
+            if result.stdout:
+                typer.echo(result.stdout)
+        else:
+            typer.echo(f'Downgrade failed: {result.stderr}')
+            raise typer.Exit(code=1)
+    finally:
+        os.chdir(original_cwd)
 
 
-@db.command('createall')
-def create_all_to_file() -> None:
-    """Create all database schema in a file."""
-    init_db_file()
-    typer.echo('Successfully created database schema file.')
+@db.command('history')
+def show_migration_history() -> None:
+    """Show Alembic migration history."""
+    import os
+    import subprocess
+    import sys
+
+    # Find Alembic configuration directory
+    original_cwd = os.getcwd()
+    project_root = _get_alembic_directory()
+    os.chdir(project_root)
+
+    try:
+        result = subprocess.run([sys.executable,
+                                 '-m',
+                                 'alembic',
+                                 'history',
+                                 '--verbose'],
+                                capture_output=True,
+                                text=True)
+        if result.returncode == 0:
+            typer.echo('Migration History:')
+            typer.echo(result.stdout)
+        else:
+            typer.echo(f'Failed to get history: {result.stderr}')
+            raise typer.Exit(code=1)
+    finally:
+        os.chdir(original_cwd)
+
+
+@db.command('current')
+def show_current_revision() -> None:
+    """Show current Alembic revision."""
+    import os
+    import subprocess
+    import sys
+
+    # Find Alembic configuration directory
+    original_cwd = os.getcwd()
+    project_root = _get_alembic_directory()
+    os.chdir(project_root)
+
+    try:
+        result = subprocess.run([sys.executable, '-m', 'alembic', 'current'],
+                                capture_output=True, text=True)
+        if result.returncode == 0:
+            typer.echo('Current Database Revision:')
+            typer.echo(
+                result.stdout if result.stdout else
+                'No revision (empty database)')
+        else:
+            typer.echo(f'Failed to get current revision: {result.stderr}')
+            raise typer.Exit(code=1)
+    finally:
+        os.chdir(original_cwd)
+
+
+@db.command('stamp')
+def stamp_database(
+    revision: Annotated[str, typer.Argument(
+        help='Revision to stamp database with '
+        '(use "head" for latest)')] = "head"
+) -> None:
+    """Stamp database with a specific revision without running migrations."""
+    import os
+    import subprocess
+    import sys
+
+    # Find Alembic configuration directory
+    original_cwd = os.getcwd()
+    project_root = _get_alembic_directory()
+    os.chdir(project_root)
+
+    try:
+        result = subprocess.run([sys.executable,
+                                 '-m',
+                                 'alembic',
+                                 'stamp',
+                                 revision],
+                                capture_output=True,
+                                text=True)
+        if result.returncode == 0:
+            typer.echo(f'Database stamped with revision: {revision}')
+            if result.stdout:
+                typer.echo(result.stdout)
+        else:
+            typer.echo(f'Stamp failed: {result.stderr}')
+            raise typer.Exit(code=1)
+    finally:
+        os.chdir(original_cwd)
 
 
 @exposure.command('add')

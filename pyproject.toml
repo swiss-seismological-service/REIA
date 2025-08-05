@@ -6,6 +6,9 @@ build-backend = "setuptools.build_meta"
 where = ["."]
 include = ["reia*"]
 
+[tool.setuptools]
+include-package-data = true
+
 [project]
 name = "reia"
 version = "1.0.0"
@@ -27,6 +30,7 @@ classifiers = [
 ]
 requires-python = "~=3.10"
 dependencies = [
+    "alembic",
     "fiona<1.10",
     "geoalchemy2",
     "geopandas",
@@ -52,3 +56,4 @@ reia = "reia.cli:app"
 
 [tool.setuptools.package-data]
 "*" = ["*.xml", "*.ini"]
+"reia" = ["alembic/**/*"]

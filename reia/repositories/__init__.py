@@ -3,7 +3,6 @@ import pandas as pd
 from psycopg2.extensions import AsIs, register_adapter
 from sqlalchemy import Select
 from sqlalchemy import create_engine as _create_engine
-from sqlalchemy import create_mock_engine
 from sqlalchemy.engine import URL, Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
@@ -59,16 +58,6 @@ def drop_db():
     m = MetaData()
     m.reflect(engine)
     m.drop_all(engine)
-
-
-def init_db_file():
-    def dump(sql, *_multiparams, **_params):
-        with open('create_database.sql', 'a') as f:
-            f.write(str(sql.compile(dialect=mock_engine.dialect)) + ';')
-
-    mock_engine = create_mock_engine(
-        'postgresql+psycopg2://', dump)
-    ORMBase.metadata.create_all(bind=mock_engine)
 
 
 register_adapter(np.int64, AsIs)
