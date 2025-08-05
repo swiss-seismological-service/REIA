@@ -9,7 +9,7 @@ from openquake.commonlib import datastore, logs
 from openquake.engine import engine
 from openquake.server import dbserver
 
-from settings.config import Config
+from reia.config.settings import Settings
 
 
 class APIConnection():
@@ -27,8 +27,8 @@ class APIConnection():
 
 
 class OQCalculationAPI(APIConnection):
-    def __init__(self, config: Config):
-        super().__init__(config.OQ_API_SERVER, config.OQ_API_AUTH, 'openquake')
+    def __init__(self, config: Settings):
+        super().__init__(config.oq_api_server, config.oq_api_auth, 'openquake')
 
         self.url = f'{self.server}/v1/calc'
         self.files = {}
@@ -189,7 +189,7 @@ class OQCalculationAPI(APIConnection):
         return datastore.read(self.id)
 
 
-def oqapi_import_remote_calculation(calc_id: int | str, config: Config):
+def oqapi_import_remote_calculation(calc_id: int | str, config: Settings):
     """Import a remote calculation into the local database.
 
     Args:
@@ -214,10 +214,10 @@ def oqapi_import_remote_calculation(calc_id: int | str, config: Config):
             sys.exit('There is already a job #%d in the local db' % calc_id)
     if remote:
         datadir = datastore.get_datadir()
-        auth = config.OQ_API_AUTH
+        auth = config.oq_api_auth
         webex = WebExtractor(
             calc_id,
-            config.OQ_API_SERVER,
+            config.oq_api_server,
             auth['username'],
             auth['password'])
         hc_id = webex.oqparam.hazard_calculation_id

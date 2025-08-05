@@ -1,6 +1,7 @@
 import logging
 import logging.config
 import os
+from importlib import resources
 from pathlib import Path
 
 
@@ -8,20 +9,29 @@ class LoggerService:
     """Centralized logging service for REIA."""
 
     @staticmethod
-    def setup_logging(config_path: str = "settings/logger.ini") -> None:
+    def setup_logging(config_path: str = None) -> None:
         """Setup centralized logging configuration.
 
         Args:
             config_path: Path to logging configuration file
+                        (optional, uses package resource by default)
         """
         # Ensure logs directory exists
         LoggerService._ensure_logs_directory()
 
         # Load logging configuration
-        if os.path.exists(config_path):
-            logging.config.fileConfig(config_path,
-                                      disable_existing_loggers=False)
-        else:
+        try:
+            if config_path and os.path.exists(config_path):
+                # Use provided external config path
+                logging.config.fileConfig(
+                    config_path, disable_existing_loggers=False)
+            else:
+                # Use package resource
+                with resources.open_text("reia.config", "logger.ini"
+                                         ) as config_file:
+                    logging.config.fileConfig(
+                        config_file, disable_existing_loggers=False)
+        except (FileNotFoundError, ImportError):
             # Fallback to basic configuration
             LoggerService._setup_basic_logging()
 

@@ -7,7 +7,7 @@ from reia.schemas.calculation_schemas import CalculationBranch
 from reia.schemas.enums import ERiskType
 from reia.services.logger import LoggerService
 from reia.services.oq_api import OQCalculationAPI
-from settings import get_config
+from reia.config.settings import get_settings
 
 
 class ResultsService:
@@ -16,7 +16,7 @@ class ResultsService:
     def __init__(self, session: SessionType, api_client: OQCalculationAPI):
         self.logger = LoggerService.get_logger(__name__)
         self.session = session
-        self.config = get_config()
+        self.config = get_settings()
         self.api_client = api_client
 
     def save_calculation_results(

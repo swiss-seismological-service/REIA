@@ -1,12 +1,11 @@
-import os
-
-from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.schema import Column, MetaData
 from sqlalchemy.sql.sqltypes import BigInteger
+
+from reia.config.settings import get_settings
 
 
 class ORMBase(DeclarativeBase, AsyncAttrs):
@@ -24,14 +23,10 @@ class ORMBase(DeclarativeBase, AsyncAttrs):
 
 
 def load_engine():
-    load_dotenv(f'{os.getcwd()}/.env')  # load environment variables
-
-    DB_CONNECTION_STRING = \
-        f"postgresql+psycopg2://{os.getenv('DB_USER')}:" \
-        f"{os.getenv('DB_PASSWORD')}@{os.getenv('POSTGRES_HOST')}" \
-        f":{os.getenv('POSTGRES_PORT')}/{os.getenv('DB_NAME')}"
-
-    engine = create_engine(DB_CONNECTION_STRING, echo=False, future=True)
+    config = get_settings()
+    engine = create_engine(config.db_connection_string,
+                           echo=False,
+                           future=True)
     return engine
 
 

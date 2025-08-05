@@ -21,7 +21,7 @@ from reia.services.status_tracker import StatusTracker
 from reia.services.taxonomy import TaxonomyService
 from reia.services.vulnerability import VulnerabilityService
 from reia.utils import create_file_buffer_configparser
-from settings import get_config
+from reia.config.settings import get_settings
 
 
 class CalculationService:
@@ -33,7 +33,7 @@ class CalculationService:
         self.logger = LoggerService.get_logger(__name__)
 
         self.session = session
-        self.config = get_config()
+        self.config = get_settings()
         self.status_tracker = StatusTracker(session)
 
     def run_calculations(
@@ -168,7 +168,7 @@ def run_test_calculation(session: SessionType, settings_file: Path) -> str:
     Returns:
         Response from OpenQuake API.
     """
-    config = get_config()
+    config = get_settings()
     api_client = OQCalculationAPI(config)
 
     files = CalculationDataService.export_branch_to_buffer(

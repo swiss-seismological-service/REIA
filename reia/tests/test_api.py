@@ -3,7 +3,7 @@ from io import StringIO
 from pathlib import Path
 
 from reia.services.oq_api import OQCalculationAPI
-from settings import get_config
+from reia.config.settings import get_settings
 
 
 def test_api():
@@ -25,7 +25,7 @@ def test_api():
         vulnerability = StringIO(f.read())
         vulnerability.name = 'vulnerability.xml'
 
-    api = OQCalculationAPI(get_config())
+    api = OQCalculationAPI(get_settings())
     api.add_calc_files(exposure, gmf_scenario, job_risk, sites, vulnerability)
     api.run()
 

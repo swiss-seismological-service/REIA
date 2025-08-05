@@ -10,10 +10,9 @@ from sqlalchemy.orm.session import Session
 from sqlalchemy.schema import MetaData
 from sqlalchemy.sql import text
 
+from reia.config.settings import get_settings
 from reia.datamodel.base import ORMBase
-from settings import get_config
 
-config = get_config()
 EXTENSIONS = []
 
 
@@ -25,19 +24,25 @@ def create_extensions(engine):
             conn.commit()
 
 
-def create_engine(url: URL | str, **kwargs) -> Engine:
+def create_engine(
+        url: URL | str,
+        skip_extensions: bool = False,
+        **kwargs) -> Engine:
+    config = get_settings()
     _engine = _create_engine(
         url,
         future=True,
-        pool_size=config.POSTGRES_POOL_SIZE,
-        max_overflow=config.POSTGRES_MAX_OVERFLOW,
+        pool_size=config.postgres_pool_size,
+        max_overflow=config.postgres_max_overflow,
         **kwargs,
     )
-    create_extensions(_engine)
+    if not skip_extensions:
+        create_extensions(_engine)
     return _engine
 
 
-engine = create_engine(config.DB_CONNECTION_STRING)
+config = get_settings()
+engine = create_engine(config.db_connection_string, skip_extensions=True)
 DatabaseSession = sessionmaker(engine, expire_on_commit=True)
 
 
@@ -57,7 +62,7 @@ def drop_db():
 
 
 def init_db_file():
-    def dump(sql, *multiparams, **params):
+    def dump(sql, *_multiparams, **_params):
         with open('create_database.sql', 'a') as f:
             f.write(str(sql.compile(dialect=mock_engine.dialect)) + ';')
 

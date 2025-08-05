@@ -12,22 +12,25 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from sqlalchemy.engine import Connection
 from sqlalchemy.sql import text
 
+from reia.config.settings import get_settings
+
 logging.basicConfig(level=logging.INFO)
 
 
 def make_connection():
+    config = get_settings()
     return psycopg2.connect(
-        dbname=os.getenv('DB_NAME'),
-        user=os.getenv('DB_USER'),
-        host=os.getenv('POSTGRES_HOST'),
-        port=os.getenv('POSTGRES_PORT'),
-        password=os.getenv('DB_PASSWORD'),
+        dbname=config.db_name,
+        user=config.db_user,
+        host=config.postgres_host,
+        port=config.postgres_port,
+        password=config.db_password,
     )
 
 
 def copy_pooled(df, tablename, max_entries=750_000):
-
-    max_procs = int(os.getenv('MAX_PROCESSES', '2'))
+    config = get_settings()
+    max_procs = config.max_processes
 
     nprocs = max(1, min(max_procs, int(np.ceil(len(df) / max_entries))))
     nprocs = 2

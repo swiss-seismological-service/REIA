@@ -58,15 +58,17 @@ class TestLoggerService:
     @patch('logging.config.fileConfig')
     @patch('logging.basicConfig')
     @patch('os.path.exists')
+    @patch('importlib.resources.open_text')
     def test_setup_logging_fallback_when_no_config(
-            self, mock_exists, mock_basicconfig, mock_fileconfig):
-        """Test setup_logging uses basic config when file doesn't exist."""
+            self, mock_open_text, mock_exists, mock_basicconfig, mock_fileconfig):
+        """Test setup_logging uses basic config when package resource fails."""
         mock_exists.return_value = False
+        mock_open_text.side_effect = FileNotFoundError()
 
         LoggerService.setup_logging("nonexistent_config.ini")
 
         mock_exists.assert_called_once_with("nonexistent_config.ini")
-        mock_fileconfig.assert_not_called()
+        mock_open_text.assert_called_once_with("reia.config", "logger.ini")
         mock_basicconfig.assert_called_once()
 
 
@@ -76,10 +78,10 @@ class TestOQCalculationAPILogging:
     def test_log_error_with_traceback_success(self):
         """Test successful traceback logging."""
         from reia.services.oq_api import OQCalculationAPI
-        from settings import get_config
+        from reia.config.settings import get_settings
 
         # Create API instance with mocked session
-        config = get_config()
+        config = get_settings()
         api = OQCalculationAPI(config)
         api.id = 123
         api.logger = Mock()
@@ -102,9 +104,9 @@ class TestOQCalculationAPILogging:
     def test_log_error_with_traceback_no_traceback(self):
         """Test logging when no traceback is available."""
         from reia.services.oq_api import OQCalculationAPI
-        from settings import get_config
+        from reia.config.settings import get_settings
 
-        config = get_config()
+        config = get_settings()
         api = OQCalculationAPI(config)
         api.id = 123
         api.logger = Mock()
