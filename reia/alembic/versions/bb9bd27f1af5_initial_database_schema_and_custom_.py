@@ -45,7 +45,7 @@ def upgrade() -> None:
 
     # Create all tables defined by SQLAlchemy models
     ORMBase.metadata.create_all(engine)
-    print("SQLAlchemy tables created")
+    print("SQLAlchemy tables created.")
 
     print("Applying REIA custom SQL scripts...")
     # materialized view
@@ -59,7 +59,7 @@ def upgrade() -> None:
     # indexes
     execute_sql_file("indexes.sql")
 
-    print("All REIA custom SQL scripts applied successfully")
+    print("All REIA custom SQL scripts applied successfully.")
     print("Database schema created successfully with all custom functions!")
 
 
@@ -75,7 +75,7 @@ def downgrade() -> None:
         conn.execute(sa.text(
             "DROP MATERIALIZED VIEW IF EXISTS "
             "loss_buildings_per_municipality CASCADE;"))
-        print("Dropped materialized views")
+        print("Dropped materialized views.")
 
         # Drop custom triggers explicitly
         conn.execute(sa.text("""
@@ -86,7 +86,7 @@ def downgrade() -> None:
             DROP TRIGGER IF EXISTS
             insert_aggregationtag_trigger ON loss_exposuremodel;
         """))
-        print("Dropped custom triggers")
+        print("Dropped custom triggers.")
 
         # Drop custom functions
         conn.execute(sa.text("""
@@ -96,7 +96,7 @@ def downgrade() -> None:
             DROP FUNCTION IF EXISTS
                              aggregationtag_partition_function() CASCADE;
         """))
-        print("Dropped custom functions")
+        print("Dropped custom functions.")
 
         # Drop custom indexes (let PostgreSQL handle dependencies)
         custom_indexes = [
@@ -112,7 +112,7 @@ def downgrade() -> None:
             'idx_riskvalue_calculationbranch']
         for index in custom_indexes:
             conn.execute(sa.text(f"DROP INDEX IF EXISTS {index} CASCADE;"))
-        print("Dropped custom indexes")
+        print("Dropped custom indexes.")
 
         print("Drop partitioned and regular tables...")
 
@@ -133,4 +133,4 @@ def downgrade() -> None:
 
         conn.commit()
 
-    print("Database schema completely removed with proper dependency handling")
+    print("Database schema completely removed.")

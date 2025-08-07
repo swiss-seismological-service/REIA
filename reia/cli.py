@@ -1,3 +1,5 @@
+import subprocess
+import sys
 from pathlib import Path
 
 import typer
@@ -76,32 +78,26 @@ app.add_typer(risk_assessment, name='risk-assessment',
 @db.command('migrate')
 def run_alembic_upgrade() -> None:
     """Run Alembic migrations to upgrade database to latest version."""
-    import os
-    import subprocess
-    import sys
-
     # Find Alembic configuration directory
-    original_cwd = os.getcwd()
-    project_root = _get_alembic_directory()
-    os.chdir(project_root)
+    alembic_dir = _get_alembic_directory()
 
-    try:
-        result = subprocess.run([sys.executable,
-                                 '-m',
-                                 'alembic',
-                                 'upgrade',
-                                 'head'],
-                                capture_output=True,
-                                text=True)
-        if result.returncode == 0:
-            typer.echo('Database migration completed successfully.')
-            if result.stdout:
-                typer.echo(result.stdout)
-        else:
-            typer.echo(f'Migration failed: {result.stderr}')
-            raise typer.Exit(code=1)
-    finally:
-        os.chdir(original_cwd)
+    # Run alembic with the -c flag to specify the config file location
+    alembic_ini = alembic_dir / "alembic.ini"
+    result = subprocess.run([sys.executable,
+                             '-m',
+                             'alembic',
+                             '-c', str(alembic_ini),
+                             'upgrade',
+                             'head'],
+                            capture_output=True,
+                            text=True)
+    if result.returncode == 0:
+        typer.echo('Database migration completed successfully.')
+        if result.stdout:
+            typer.echo(result.stdout)
+    else:
+        typer.echo(f'Migration failed: {result.stderr}')
+        raise typer.Exit(code=1)
 
 
 @db.command('downgrade')
@@ -111,90 +107,80 @@ def run_alembic_downgrade(
         'for previous revision, base for empty DB)')] = "-1"
 ) -> None:
     """Run Alembic downgrade to a specific revision."""
-    import os
-    import subprocess
-    import sys
 
     # Find Alembic configuration directory
-    original_cwd = os.getcwd()
-    project_root = _get_alembic_directory()
-    os.chdir(project_root)
+    alembic_dir = _get_alembic_directory()
+    alembic_ini = alembic_dir / "alembic.ini"
+
     typer.echo(f'Downgrading database to revision: {revision}')
-    try:
-        result = subprocess.run([sys.executable,
-                                 '-m',
-                                 'alembic',
-                                 'downgrade',
-                                 revision],
-                                capture_output=True,
-                                text=True)
-        if result.returncode == 0:
-            typer.echo(
-                f'Database downgrade to {revision} completed successfully.')
-            if result.stdout:
-                typer.echo(result.stdout)
-        else:
-            typer.echo(f'Downgrade failed: {result.stderr}')
-            raise typer.Exit(code=1)
-    finally:
-        os.chdir(original_cwd)
+    result = subprocess.run([sys.executable,
+                             '-m',
+                             'alembic',
+                             '-c', str(alembic_ini),
+                             'downgrade',
+                             revision],
+                            capture_output=True,
+                            text=True)
+    if result.returncode == 0:
+        typer.echo(
+            f'Database downgrade to {revision} completed successfully.')
+        if result.stdout:
+            typer.echo(result.stdout)
+    else:
+        typer.echo(f'Downgrade failed: {result.stderr}')
+        raise typer.Exit(code=1)
 
 
 @db.command('history')
 def show_migration_history() -> None:
     """Show Alembic migration history."""
-    import os
-    import subprocess
-    import sys
 
     # Find Alembic configuration directory
-    original_cwd = os.getcwd()
-    project_root = _get_alembic_directory()
-    os.chdir(project_root)
+    alembic_dir = _get_alembic_directory()
+    alembic_ini = alembic_dir / "alembic.ini"
 
-    try:
-        result = subprocess.run([sys.executable,
-                                 '-m',
-                                 'alembic',
-                                 'history',
-                                 '--verbose'],
-                                capture_output=True,
-                                text=True)
-        if result.returncode == 0:
-            typer.echo('Migration History:')
-            typer.echo(result.stdout)
-        else:
-            typer.echo(f'Failed to get history: {result.stderr}')
-            raise typer.Exit(code=1)
-    finally:
-        os.chdir(original_cwd)
+    typer.echo('Fetching migration history...')
+    result = subprocess.run([sys.executable,
+                             '-m',
+                             'alembic',
+                             '-c', str(alembic_ini),
+                             'history',
+                             '--verbose'],
+                            capture_output=True,
+                            text=True)
+    if result.returncode == 0:
+        typer.echo('Migration History:')
+        typer.echo(result.stdout)
+    else:
+        typer.echo(f'Failed to get history: {result.stderr}')
+        raise typer.Exit(code=1)
 
 
 @db.command('current')
 def show_current_revision() -> None:
     """Show current Alembic revision."""
-    import os
-    import subprocess
-    import sys
-
     # Find Alembic configuration directory
-    original_cwd = os.getcwd()
-    project_root = _get_alembic_directory()
-    os.chdir(project_root)
+    alembic_dir = _get_alembic_directory()
+    alembic_ini = alembic_dir / "alembic.ini"
 
-    try:
-        result = subprocess.run([sys.executable, '-m', 'alembic', 'current'],
-                                capture_output=True, text=True)
-        if result.returncode == 0:
-            typer.echo('Current Database Revision:')
-            typer.echo(
-                result.stdout if result.stdout else
-                'No revision (empty database)')
-        else:
-            typer.echo(f'Failed to get current revision: {result.stderr}')
-            raise typer.Exit(code=1)
-    finally:
-        os.chdir(original_cwd)
+    typer.echo('Fetching current database revision...')
+
+    result = subprocess.run([sys.executable,
+                             '-m',
+                             'alembic',
+                             '-c',
+                             str(alembic_ini),
+                             'current'],
+                            capture_output=True,
+                            text=True)
+    if result.returncode == 0:
+        typer.echo('Current Database Revision:')
+        typer.echo(
+            result.stdout if result.stdout else
+            'No revision (empty database)')
+    else:
+        typer.echo(f'Failed to get current revision: {result.stderr}')
+        raise typer.Exit(code=1)
 
 
 @db.command('stamp')
@@ -204,32 +190,28 @@ def stamp_database(
         '(use "head" for latest)')] = "head"
 ) -> None:
     """Stamp database with a specific revision without running migrations."""
-    import os
-    import subprocess
-    import sys
 
     # Find Alembic configuration directory
-    original_cwd = os.getcwd()
-    project_root = _get_alembic_directory()
-    os.chdir(project_root)
+    alembic_dir = _get_alembic_directory()
+    alembic_ini = alembic_dir / "alembic.ini"
 
-    try:
-        result = subprocess.run([sys.executable,
-                                 '-m',
-                                 'alembic',
-                                 'stamp',
-                                 revision],
-                                capture_output=True,
-                                text=True)
-        if result.returncode == 0:
-            typer.echo(f'Database stamped with revision: {revision}')
-            if result.stdout:
-                typer.echo(result.stdout)
-        else:
-            typer.echo(f'Stamp failed: {result.stderr}')
-            raise typer.Exit(code=1)
-    finally:
-        os.chdir(original_cwd)
+    typer.echo(f'Stamping database with revision: {revision}')
+    result = subprocess.run([sys.executable,
+                             '-m',
+                             'alembic',
+                             '-c',
+                             str(alembic_ini),
+                             'stamp',
+                             revision],
+                            capture_output=True,
+                            text=True)
+    if result.returncode == 0:
+        typer.echo(f'Database stamped with revision: {revision}')
+        if result.stdout:
+            typer.echo(result.stdout)
+    else:
+        typer.echo(f'Stamp failed: {result.stderr}')
+        raise typer.Exit(code=1)
 
 
 @exposure.command('add')
