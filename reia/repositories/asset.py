@@ -255,6 +255,22 @@ class AggregationGeometryRepository(repository_factory(
         session.execute(stmt)
         session.commit()
 
+    @classmethod
+    def get_by_exposuremodel(cls,
+                             session: Session,
+                             exposuremodel_oid: int,
+                             aggregationtype: str | None = None) \
+            -> list[AggregationGeometry]:
+        """Get aggregation geometries by exposure model OID."""
+        stmt = select(AggregationGeometryORM) \
+            .where(AggregationGeometryORM._exposuremodel_oid
+                   == exposuremodel_oid) \
+            .where(AggregationGeometryORM._aggregationtype
+                   == aggregationtype if aggregationtype else true())
+        result = session.execute(stmt).unique().scalars().all()
+        session.commit()
+        return [cls.model.model_validate(row) for row in result]
+
 
 class CostTypeRepository(repository_factory(
         CostType, CostTypeORM)):

@@ -1,7 +1,5 @@
 from pydantic import Field
 
-from reia.schemas.asset_schemas import (AggregationGeometry, AggregationTag,
-                                        Asset, Site)
 from reia.schemas.base import CreationInfoMixin, Model, TaxonomyMixin
 
 
@@ -25,9 +23,3 @@ class ExposureModel(CreationInfoMixin, TaxonomyMixin):
     nightoccupancy: bool | None = False
     transitoccupancy: bool | None = False
     costtypes: list[CostType] = Field([])
-    assets: list[Asset] = Field(default=[], exclude=True)
-    sites: list[Site] = Field(default=[], exclude=True)
-    aggregationtags: list[AggregationTag] = Field(
-        default=[], exclude=True)
-    aggregationgeometries: list[AggregationGeometry] = Field(
-        default=[], exclude=True)

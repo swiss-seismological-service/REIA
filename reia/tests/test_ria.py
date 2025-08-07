@@ -7,7 +7,8 @@ from numpy.testing import assert_almost_equal
 
 from reia.cli import (add_exposure, add_fragility, add_risk_assessment,
                       add_taxonomymap, add_vulnerability, run_risk_assessment)
-from reia.repositories.asset import ExposureModelRepository
+from reia.repositories.asset import (AggregationTagRepository, AssetRepository,
+                                     ExposureModelRepository, SiteRepository)
 from reia.repositories.calculation import (CalculationRepository,
                                            RiskAssessmentRepository)
 from reia.repositories.fragility import (FragilityModelRepository,
@@ -215,7 +216,7 @@ def test_aggregationtags(loss_calculation, damage_calculation, exposure):
     assert len(exposuremodel_oid) == 1
 
 
-def test_exposuremodel(exposure):
+def test_exposuremodel(exposure, db_session):
 
     assert exposure.name == 'test'
     assert exposure.category == 'buildings'
@@ -223,23 +224,25 @@ def test_exposuremodel(exposure):
     assert exposure.dayoccupancy == exposure.nightoccupancy == \
         exposure.transitoccupancy is True
 
-    assert len(exposure.aggregationtags) == 4
+    aggregationtags = AggregationTagRepository.get_by_exposuremodel(
+        db_session, exposure.oid)
+    assert len(aggregationtags) == 4
     assert len(exposure.costtypes) == 4
     assert 'structural' in [cost.name for cost in exposure.costtypes]
 
 
-def test_assets(exposure):
-    assets = exposure.assets
-    sites = exposure.sites
+def test_assets(exposure, db_session):
+    assets = AssetRepository.get_by_exposuremodel(db_session, exposure.oid)
+    sites = SiteRepository.get_by_exposuremodel(db_session, exposure.oid)
 
     assert len(assets) == 39
-    assert len(exposure.sites) == 28
-
-    assert set([a.site_oid for a in assets]).issubset(
+    assert len(sites) == 28
+    print(assets.columns)
+    assert set(assets['_site_oid'].to_list()).issubset(
         set([s.oid for s in sites]))
 
     assert_almost_equal(
-        sum([a.structuralvalue for a in assets]) / len(assets),
+        assets['structuralvalue'].sum() / len(assets),
         2357478.8205128205, 4)
 
     assert_almost_equal(
@@ -249,13 +252,13 @@ def test_assets(exposure):
         sum([s.latitude for s in sites]) / len(sites),
         46.86077451544124, 4)
 
-    aggregationtags = set([tag.oid for asset in assets
-                           for tag in asset.aggregationtags])
+    aggregationtags = AggregationTagRepository.get_by_exposuremodel(
+        db_session, exposure.oid)
     assert len(aggregationtags) == 4
 
-    exposuremodel_oid = set([tag.exposuremodel_oid for asset in assets
-                             for tag in asset.aggregationtags])
-    assert len(exposuremodel_oid) == 1
+    exposuremodel_oids = set([tag.exposuremodel_oid for
+                              tag in aggregationtags])
+    assert len(exposuremodel_oids) == 1
 
 
 def test_loss_results(loss_calculation):

@@ -40,19 +40,23 @@ class ExposureModel(ORMBase,
     assets = relationship('Asset',
                           back_populates='exposuremodel',
                           passive_deletes=True,
-                          cascade='all, delete-orphan')
+                          cascade='all, delete-orphan',
+                          lazy='raise')
     sites = relationship('Site',
                          back_populates='exposuremodel',
                          passive_deletes=True,
-                         cascade='all, delete-orphan')
+                         cascade='all, delete-orphan',
+                         lazy='raise')
     aggregationtags = relationship('AggregationTag',
                                    back_populates='exposuremodel',
                                    passive_deletes=True,
-                                   cascade='all, delete-orphan')
+                                   cascade='all, delete-orphan',
+                                   lazy='raise')
     aggregationgeometries = relationship('AggregationGeometry',
                                          back_populates='exposuremodel',
                                          passive_deletes=True,
-                                         cascade='all, delete-orphan')
+                                         cascade='all, delete-orphan',
+                                         lazy='raise')
 
 
 class CostType(ORMBase):
