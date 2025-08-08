@@ -13,6 +13,8 @@ from reia.datamodel.exposure import CostType as CostTypeORM
 from reia.datamodel.exposure import ExposureModel as ExposureModelORM
 from reia.repositories import pandas_read_sql
 from reia.repositories.base import repository_factory
+from reia.repositories.utils import (allocate_oids, copy_pooled,
+                                     db_cursor_from_session)
 from reia.schemas.asset_schemas import (AggregationGeometry, AggregationTag,
                                         Asset, Site)
 from reia.schemas.exposure_schema import CostType, ExposureModel
@@ -88,6 +90,33 @@ class AssetRepository(repository_factory(
         return [row._oid for row in result]
 
     @classmethod
+    def insert_many_bulk(cls, session: Session,
+                         assets: pd.DataFrame) -> list[int]:
+        """Bulk insert assets using COPY and pre-allocated OIDs.
+
+        Args:
+            session: SQLAlchemy session.
+            assets: DataFrame containing asset data.
+
+        Returns:
+            List of OIDs of the inserted assets in the same order as input.
+        """
+        with db_cursor_from_session(session) as cursor:
+            db_indexes = allocate_oids(cursor,
+                                       AssetORM.__table__.name,
+                                       '_oid',
+                                       len(assets))
+
+        # Create a copy and assign pre-allocated OIDs
+        assets_copy = assets.copy()
+        assets_copy['_oid'] = db_indexes
+
+        # Use bulk copy for insertion
+        copy_pooled(assets_copy, AssetORM.__table__.name)
+
+        return db_indexes
+
+    @classmethod
     def insert_from_exposuremodel(cls,
                                   session: Session,
                                   sites: pd.DataFrame,
@@ -107,19 +136,34 @@ class AssetRepository(repository_factory(
             List of OIDs of the inserted assets and sites.
         """
 
-        sites_oids = SiteRepository.insert_many(session, sites)
-        assets['_site_oid'] = assets['_site_oid'].map(lambda x: sites_oids[x])
+        # Use bulk insert for sites with pre-allocated OIDs
+        sites_oids = SiteRepository.insert_many_bulk(session, sites.copy())
 
+        # Update assets with site OIDs using index-based mapping
+        assets_copy = assets.copy()
+        site_oid_map = dict(zip(range(len(sites)), sites_oids))
+        assets_copy['_site_oid'] = assets_copy['_site_oid'].map(site_oid_map)
+
+        # Keep using SQLAlchemy approach for aggregation tags
+        # (needed for conflict resolution)
         tags_oids = AggregationTagRepository.insert_many(
             session, aggregationtags)
-        assoc_assets_tags['aggregationtag'] = \
-            assoc_assets_tags['aggregationtag'].map(lambda x: tags_oids[x])
 
-        assets_oids = AssetRepository.insert_many(session, assets)
-        assoc_assets_tags['asset'] = assoc_assets_tags['asset'].map(
-            lambda x: assets_oids[x])
+        # Update associations with tag OIDs using index-based mapping
+        assoc_copy = assoc_assets_tags.copy()
+        tag_oid_map = dict(zip(range(len(aggregationtags)), tags_oids))
+        assoc_copy['aggregationtag'] = \
+            assoc_copy['aggregationtag'].map(tag_oid_map)
 
-        AssetAggregationTagRepository.insert_many(session, assoc_assets_tags)
+        # Use bulk insert for assets with pre-allocated OIDs
+        assets_oids = AssetRepository.insert_many_bulk(session, assets_copy)
+
+        # Update associations with asset OIDs using index-based mapping
+        asset_oid_map = dict(zip(range(len(assets)), assets_oids))
+        assoc_copy['asset'] = assoc_copy['asset'].map(asset_oid_map)
+
+        # Use bulk insert for associations
+        AssetAggregationTagRepository.insert_many(session, assoc_copy)
 
         # Refresh materialized views after asset insertion
         session.execute(
@@ -150,6 +194,33 @@ class SiteRepository(repository_factory(
         result = session.execute(stmt)
         session.commit()
         return [row._oid for row in result]
+
+    @classmethod
+    def insert_many_bulk(cls, session: Session,
+                         sites: pd.DataFrame) -> list[int]:
+        """Bulk insert sites using COPY and pre-allocated OIDs.
+
+        Args:
+            session: SQLAlchemy session.
+            sites: DataFrame containing site data.
+
+        Returns:
+            List of OIDs of the inserted sites in the same order as input.
+        """
+        with db_cursor_from_session(session) as cursor:
+            db_indexes = allocate_oids(cursor,
+                                       SiteORM.__table__.name,
+                                       '_oid',
+                                       len(sites))
+
+        # Create a copy and assign pre-allocated OIDs
+        sites_copy = sites.copy()
+        sites_copy['_oid'] = db_indexes
+
+        # Use bulk copy for insertion
+        copy_pooled(sites_copy, SiteORM.__table__.name)
+
+        return db_indexes
 
     @classmethod
     def get_by_exposuremodel(cls, session: Session,
@@ -282,14 +353,11 @@ class AssetAggregationTagRepository:
 
     @classmethod
     def insert_many(cls, session: Session, associations: pd.DataFrame) -> None:
-        """Insert multiple asset-aggregationtag associations using SQL insert.
+        """Insert multiple asset-aggregationtag associations using bulk copy.
 
         Args:
             session: SQLAlchemy session.
             associations: DataFrame with columns: asset, aggregationtag,
                          aggregationtype.
         """
-        stmt = insert(asset_aggregationtag).values(
-            associations.to_dict(orient='records'))
-        session.execute(stmt)
-        session.commit()
+        copy_pooled(associations, asset_aggregationtag.name)

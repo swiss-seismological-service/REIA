@@ -270,6 +270,30 @@ def _normalize_tag_pairs(
     return tag_table, mapping_df
 
 
+def _try_convert_numeric(df: pd.DataFrame) -> pd.DataFrame:
+    """Try to convert all columns in the DataFrame to numeric types.
+
+    Args:
+        df: Input DataFrame.
+
+    Returns:
+        DataFrame with numeric columns converted, non-numeric columns intact.
+    """
+    out = df.copy()
+    for c in out.columns:
+        try:
+            s = pd.to_numeric(out[c])
+        except (ValueError, TypeError):
+            continue  # leave non-numeric columns alone
+
+        # If it's float but all non-NA values are integer-like, use Int64
+        if pd.api.types.is_float_dtype(s) and s.dropna().mod(1).eq(0).all():
+            s = s.astype("Int64")
+
+        out[c] = s
+    return out
+
+
 def parse_exposure(file: TextIO
                    ) -> tuple[ExposureModel, pd.DataFrame, pd.DataFrame,
                               pd.DataFrame, pd.DataFrame]:
@@ -306,5 +330,12 @@ def parse_exposure(file: TextIO
     # Normalize aggregation tags
     assets_clean, aggregationtags, assoc_table = _normalize_tags(
         assets, asset_cols, aggregation_types)
+
+    # convert columns to numeric if possible, keeps non-numeric columns intact
+
+    assets_clean = _try_convert_numeric(assets_clean)
+    sites = _try_convert_numeric(sites)
+    aggregationtags = _try_convert_numeric(aggregationtags)
+    assoc_table = _try_convert_numeric(assoc_table)
 
     return exposure_model, sites, assets_clean, aggregationtags, assoc_table

@@ -1,5 +1,4 @@
 import logging
-import os
 from contextlib import contextmanager
 from io import StringIO
 from multiprocessing import Pool
