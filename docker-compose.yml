@@ -52,10 +52,11 @@ services:
     ports:
       - "${OQ_PORT:-8800}:8800"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8800"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8800/v1/engine_version || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 10
+      start_period: 60s
     networks:
       - network
     depends_on:

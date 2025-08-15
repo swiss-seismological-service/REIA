@@ -1,3 +1,4 @@
+import enum
 from functools import lru_cache
 
 from pydantic import Field, computed_field
@@ -61,6 +62,39 @@ class Settings(BaseSettings):
             f"{self.db_password}@{self.postgres_host}:"
             f"{self.postgres_port}/{self.db_name}"
         )
+
+
+class WebserviceSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file='.env', extra='ignore')
+
+    POSTGRES_HOST: str
+    POSTGRES_PORT: str
+    DB_USER: str
+    DB_PASSWORD: str
+    DB_NAME: str
+    ROOT_PATH: str
+
+    ALLOW_ORIGINS: list
+    ALLOW_ORIGIN_REGEX: str
+
+    class RiskCategory(str, enum.Enum):
+        CONTENTS = 'contents'
+        BUSINESS_INTERRUPTION = 'displaced'
+        NONSTRUCTURAL = 'injured'
+        OCCUPANTS = 'fatalities'
+        STRUCTURAL = 'structural'
+
+    @property
+    def SQLALCHEMY_DATABASE_URL(self) -> str:
+        return f"postgresql+asyncpg://{self.DB_USER}:" \
+            f"{self.DB_PASSWORD}@" \
+            f"{self.POSTGRES_HOST}:" \
+            f"{self.POSTGRES_PORT}/{self.DB_NAME}"
+
+
+@lru_cache()
+def get_webservice_settings():
+    return WebserviceSettings()
 
 
 @lru_cache()

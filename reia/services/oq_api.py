@@ -189,7 +189,9 @@ class OQCalculationAPI(APIConnection):
         return datastore.read(self.id)
 
 
-def oqapi_import_remote_calculation(calc_id: int | str, config: Settings):
+def oqapi_import_remote_calculation(
+        calc_id: int | str,
+        config: Settings):
     """Import a remote calculation into the local database.
 
     Args:
