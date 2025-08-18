@@ -69,8 +69,7 @@ def drop_test_database():
 
     try:
         with conn.cursor() as cursor:
-            # Try to terminate connections to the test database (may fail
-            # without superuser)
+            # Try to terminate connections to the test database
             try:
                 cursor.execute("""
                     SELECT pg_terminate_backend(pid)
@@ -93,25 +92,20 @@ def setup_test_database():
     create_test_database()
 
     # Check if migrations are needed and run them
-    try:
-        upgrade_test_database()
-    except Exception as e:
-        if "already exists" in str(e):
-            # Schema already exists, continue
-            pass
-        else:
-            raise
+    upgrade_test_database()
 
 
 def teardown_test_database():
     """Clean up test database."""
+    # Downgrade schema
+    downgrade_test_database()
+
     # Drop test database
     drop_test_database()
 
 
 def upgrade_test_database():
     """Run Alembic upgrade to head on test database."""
-    from unittest.mock import patch
     test_config = TestSettings()
 
     # Configure Alembic for test database
@@ -121,16 +115,15 @@ def upgrade_test_database():
     alembic_cfg.set_main_option("sqlalchemy.url",
                                 test_config.db_connection_string)
 
-    # Patch the repositories engine to use test engine during migration
-    test_engine = get_test_engine()
-    with patch('reia.repositories.engine', test_engine):
-        # Run migration
-        command.upgrade(alembic_cfg, "head")
+    # create_engine needs to be called to initialize extensions
+    get_test_engine()
+
+    # run the upgrade
+    command.upgrade(alembic_cfg, "head")
 
 
 def downgrade_test_database():
     """Run Alembic downgrade to base on test database."""
-    from unittest.mock import patch
     test_config = TestSettings()
 
     # Configure Alembic for test database
@@ -140,18 +133,5 @@ def downgrade_test_database():
     alembic_cfg.set_main_option("sqlalchemy.url",
                                 test_config.db_connection_string)
 
-    # Patch the repositories engine to use test engine during migration
-    test_engine = get_test_engine()
-    with patch('reia.repositories.engine', test_engine):
-        # Run downgrade
-        command.downgrade(alembic_cfg, "base")
-
-
-def setUpModule():
-    """Module-level setup for tests requiring fresh database schema."""
-    setup_test_database()
-
-
-def tearDownModule():
-    """Module-level cleanup for tests."""
-    teardown_test_database()
+    # run the downgrade
+    command.downgrade(alembic_cfg, "base")

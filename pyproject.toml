@@ -57,3 +57,8 @@ reia = "reia.cli:app"
 [tool.setuptools.package-data]
 "*" = ["*.xml", "*.ini"]
 "reia" = ["alembic/**/*"]
+
+[tool.pytest.ini_options]
+env = [
+    "TESTING=1",
+]

@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 
 from pydantic import Field, computed_field
@@ -76,6 +77,20 @@ class WebserviceSettings(Settings):
             f"{self.postgres_port}/{self.db_name}"
 
 
+class TestSettings(REIASettings):
+    """Test-specific settings that override database configuration."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        # create test database
+        self.db_name = f"{self.db_name}_test"
+
+        # use superuser to be able to create/delete test database
+        self.db_user = self.postgres_user
+        self.db_password = self.postgres_password
+
+
 @lru_cache()
 def get_webservice_settings():
     return WebserviceSettings()
@@ -84,22 +99,8 @@ def get_webservice_settings():
 @lru_cache()
 def get_settings() -> REIASettings:
     """Get cached settings instance."""
+    # Automatically use TestSettings when testing
+    # set in pyproject.toml tools section
+    if os.getenv('TESTING') == '1':
+        return TestSettings()
     return REIASettings()
-
-
-class TestSettings(REIASettings):
-    """Test-specific settings that override database configuration."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.db_name = f"{self.db_name}_test"
-
-    @computed_field
-    @property
-    def db_connection_string(self) -> str:
-        """Test database connection string."""
-        return (
-            f"postgresql+psycopg2://{self.postgres_user}:"
-            f"{self.postgres_password}@{self.postgres_host}:"
-            f"{self.postgres_port}/{self.db_name}"
-        )
