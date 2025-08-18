@@ -2,8 +2,8 @@ import time
 from io import StringIO
 from pathlib import Path
 
-from reia.services.oq_api import OQCalculationAPI
 from reia.config.settings import get_settings
+from reia.services.oq_api import OQCalculationAPI
 
 
 def test_api():
@@ -31,7 +31,4 @@ def test_api():
 
     while api.status not in ['complete', 'aborted', 'failed']:
         print(api.status)
-        time.sleep(1)
-
-    print(api.status)
-    print(api.get_result())
+        time.sleep(10)

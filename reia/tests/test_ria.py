@@ -5,45 +5,49 @@ from pathlib import Path
 import pytest
 from numpy.testing import assert_almost_equal
 
-from reia.cli import (add_exposure, add_fragility, add_risk_assessment,
-                      add_taxonomymap, add_vulnerability, run_risk_assessment)
 from reia.repositories.asset import (AggregationTagRepository, AssetRepository,
-                                     ExposureModelRepository, SiteRepository)
+                                     SiteRepository)
 from reia.repositories.calculation import (CalculationRepository,
                                            RiskAssessmentRepository)
-from reia.repositories.fragility import (FragilityModelRepository,
-                                         TaxonomyMapRepository)
-from reia.repositories.vulnerability import VulnerabilityModelRepository
+from reia.schemas.calculation_schemas import RiskAssessment
 from reia.schemas.enums import ECalculationType, EStatus
 from reia.services.calculation import (CalculationDataService,
                                        CalculationService)
+from reia.services.exposure import ExposureService
+from reia.services.fragility import FragilityService
+from reia.services.riskassessment import RiskAssessmentService
+from reia.services.taxonomy import TaxonomyService
+from reia.services.vulnerability import VulnerabilityService
 
 DATAFOLDER = Path(__file__).parent / 'data' / 'ria_test'
 
 
 @pytest.fixture(scope='module')
 def exposure(db_session):
-    exposure_id = add_exposure(DATAFOLDER / 'exposure_test.xml', 'test')
-    return ExposureModelRepository.get_by_id(db_session, exposure_id)
+    exposure = ExposureService.import_from_file(
+        db_session, DATAFOLDER / 'exposure_test.xml', 'test')
+    return exposure
 
 
 @pytest.fixture(scope='module')
 def fragility(db_session):
-    fragility_id = add_fragility(DATAFOLDER / 'fragility_test.xml', 'test')
-    return FragilityModelRepository.get_by_id(db_session, fragility_id)
+    fragility = FragilityService.import_from_file(
+        db_session, DATAFOLDER / 'fragility_test.xml', 'test')
+    return fragility
 
 
 @pytest.fixture(scope='module')
 def taxonomy(db_session):
-    taxonomy_id = add_taxonomymap(DATAFOLDER / 'taxonomy_test.csv', 'test')
-    return TaxonomyMapRepository.get_by_id(db_session, taxonomy_id)
+    taxonomy = TaxonomyService.import_from_file(
+        db_session, DATAFOLDER / 'taxonomy_test.csv', 'test')
+    return taxonomy
 
 
 @pytest.fixture(scope='module')
 def vulnerability(db_session):
-    vulnerability_id = add_vulnerability(
-        DATAFOLDER / 'vulnerability_test.xml', 'test')
-    return VulnerabilityModelRepository.get_by_id(db_session, vulnerability_id)
+    vulnerability = VulnerabilityService.import_from_file(
+        db_session, DATAFOLDER / 'vulnerability_test.xml', 'test')
+    return vulnerability
 
 
 @pytest.fixture(scope='module')
@@ -112,9 +116,11 @@ def damage_calculation(damage_config, db_session):
 
 @pytest.fixture(scope='module')
 def risk_assessment(loss_calculation, damage_calculation, db_session):
-    riskassessment_id = add_risk_assessment(
-        'smi:ch.ethz.sed/test', loss_calculation.oid, damage_calculation.oid)
-    return RiskAssessmentRepository.get_by_id(db_session, riskassessment_id)
+    riskassessment = RiskAssessment(
+        originid='smi:ch.ethz.sed/test',
+        losscalculation_oid=loss_calculation.oid,
+        damagecalculation_oid=damage_calculation.oid)
+    return RiskAssessmentRepository.create(db_session, riskassessment)
 
 
 def test_run_risk_assessment_end_to_end(
@@ -123,15 +129,13 @@ def test_run_risk_assessment_end_to_end(
 
     # Call the actual CLI function
     originid = 'smi:ch.ethz.sed/e2e_test'
-    oid = run_risk_assessment(
-        originid=originid,
-        loss=loss_config,
-        damage=damage_config
-    )
+    service = RiskAssessmentService(db_session)
+    risk_assessment = service.run_risk_assessment(
+        originid, loss_config, damage_config)
 
     # Verify the risk assessment was created properly
     e2e_assessment = RiskAssessmentRepository.get_by_id(
-        db_session, oid)
+        db_session, risk_assessment.oid)
 
     assert e2e_assessment is not None, \
         f"Risk assessment with originid {originid} not found"

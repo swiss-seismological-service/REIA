@@ -2,22 +2,28 @@ from pathlib import Path
 
 import pytest
 
-from reia.cli import (add_exposure, add_exposure_geometries,
-                      delete_exposure_geometries)
 from reia.repositories.asset import (AggregationGeometryRepository,
                                      AggregationTagRepository)
+from reia.services.exposure import (ExposureService,
+                                    add_geometries_from_shapefile)
 
 DATAFOLDER = Path(__file__).parent / 'data'
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture()
 def exposure_with_geoms(db_session):
-    exposure_id = add_exposure(DATAFOLDER / 'ria_test'
-                               / 'exposure_test.xml', 'test')
+    exposure = ExposureService.import_from_file(db_session,
+                                                DATAFOLDER / 'ria_test'
+                                                / 'exposure_test.xml', 'test')
+    add_geometries_from_shapefile(db_session,
+                                  exposure.oid,
+                                  DATAFOLDER
+                                  / 'geometries'
+                                  / 'municipalities.shp',
+                                  'tag',
+                                  'CantonGemeinde')
 
-    add_exposure_geometries(exposure_id, 'CantonGemeinde', 'tag',
-                            DATAFOLDER / 'geometries' / 'municipalities.shp')
-    return exposure_id
+    return exposure.oid
 
 
 def test_geometries(exposure_with_geoms, db_session):
@@ -42,7 +48,8 @@ def test_geometries(exposure_with_geoms, db_session):
 
 
 def test_geometry_deletion(exposure_with_geoms, db_session):
-    delete_exposure_geometries(exposure_with_geoms, 'CantonGemeinde')
+    AggregationGeometryRepository.delete_by_exposuremodel(
+        db_session, exposure_with_geoms, 'CantonGemeinde')
     geometries = AggregationGeometryRepository.get_by_exposuremodel(
         db_session, exposure_with_geoms)
     assert len(geometries) == 0
