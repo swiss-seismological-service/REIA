@@ -6,9 +6,11 @@ import pytest
 import pytest_asyncio
 
 from reia.repositories.calculation import RiskAssessmentRepository
-from reia.repositories.tests.database import (get_test_session,
-                                              setup_test_database,
-                                              teardown_test_database)
+from reia.repositories.tests.database import (create_test_database,
+                                              downgrade_test_database,
+                                              drop_test_database,
+                                              get_test_session,
+                                              upgrade_test_database)
 from reia.schemas.calculation_schemas import RiskAssessment
 from reia.services.calculation import (CalculationDataService,
                                        CalculationService)
@@ -24,11 +26,19 @@ DATAFOLDER = Path(__file__).parent / 'data' / 'ria_test'
 
 
 @pytest.fixture(scope='session', autouse=True)
-def setup_test_env():
-    """Set up test environment with database."""
-    setup_test_database()
+def setup_database_session():
+    """Set up test database for entire session."""
+    create_test_database()
     yield
-    teardown_test_database()
+    drop_test_database()
+
+
+@pytest.fixture(scope='module', autouse=True)
+def setup_database_schema(setup_database_session):
+    """Set up test database schema for each module."""
+    upgrade_test_database()
+    yield
+    downgrade_test_database()
 
 
 @pytest.fixture(scope='module')

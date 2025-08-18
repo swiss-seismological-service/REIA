@@ -86,24 +86,6 @@ def drop_test_database():
         conn.close()
 
 
-def setup_test_database():
-    """Set up test database with schema."""
-    # Create test database
-    create_test_database()
-
-    # Check if migrations are needed and run them
-    upgrade_test_database()
-
-
-def teardown_test_database():
-    """Clean up test database."""
-    # Downgrade schema
-    downgrade_test_database()
-
-    # Drop test database
-    drop_test_database()
-
-
 def upgrade_test_database():
     """Run Alembic upgrade to head on test database."""
     test_config = TestSettings()
