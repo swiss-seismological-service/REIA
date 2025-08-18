@@ -77,6 +77,20 @@ class WebserviceSettings(Settings):
             f"{self.postgres_port}/{self.db_name}"
 
 
+class TestWebserviceSettings(WebserviceSettings):
+    """Test-specific settings for webservice."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        # create test database
+        self.db_name = f"{self.db_name}_test"
+
+        # use superuser to be able to create/delete test database
+        self.db_user = self.postgres_user
+        self.db_password = self.postgres_password
+
+
 class TestSettings(REIASettings):
     """Test-specific settings that override database configuration."""
 
@@ -93,6 +107,9 @@ class TestSettings(REIASettings):
 
 @lru_cache()
 def get_webservice_settings():
+    """Get cached webservice settings instance."""
+    if os.getenv('TESTING') == '1':
+        return TestWebserviceSettings()
     return WebserviceSettings()
 
 
