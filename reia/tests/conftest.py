@@ -6,6 +6,9 @@ import pytest
 import pytest_asyncio
 
 from reia.repositories.calculation import RiskAssessmentRepository
+from reia.repositories.tests.database import (get_test_session,
+                                              setup_test_database,
+                                              teardown_test_database)
 from reia.schemas.calculation_schemas import RiskAssessment
 from reia.services.calculation import (CalculationDataService,
                                        CalculationService)
@@ -13,8 +16,6 @@ from reia.services.exposure import ExposureService
 from reia.services.fragility import FragilityService
 from reia.services.taxonomy import TaxonomyService
 from reia.services.vulnerability import VulnerabilityService
-from reia.tests.database import (get_test_session, setup_test_database,
-                                 teardown_test_database)
 from reia.webservice.tests.database import (cleanup_test_client,
                                             get_test_async_session,
                                             get_test_client)

@@ -110,8 +110,8 @@ def upgrade_test_database():
 
     # Configure Alembic for test database
     alembic_cfg = Config()
-    alembic_cfg.set_main_option("script_location",
-                                str(Path(__file__).parent.parent / "alembic"))
+    alembic_cfg.set_main_option("script_location", str(
+        Path(__file__).parent.parent.parent / "alembic"))
     alembic_cfg.set_main_option("sqlalchemy.url",
                                 test_config.db_connection_string)
 
@@ -128,8 +128,8 @@ def downgrade_test_database():
 
     # Configure Alembic for test database
     alembic_cfg = Config()
-    alembic_cfg.set_main_option("script_location",
-                                str(Path(__file__).parent.parent / "alembic"))
+    alembic_cfg.set_main_option("script_location", str(
+        Path(__file__).parent.parent.parent / "alembic"))
     alembic_cfg.set_main_option("sqlalchemy.url",
                                 test_config.db_connection_string)
 
