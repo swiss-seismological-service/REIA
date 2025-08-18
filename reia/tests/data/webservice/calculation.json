@@ -1,0 +1,66 @@
+{
+    "count": 2,
+    "items": [
+        {
+            "_oid": 1,
+            "aggregateby": [
+                "Canton; CantonGemeinde"
+            ],
+            "status": 6,
+            "description": "Scenario Risk End to End Test",
+            "_type": "loss",
+            "losscalculationbranches": [
+                {
+                    "weight": 1.0,
+                    "config": {
+                        "description": "Scenario Risk End to End Test",
+                        "master_seed": 501,
+                        "aggregate_by": "Canton; CantonGemeinde",
+                        "random_seed": 743,
+                        "avg_losses": "true",
+                        "minimum_asset_loss": {
+                            "structural": 2000,
+                            "contents": 1000,
+                            "occupants": 0,
+                            "nonstructural": 0,
+                            "business_interruption": 0
+                        },
+                        "number_of_ground_motion_fields": 5040
+                    },
+                    "status": 6,
+                    "_type": "loss"
+                }
+            ],
+            "creationinfo": {
+                "creationtime": "2025-08-18T15:50:39"
+            }
+        },
+        {
+            "_oid": 2,
+            "aggregateby": [
+                "Canton; CantonGemeinde"
+            ],
+            "status": 6,
+            "description": "Scenario Damage End to End Test",
+            "_type": "damage",
+            "damagecalculationbranches": [
+                {
+                    "weight": 1.0,
+                    "config": {
+                        "description": "Scenario Damage End to End Test",
+                        "master_seed": 567,
+                        "aggregate_by": "Canton; CantonGemeinde",
+                        "random_seed": 567,
+                        "avg_losses": "true",
+                        "number_of_ground_motion_fields": 5040
+                    },
+                    "status": 6,
+                    "_type": "damage"
+                }
+            ],
+            "creationinfo": {
+                "creationtime": "2025-08-18T15:50:39"
+            }
+        }
+    ]
+}

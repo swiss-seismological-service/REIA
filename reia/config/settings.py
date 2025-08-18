@@ -86,9 +86,9 @@ class TestWebserviceSettings(WebserviceSettings):
         # create test database
         self.db_name = f"{self.db_name}_test"
 
-        # use superuser to be able to create/delete test database
-        self.db_user = self.postgres_user
-        self.db_password = self.postgres_password
+    # use superuser to be able to create/delete test database
+    db_user: str = Field(..., alias='postgres_user')
+    db_password: str = Field(..., alias='postgres_password')
 
 
 class TestSettings(REIASettings):

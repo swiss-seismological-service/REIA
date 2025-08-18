@@ -1,0 +1,20 @@
+[
+    {
+        "category": "structural",
+        "tag": [
+            "GR"
+        ],
+        "loss_mean": 325.35692,
+        "loss_pc10": 0.0,
+        "loss_pc90": 0.0
+    },
+    {
+        "category": "structural",
+        "tag": [
+            "SG"
+        ],
+        "loss_mean": 0.0,
+        "loss_pc10": 0.0,
+        "loss_pc90": 0.0
+    }
+]

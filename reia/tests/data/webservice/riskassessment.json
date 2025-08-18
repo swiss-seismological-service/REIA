@@ -1,0 +1,39 @@
+{
+    "count": 1,
+    "items": [
+        {
+            "_oid": "b7af855d-168a-4fad-bde7-db3a72f64e7a",
+            "originid": "smi:ch.ethz.sed/test",
+            "type": "natural",
+            "losscalculation": {
+                "_oid": 1,
+                "aggregateby": [
+                    "Canton; CantonGemeinde"
+                ],
+                "status": 6,
+                "description": "Scenario Risk End to End Test",
+                "_type": "loss",
+                "creationinfo": {
+                    "creationtime": "2025-08-18T15:50:39"
+                }
+            },
+            "damagecalculation": {
+                "_oid": 2,
+                "aggregateby": [
+                    "Canton; CantonGemeinde"
+                ],
+                "status": 6,
+                "description": "Scenario Damage End to End Test",
+                "_type": "damage",
+                "creationinfo": {
+                    "creationtime": "2025-08-18T15:50:39"
+                }
+            },
+            "preferred": false,
+            "published": false,
+            "creationinfo": {
+                "creationtime": "2025-08-18T15:50:39"
+            }
+        }
+    ]
+}

@@ -1,0 +1,46 @@
+[
+    {
+        "category": "structural",
+        "tag": [
+            "GR"
+        ],
+        "dg1_mean": 0.00274,
+        "dg1_pc10": 0.0,
+        "dg1_pc90": 0.0,
+        "dg2_mean": 0.00066,
+        "dg2_pc10": 0.0,
+        "dg2_pc90": 0.0,
+        "dg3_mean": 0.00012,
+        "dg3_pc10": 0.0,
+        "dg3_pc90": 0.0,
+        "dg4_mean": 1e-05,
+        "dg4_pc10": 0.0,
+        "dg4_pc90": 0.0,
+        "dg5_mean": 0.0,
+        "dg5_pc10": 0.0,
+        "dg5_pc90": 0.0,
+        "buildings": 99.0
+    },
+    {
+        "category": "structural",
+        "tag": [
+            "SG"
+        ],
+        "dg1_mean": 0.0,
+        "dg1_pc10": 0.0,
+        "dg1_pc90": 0.0,
+        "dg2_mean": 0.0,
+        "dg2_pc10": 0.0,
+        "dg2_pc90": 0.0,
+        "dg3_mean": 0.0,
+        "dg3_pc10": 0.0,
+        "dg3_pc90": 0.0,
+        "dg4_mean": 0.0,
+        "dg4_pc10": 0.0,
+        "dg4_pc90": 0.0,
+        "dg5_mean": 0.0,
+        "dg5_pc10": 0.0,
+        "dg5_pc90": 0.0,
+        "buildings": 31.0
+    }
+]
