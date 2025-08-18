@@ -3,11 +3,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pandas import DataFrame
 
-from reia.config.settings import WebserviceSettings
 from reia.webservice.database import DBSessionDep
 from reia.webservice.repositories import (AggregationRepository,
                                           CalculationRepository)
-from reia.webservice.schemas import DamageValueStatisticsSchema, ReturnFormats
+from reia.webservice.schemas import (DamageValueStatisticsSchema,
+                                     ReturnFormats, WebserviceRiskCategory)
 from reia.webservice.utils import (aggregate_by_branch_and_event,
                                    calculate_statistics, csv_response,
                                    merge_statistics_to_buildings)
@@ -15,12 +15,13 @@ from reia.webservice.utils import (aggregate_by_branch_and_event,
 router = APIRouter(prefix='/damage', tags=['damage'])
 
 
-async def calculate_damages(calculation_id: int,
-                            aggregation_type: str,
-                            damage_category: WebserviceSettings.RiskCategory,
-                            db: DBSessionDep,
-                            filter_tag_like: str | None = None,
-                            sum: bool = False):
+async def calculate_damages(
+        calculation_id: int,
+        aggregation_type: str,
+        damage_category: WebserviceRiskCategory,
+        db: DBSessionDep,
+        filter_tag_like: str | None = None,
+        sum: bool = False):
 
     like_tag = f'%{filter_tag_like}%' if filter_tag_like else None
 
@@ -70,7 +71,7 @@ async def calculate_damages(calculation_id: int,
             response_model_exclude_none=True)
 async def get_damage(
         calculation_id: int,
-        damage_category: WebserviceSettings.RiskCategory,
+        damage_category: WebserviceRiskCategory,
         aggregation_type: str,
         request: Request,
         statistics: Annotated[DataFrame, Depends(calculate_damages)],

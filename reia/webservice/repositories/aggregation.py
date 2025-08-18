@@ -2,12 +2,12 @@ import pandas as pd
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from reia.config.settings import WebserviceSettings
 from reia.datamodel import (AggregationTag, Asset, Calculation,
                             CalculationBranch, DamageCalculationBranch,
                             DamageValue, ExposureModel, LossValue,
                             asset_aggregationtag, riskvalue_aggregationtag)
 from reia.schemas.enums import ECalculationType, ELossCategory
+from reia.webservice.schemas import WebserviceRiskCategory
 from reia.webservice.utils import pandas_read_sql
 
 
@@ -109,7 +109,7 @@ class AggregationRepository:
         session: AsyncSession,
         calculation_id: int,
         aggregation_type: str,
-        loss_category: WebserviceSettings.RiskCategory,
+        loss_category: WebserviceRiskCategory,
         filter_tag: str | None = None,
         filter_like_tag: str | None = None
     ) -> pd.DataFrame:
@@ -191,7 +191,7 @@ class AggregationRepository:
         session: AsyncSession,
         calculation_id: int,
         aggregation_type: str,
-        loss_category: WebserviceSettings.RiskCategory,
+        loss_category: WebserviceRiskCategory,
         filter_tag: str | None = None,
         filter_like_tag: str | None = None
     ) -> pd.DataFrame:

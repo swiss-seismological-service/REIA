@@ -1,1 +1,1 @@
-from reia.config.settings import Settings, get_settings  # noqa
+from reia.config.settings import REIASettings, get_settings  # noqa

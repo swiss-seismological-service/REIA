@@ -1,4 +1,4 @@
-from reia.config.settings import WebserviceSettings
+from reia.webservice.schemas import WebserviceRiskCategory
 
 # MAPPINGS for CSV filenames
 # filename {type}_{oid}_{aggregation}-{filter?}_{category}.csv
@@ -9,28 +9,28 @@ csv_round = 1
 # category names
 csv_names_categories = {
     'damage': {
-        WebserviceSettings.RiskCategory.BUSINESS_INTERRUPTION:
-        WebserviceSettings.RiskCategory.BUSINESS_INTERRUPTION,
-        WebserviceSettings.RiskCategory.CONTENTS:
-        WebserviceSettings.RiskCategory.CONTENTS,
-        WebserviceSettings.RiskCategory.NONSTRUCTURAL:
-        WebserviceSettings.RiskCategory.NONSTRUCTURAL,
-        WebserviceSettings.RiskCategory.OCCUPANTS:
-        WebserviceSettings.RiskCategory.OCCUPANTS,
-        WebserviceSettings.RiskCategory.STRUCTURAL:
-        WebserviceSettings.RiskCategory.STRUCTURAL
+        WebserviceRiskCategory.BUSINESS_INTERRUPTION:
+        WebserviceRiskCategory.BUSINESS_INTERRUPTION,
+        WebserviceRiskCategory.CONTENTS:
+        WebserviceRiskCategory.CONTENTS,
+        WebserviceRiskCategory.NONSTRUCTURAL:
+        WebserviceRiskCategory.NONSTRUCTURAL,
+        WebserviceRiskCategory.OCCUPANTS:
+        WebserviceRiskCategory.OCCUPANTS,
+        WebserviceRiskCategory.STRUCTURAL:
+        WebserviceRiskCategory.STRUCTURAL
     },
     'loss': {
-        WebserviceSettings.RiskCategory.BUSINESS_INTERRUPTION:
-        WebserviceSettings.RiskCategory.BUSINESS_INTERRUPTION,
-        WebserviceSettings.RiskCategory.CONTENTS:
-        WebserviceSettings.RiskCategory.CONTENTS,
-        WebserviceSettings.RiskCategory.NONSTRUCTURAL:
-        WebserviceSettings.RiskCategory.NONSTRUCTURAL,
-        WebserviceSettings.RiskCategory.OCCUPANTS:
-        WebserviceSettings.RiskCategory.OCCUPANTS,
-        WebserviceSettings.RiskCategory.STRUCTURAL:
-        WebserviceSettings.RiskCategory.STRUCTURAL
+        WebserviceRiskCategory.BUSINESS_INTERRUPTION:
+        WebserviceRiskCategory.BUSINESS_INTERRUPTION,
+        WebserviceRiskCategory.CONTENTS:
+        WebserviceRiskCategory.CONTENTS,
+        WebserviceRiskCategory.NONSTRUCTURAL:
+        WebserviceRiskCategory.NONSTRUCTURAL,
+        WebserviceRiskCategory.OCCUPANTS:
+        WebserviceRiskCategory.OCCUPANTS,
+        WebserviceRiskCategory.STRUCTURAL:
+        WebserviceRiskCategory.STRUCTURAL
     }
 }
 

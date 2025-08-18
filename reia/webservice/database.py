@@ -17,7 +17,11 @@ class Base(AsyncAttrs, DeclarativeBase):
 class DatabaseSessionManager:
     def __init__(self, host: str, engine_kwargs: dict[str, Any] = {}):
         self._engine = create_async_engine(
-            host, pool_size=10, max_overflow=5, **engine_kwargs)
+            host,
+            pool_size=get_webservice_settings().postgres_pool_size,
+            max_overflow=get_webservice_settings().postgres_max_overflow,
+            **engine_kwargs)
+
         self._sessionmaker = async_sessionmaker(
             autoflush=False, bind=self._engine)
 
@@ -57,7 +61,7 @@ class DatabaseSessionManager:
 
 
 sessionmanager = DatabaseSessionManager(
-    get_webservice_settings().SQLALCHEMY_DATABASE_URL, {"echo": False})
+    get_webservice_settings().db_connection_string, {"echo": False})
 
 
 async def get_db():

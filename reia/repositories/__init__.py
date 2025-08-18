@@ -12,7 +12,7 @@ from sqlalchemy.sql import text
 from reia.config.settings import get_settings
 from reia.datamodel.base import ORMBase
 
-EXTENSIONS = []
+EXTENSIONS = ['postgis']
 
 
 def create_extensions(engine):

@@ -5,7 +5,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from reia.config.settings import WebserviceSettings
 from reia.schemas.enums import EEarthquakeType, EStatus
 
 
@@ -112,8 +111,16 @@ class RiskAssessmentSchema(CreationInfoMixin):
     published: bool
 
 
+class WebserviceRiskCategory(str, enum.Enum):
+    CONTENTS = 'contents'
+    BUSINESS_INTERRUPTION = 'displaced'
+    NONSTRUCTURAL = 'injured'
+    OCCUPANTS = 'fatalities'
+    STRUCTURAL = 'structural'
+
+
 class RiskValue(Model):
-    category: WebserviceSettings.RiskCategory
+    category: WebserviceRiskCategory
     tag: list[str]
 
 

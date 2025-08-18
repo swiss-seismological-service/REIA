@@ -1,4 +1,3 @@
-import enum
 from functools import lru_cache
 
 from pydantic import Field, computed_field
@@ -6,7 +5,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings with environment variable support."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -15,34 +13,32 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-    # OpenQuake API Configuration
-    oq_host: str = Field(..., description="OpenQuake API server URL")
-    oq_user: str = Field(..., description="OpenQuake API username")
-    oq_password: str = Field(..., description="OpenQuake API password")
+    # Database Credentials
+    postgres_host: str
+    postgres_port: str
+    db_user: str
+    db_password: str
+    db_name: str
 
-    # Database Configuration
-    db_user: str = Field(..., description="Database username")
-    db_password: str = Field(..., description="Database password")
-    db_name: str = Field(..., description="Database name")
-    postgres_host: str = Field(
-        default="localhost",
-        description="PostgreSQL host")
-    postgres_port: int = Field(default=5432, description="PostgreSQL port")
-    postgres_pool_size: int = Field(
-        default=5, description="PostgreSQL connection pool size")
-    postgres_max_overflow: int = Field(
-        default=10, description="PostgreSQL max overflow connections")
+    # Connection Pooling
+    postgres_pool_size: int = Field(default=5)
+    postgres_max_overflow: int = Field(default=10)
+
+
+class REIASettings(Settings):
+    """Application settings with environment variable support."""
+
+    # OpenQuake API Configuration
+    oq_host: str = Field(...)
+    oq_user: str = Field(...)
+    oq_password: str = Field(...)
+
+    # Database Superuser
+    postgres_user: str = Field(...)
+    postgres_password: str = Field(...)
 
     # Application Configuration
-    max_processes: int = Field(
-        default=2,
-        description="Maximum number of processes for multiprocessing")
-
-    @computed_field
-    @property
-    def oq_api_server(self) -> str:
-        """OpenQuake API server URL."""
-        return self.oq_host
+    max_processes: int = Field(default=2)
 
     @computed_field
     @property
@@ -64,32 +60,20 @@ class Settings(BaseSettings):
         )
 
 
-class WebserviceSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file='.env', extra='ignore')
+class WebserviceSettings(Settings):
 
-    POSTGRES_HOST: str
-    POSTGRES_PORT: str
-    DB_USER: str
-    DB_PASSWORD: str
-    DB_NAME: str
-    ROOT_PATH: str
+    root_path: str
 
-    ALLOW_ORIGINS: list
-    ALLOW_ORIGIN_REGEX: str
+    allow_origins: list
+    allow_origin_regex: str
 
-    class RiskCategory(str, enum.Enum):
-        CONTENTS = 'contents'
-        BUSINESS_INTERRUPTION = 'displaced'
-        NONSTRUCTURAL = 'injured'
-        OCCUPANTS = 'fatalities'
-        STRUCTURAL = 'structural'
-
+    @computed_field
     @property
-    def SQLALCHEMY_DATABASE_URL(self) -> str:
-        return f"postgresql+asyncpg://{self.DB_USER}:" \
-            f"{self.DB_PASSWORD}@" \
-            f"{self.POSTGRES_HOST}:" \
-            f"{self.POSTGRES_PORT}/{self.DB_NAME}"
+    def db_connection_string(self) -> str:
+        return f"postgresql+asyncpg://{self.db_user}:" \
+            f"{self.db_password}@" \
+            f"{self.postgres_host}:" \
+            f"{self.postgres_port}/{self.db_name}"
 
 
 @lru_cache()
@@ -98,6 +82,24 @@ def get_webservice_settings():
 
 
 @lru_cache()
-def get_settings() -> Settings:
+def get_settings() -> REIASettings:
     """Get cached settings instance."""
-    return Settings()
+    return REIASettings()
+
+
+class TestSettings(REIASettings):
+    """Test-specific settings that override database configuration."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.db_name = f"{self.db_name}_test"
+
+    @computed_field
+    @property
+    def db_connection_string(self) -> str:
+        """Test database connection string."""
+        return (
+            f"postgresql+psycopg2://{self.postgres_user}:"
+            f"{self.postgres_password}@{self.postgres_host}:"
+            f"{self.postgres_port}/{self.db_name}"
+        )

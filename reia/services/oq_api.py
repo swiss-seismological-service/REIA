@@ -9,7 +9,7 @@ from openquake.commonlib import datastore, logs
 from openquake.engine import engine
 from openquake.server import dbserver
 
-from reia.config.settings import Settings
+from reia.config.settings import REIASettings
 
 
 class APIConnection():
@@ -27,8 +27,8 @@ class APIConnection():
 
 
 class OQCalculationAPI(APIConnection):
-    def __init__(self, config: Settings):
-        super().__init__(config.oq_api_server, config.oq_api_auth, 'openquake')
+    def __init__(self, config: REIASettings):
+        super().__init__(config.oq_host, config.oq_api_auth, 'openquake')
 
         self.url = f'{self.server}/v1/calc'
         self.files = {}
@@ -191,7 +191,7 @@ class OQCalculationAPI(APIConnection):
 
 def oqapi_import_remote_calculation(
         calc_id: int | str,
-        config: Settings):
+        config: REIASettings):
     """Import a remote calculation into the local database.
 
     Args:
@@ -219,7 +219,7 @@ def oqapi_import_remote_calculation(
         auth = config.oq_api_auth
         webex = WebExtractor(
             calc_id,
-            config.oq_api_server,
+            config.oq_host,
             auth['username'],
             auth['password'])
         hc_id = webex.oqparam.hazard_calculation_id
