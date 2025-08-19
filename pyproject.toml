@@ -50,6 +50,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["flake8", "pytest", "pytest-cov", "pytest-env", "isort"]
+ws = ["asyncpg", "fastapi[all]", "gunicorn", "uvicorn"]
 
 [project.scripts]
 reia = "reia.cli:app"
@@ -59,6 +60,4 @@ reia = "reia.cli:app"
 "reia" = ["alembic/**/*"]
 
 [tool.pytest.ini_options]
-env = [
-    "TESTING=1",
-]
+env = ["TESTING=1"]
