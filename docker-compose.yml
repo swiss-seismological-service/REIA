@@ -63,6 +63,27 @@ services:
       postgres:
         condition: service_healthy
 
+  webservice:
+    build: .
+    environment:
+      - DB_NAME
+      - DB_USER
+      - DB_PASSWORD
+      - ROOT_PATH
+      - ALLOW_ORIGINS
+      - ALLOW_ORIGIN_REGEX
+      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=postgres
+    restart: ${DOCKER_RESTART_POLICY:-unless-stopped}
+    ports:
+        - ${DOCKER_WEB_PORT:-8000}:8000
+    networks:
+        - network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
 volumes:
   # Persistent PostgreSQL data
   postgres_data:

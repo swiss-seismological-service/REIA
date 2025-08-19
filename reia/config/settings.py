@@ -30,13 +30,13 @@ class REIASettings(Settings):
     """Application settings with environment variable support."""
 
     # OpenQuake API Configuration
-    oq_host: str = Field(...)
-    oq_user: str = Field(...)
-    oq_password: str = Field(...)
+    oq_host: str = Field(default='http://localhost:8800')
+    oq_user: str = Field(default='user')
+    oq_password: str = Field(default='password')
 
     # Database Superuser
-    postgres_user: str = Field(...)
-    postgres_password: str = Field(...)
+    postgres_user: str = Field(default='postgres')
+    postgres_password: str = Field(default='postgres')
 
     # Application Configuration
     max_processes: int = Field(default=2)
@@ -63,10 +63,10 @@ class REIASettings(Settings):
 
 class WebserviceSettings(Settings):
 
-    root_path: str
+    root_path: str = Field(default='')
 
-    allow_origins: list
-    allow_origin_regex: str
+    allow_origins: list = Field(default=[])
+    allow_origin_regex: str = Field(default='')
 
     @computed_field
     @property
