@@ -72,8 +72,8 @@ def wquantile_generic(values, quantiles, cdf_gen, weights):
     for prob in quantiles:
         cdf = cdf_gen(nw, prob)
         q = cdf(cdf_probs)
-        w = q[1:]-q[:-1]
-        res.append(np.sum(w*values))
+        w = q[1:] - q[:-1]
+        res.append(np.sum(w * values))
     return res
 
 

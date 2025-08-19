@@ -11,3 +11,4 @@ exclude =
   __pycache__,
   .pytest_cache,
   env,
+aggressive = 3

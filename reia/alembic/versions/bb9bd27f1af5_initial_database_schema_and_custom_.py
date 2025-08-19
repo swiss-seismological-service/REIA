@@ -34,7 +34,7 @@ def execute_sql_file(filename: str) -> None:
 
 def upgrade() -> None:
     """Upgrade schema."""
-    print("🚀 Creating REIA database schema...")
+    print("Creating REIA database schema...")
 
     # Create all SQLAlchemy tables
     # Import all models to ensure they're registered
@@ -45,7 +45,6 @@ def upgrade() -> None:
 
     # Create all tables defined by SQLAlchemy models
     ORMBase.metadata.create_all(engine)
-    print("SQLAlchemy tables created.")
 
     print("Applying REIA custom SQL scripts...")
     # materialized view
@@ -59,7 +58,6 @@ def upgrade() -> None:
     # indexes
     execute_sql_file("indexes.sql")
 
-    print("All REIA custom SQL scripts applied successfully.")
     print("Database schema created successfully with all custom functions!")
 
 
@@ -114,7 +112,7 @@ def downgrade() -> None:
             conn.execute(sa.text(f"DROP INDEX IF EXISTS {index} CASCADE;"))
         print("Dropped custom indexes.")
 
-        print("Drop partitioned and regular tables...")
+        print("Drop all tables...")
 
         # Drop all tables with CASCADE to handle partitions and dependencies
         # Get all tables that start with 'loss_' (REIA tables)

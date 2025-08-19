@@ -24,9 +24,10 @@ async def read_calculations(request: Request,
     Returns a list of calculations.
     '''
     query = CalculationRepository.get_filtered_query(starttime, endtime)
-    
-    return await paginate(db, query, limit, offset, 
-                         model_transformer=CalculationRepository.transform_calculation)
+
+    return await paginate(
+        db, query, limit, offset,
+        model_transformer=CalculationRepository.transform_calculation)
 
 
 @router.get('/{oid}',
