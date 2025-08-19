@@ -1,3 +1,6 @@
+from openquake.commonlib.datastore import read
+
+from reia.config.settings import get_settings
 from reia.io.results import (extract_risk_from_datastore,
                              prepare_risk_data_for_storage)
 from reia.repositories.asset import AggregationTagRepository
@@ -7,17 +10,20 @@ from reia.schemas.calculation_schemas import CalculationBranch
 from reia.schemas.enums import ERiskType
 from reia.services.logger import LoggerService
 from reia.services.oq_api import OQCalculationAPI
-from reia.config.settings import get_settings
 
 
 class ResultsService:
     """Service for handling OpenQuake calculation results."""
 
-    def __init__(self, session: SessionType, api_client: OQCalculationAPI):
+    def __init__(self,
+                 session: SessionType,
+                 api_client: OQCalculationAPI | None = None,
+                 dstore_path: str | None = None):
         self.logger = LoggerService.get_logger(__name__)
         self.session = session
         self.config = get_settings()
         self.api_client = api_client
+        self.dstore_path = dstore_path
 
     def save_calculation_results(
             self,
@@ -33,7 +39,14 @@ class ResultsService:
         # Get calculation data using OQCalculationAPI
         self.logger.info("Retrieving results for calculation "
                          f"branch {calculationbranch.oid}")
-        dstore = self.api_client.get_result()
+
+        if self.api_client is not None:
+            dstore = self.api_client.get_result()
+        elif self.dstore_path is not None:
+            dstore = read(self.dstore_path)
+        else:
+            raise ValueError("No API client or datastore path provided")
+
         oq_parameter_inputs = dstore['oqparam']
 
         # Flatten and deduplicate types
@@ -63,6 +76,7 @@ class ResultsService:
         self.logger.debug(
             f"Saving {len(risk_values)} risk values and "
             f"{len(df_agg_val)} aggregation mappings to database")
+
         RiskValueRepository.insert_many(
             self.session, risk_values, df_agg_val)
 

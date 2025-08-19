@@ -3,6 +3,7 @@ import io
 import pickle
 from pathlib import Path
 
+from reia.config.settings import get_settings
 from reia.io.calculation import (create_calculation, create_calculation_branch,
                                  validate_calculation_input)
 from reia.repositories.calculation import (CalculationBranchRepository,
@@ -21,7 +22,6 @@ from reia.services.status_tracker import StatusTracker
 from reia.services.taxonomy import TaxonomyService
 from reia.services.vulnerability import VulnerabilityService
 from reia.utils import create_file_buffer_configparser
-from reia.config.settings import get_settings
 
 
 class CalculationService:
@@ -152,7 +152,8 @@ class CalculationService:
             self.logger.info(
                 f'Saving results for calculation branch {setting.branch.oid} '
                 f'with weight {setting.weight}')
-            results_service = ResultsService(self.session, api_client)
+            results_service = ResultsService(self.session,
+                                             api_client=api_client)
             results_service.save_calculation_results(setting.branch)
 
         return setting
