@@ -1,10 +1,8 @@
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from sqlalchemy import func, select
 
-from reia.schemas.enums import ECalculationType
-from reia.webservice.database import DBSessionDep
+from reia.webservice.database import DBSessionDep, paginate
 from reia.webservice.repositories import CalculationRepository
 from reia.webservice.schemas import (PaginatedResponse, WSDamageCalculation,
                                      WSLossCalculation)
@@ -26,19 +24,9 @@ async def read_calculations(request: Request,
     Returns a list of calculations.
     '''
     query = CalculationRepository.get_filtered_query(starttime, endtime)
-
-    # Get count
-    count = await db.scalar(select(func.count()).select_from(query.subquery()))
-
-    # Get items and convert to proper schema based on type
-    items = []
-    for calc in await db.scalars(query.limit(limit).offset(offset)):
-        if calc._type == ECalculationType.LOSS:
-            items.append(WSLossCalculation.model_validate(calc))
-        elif calc._type == ECalculationType.DAMAGE:
-            items.append(WSDamageCalculation.model_validate(calc))
-
-    return {'count': count, 'items': items}
+    
+    return await paginate(db, query, limit, offset, 
+                         model_transformer=CalculationRepository.transform_calculation)
 
 
 @router.get('/{oid}',
@@ -50,17 +38,9 @@ async def read_calculation(oid: int,
     '''
     Returns the requested calculation.
     '''
-    # Get the raw calculation from DB
-    calc = await CalculationRepository.get_by_id(db, oid)
+    db_result = await CalculationRepository.get_by_id(db, oid)
 
-    if not calc:
+    if not db_result:
         raise HTTPException(status_code=404, detail='No calculation found.')
 
-    # Convert to proper schema based on type
-    if hasattr(calc, '_type'):
-        if calc._type == ECalculationType.LOSS:
-            return WSLossCalculation.model_validate(calc)
-        elif calc._type == ECalculationType.DAMAGE:
-            return WSDamageCalculation.model_validate(calc)
-
-    return calc
+    return db_result

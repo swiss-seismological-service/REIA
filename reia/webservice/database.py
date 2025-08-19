@@ -1,5 +1,5 @@
 import contextlib
-from typing import Annotated, Any, AsyncIterator
+from typing import Annotated, Any, AsyncIterator, Callable
 
 from fastapi import Depends
 from sqlalchemy import Select, func, select
@@ -72,10 +72,30 @@ DBSessionDep = Annotated[AsyncSession, Depends(get_db)]
 
 
 async def paginate(
-        session: AsyncSession, query: Select, limit: int, offset: int) -> dict:
+        session: AsyncSession, query: Select, limit: int, offset: int,
+        model_transformer: Callable | None = None) -> dict:
+    """
+    Paginate query results with optional model transformation.
+
+    Args:
+        session: Database session
+        query: SQLAlchemy query to paginate
+        limit: Maximum number of items to return
+        offset: Number of items to skip
+        model_transformer: Optional callable to transform ORM models to schemas
+
+    Returns:
+        Dict with 'count' and 'items' keys
+    """
+    items = [item for item in await
+             session.scalars(query.limit(limit).offset(offset))]
+
+    # Apply transformer if provided
+    if model_transformer:
+        items = [model_transformer(item) for item in items]
+
     return {
         'count': await session.scalar(select(func.count())
                                       .select_from(query.subquery())),
-        'items': [todo for todo in await session.scalars(query.limit(limit)
-                                                         .offset(offset))]
+        'items': items
     }
