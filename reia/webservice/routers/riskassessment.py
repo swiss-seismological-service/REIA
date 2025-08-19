@@ -6,12 +6,12 @@ from fastapi import APIRouter, HTTPException, Query, Request
 
 from reia.webservice.database import DBSessionDep, paginate
 from reia.webservice.repositories import RiskAssessmentRepository
-from reia.webservice.schemas import PaginatedResponse, RiskAssessmentSchema
+from reia.webservice.schemas import PaginatedResponse, WSRiskAssessment
 
 router = APIRouter(prefix='/riskassessment', tags=['riskassessments'])
 
 
-@router.get('', response_model=PaginatedResponse[RiskAssessmentSchema],
+@router.get('', response_model=PaginatedResponse[WSRiskAssessment],
             response_model_exclude_none=True)
 async def read_risk_assessments(request: Request,
                                 db: DBSessionDep,
@@ -39,7 +39,7 @@ async def read_risk_assessments(request: Request,
 
 
 @router.get('/{oid}',
-            response_model=RiskAssessmentSchema,
+            response_model=WSRiskAssessment,
             response_model_exclude_none=True)
 async def read_risk_assessment(oid: UUID,
                                request: Request,

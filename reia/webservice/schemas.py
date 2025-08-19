@@ -1,17 +1,27 @@
 import enum
 from datetime import datetime
-from typing import Generic, List, Optional, TypeVar
-from uuid import UUID
+from typing import Generic, List, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from reia.schemas.enums import EEarthquakeType, EStatus
+from reia.schemas.base import CreationInfoMixin
+from reia.schemas.base import Model as CoreModel
+from reia.schemas.calculation_schemas import (Calculation, CalculationBranch,
+                                              DamageCalculationBranch,
+                                              LossCalculationBranch,
+                                              RiskAssessment)
 
 
-class Model(BaseModel):
-    model_config = ConfigDict(extra='allow',
-                              arbitrary_types_allowed=True,
-                              from_attribute=True)
+class WSModel(CoreModel):
+    """Webservice-specific model with relaxed validation for API responses."""
+    model_config = ConfigDict(
+        extra='allow',  # Allow extra fields for flexibility
+        arbitrary_types_allowed=True,
+        from_attributes=True,
+        protected_namespaces=(),
+        populate_by_name=True,
+        serialize_by_alias=True
+    )
 
 
 M = TypeVar('M')
@@ -24,7 +34,8 @@ class PaginatedResponse(BaseModel, Generic[M]):
         'response following given criteria')
 
 
-class CreationInfoSchema(Model):
+class WSCreationInfoSchema(WSModel):
+    """Extended creation info with additional webservice fields."""
     author: str | None = None
     agencyid: str | None = None
     creationtime: datetime | None = None
@@ -33,8 +44,8 @@ class CreationInfoSchema(Model):
     licence: str | None = None
 
 
-def creationinfo_factory(obj: Model) -> CreationInfoSchema:
-    return CreationInfoSchema(
+def creationinfo_factory(obj: WSModel) -> WSCreationInfoSchema:
+    return WSCreationInfoSchema(
         author=obj.creationinfo_author,
         agencyid=obj.creationinfo_agencyid,
         creationtime=obj.creationinfo_creationtime,
@@ -43,17 +54,14 @@ def creationinfo_factory(obj: Model) -> CreationInfoSchema:
         licence=obj.creationinfo_licence)
 
 
-class CreationInfoMixin(Model):
-    creationinfo_author: str | None = Field(default=None, exclude=True)
-    creationinfo_agencyid: str | None = Field(default=None, exclude=True)
-    creationinfo_creationtime: datetime = Field(default=None, exclude=True)
-    creationinfo_version: str | None = Field(default=None, exclude=True)
+class WSCreationInfoMixin(CreationInfoMixin, WSModel):
+    """Webservice creation info mixin with additional fields."""
     creationinfo_copyrightowner: str | None = Field(default=None, exclude=True)
     creationinfo_licence: str | None = Field(default=None, exclude=True)
 
     @computed_field
     @property
-    def creationinfo(self) -> CreationInfoSchema:
+    def creationinfo(self) -> WSCreationInfoSchema:
         return creationinfo_factory(self)
 
 
@@ -62,56 +70,58 @@ class ReturnFormats(str, enum.Enum):
     CSV = 'csv'
 
 
-class AggregationTagSchema(Model):
+class WSAggregationTag(WSModel):
     type: str
     name: str
 
 
-class CalculationBranchSchema(Model):
-    weight: float
-    config: dict
-    status: EStatus
-    type: str = Field(..., alias='_type')
+class WSCalculationBranch(CalculationBranch, WSModel):
+    """Webservice version of CalculationBranch"""
+    # Add calculation_oid for API (mapped from _calculation_oid in DB)
+    calculation_oid: int | None = Field(default=None, alias='_calculation_oid')
 
 
-class LossCalculationBranchSchema(CalculationBranchSchema):
-    _calculation_oid: int
+class WSLossCalculationBranch(LossCalculationBranch, WSModel):
+    """Webservice version of LossCalculationBranch."""
+    calculation_oid: int | None = Field(default=None, alias='_calculation_oid')
 
 
-class DamageCalculationBranchSchema(CalculationBranchSchema):
-    _calculation_oid: int
+class WSDamageCalculationBranch(DamageCalculationBranch, WSModel):
+    """Webservice version of DamageCalculationBranch."""
+    calculation_oid: int | None = Field(default=None, alias='_calculation_oid')
 
 
-class CalculationSchema(CreationInfoMixin):
-    oid: int = Field(..., alias='_oid')
-    aggregateby: list[str]
-    status: EStatus
-    description: Optional[str]
-    type: str = Field(..., alias='_type')
+class WSCalculation(Calculation, WSCreationInfoMixin):
+    """Webservice version of Calculation - inherits all core fields."""
+    pass
 
 
-class LossCalculationSchema(CalculationSchema):
-    losscalculationbranches: list[LossCalculationBranchSchema]
+class WSLossCalculation(WSCalculation):
+    """Loss calculation for webservice API."""
+    losscalculationbranches: list[WSLossCalculationBranch] = Field(default=[])
+    type: str = Field(default='loss', alias='_type')
 
 
-class DamageCalculationSchema(CalculationSchema):
-    damagecalculationbranches: list[DamageCalculationBranchSchema]
+class WSDamageCalculation(WSCalculation):
+    """Damage calculation for webservice API."""
+    damagecalculationbranches: list[WSDamageCalculationBranch] = \
+        Field(default=[])
+    type: str = Field(default='damage', alias='_type')
 
 
-class RiskAssessmentSchema(CreationInfoMixin):
-    oid: UUID = Field(..., alias='_oid')
-    originid: str
+class WSRiskAssessment(RiskAssessment, WSCreationInfoMixin):
+    """Webservice version of RiskAssessment with navigation properties."""
+    # Add navigation properties for API
+    losscalculation: WSCalculation | None = None
+    damagecalculation: WSCalculation | None = None
 
-    type: EEarthquakeType
-
-    losscalculation: CalculationSchema | None
-    damagecalculation: CalculationSchema | None
-
-    preferred: bool
-    published: bool
+    # Hide internal foreign key fields
+    losscalculation_oid: None = Field(default=None, exclude=True)
+    damagecalculation_oid: None = Field(default=None, exclude=True)
 
 
-class WebserviceRiskCategory(str, enum.Enum):
+class WSRiskCategory(str, enum.Enum):
+    """Webservice-specific risk category naming for API compatibility."""
     CONTENTS = 'contents'
     BUSINESS_INTERRUPTION = 'displaced'
     NONSTRUCTURAL = 'injured'
@@ -119,18 +129,18 @@ class WebserviceRiskCategory(str, enum.Enum):
     STRUCTURAL = 'structural'
 
 
-class RiskValue(Model):
-    category: WebserviceRiskCategory
+class WSRiskValue(WSModel):
+    category: WSRiskCategory
     tag: list[str]
 
 
-class LossValueStatisticsSchema(RiskValue):
+class WSLossValueStatistics(WSRiskValue):
     loss_mean: float
     loss_pc10: float
     loss_pc90: float
 
 
-class DamageValueStatisticsSchema(RiskValue):
+class WSDamageValueStatistics(WSRiskValue):
     dg1_mean: float
     dg1_pc10: float
     dg1_pc90: float

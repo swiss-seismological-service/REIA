@@ -7,11 +7,11 @@ from sqlalchemy.orm import selectinload
 
 from reia.datamodel import RiskAssessment
 from reia.webservice.repositories.base import async_repository_factory
-from reia.webservice.schemas import RiskAssessmentSchema
+from reia.webservice.schemas import WSRiskAssessment
 
 
 class RiskAssessmentRepository(async_repository_factory(
-        RiskAssessmentSchema, RiskAssessment)):
+        WSRiskAssessment, RiskAssessment)):
 
     @classmethod
     def get_filtered_query(

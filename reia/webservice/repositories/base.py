@@ -4,18 +4,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from reia.webservice.database import Base as ORMBase
-from reia.webservice.schemas import Model
+from reia.webservice.schemas import WSModel
 
 
-def async_repository_factory(model: Model, orm_model: ORMBase):
+def async_repository_factory(model: WSModel, orm_model: ORMBase):
 
     class AsyncRepositoryBase:
-        model: Model
+        model: WSModel
         orm_model: ORMBase
 
         @classmethod
         async def get_by_id(cls, session: AsyncSession, oid: str | UUID
-                            ) -> Model:
+                            ) -> WSModel:
             q = select(cls.orm_model).where(
                 getattr(cls.orm_model, 'oid') == oid)
             result = await session.execute(q)

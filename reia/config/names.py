@@ -1,4 +1,4 @@
-from reia.webservice.schemas import WebserviceRiskCategory
+from reia.webservice.schemas import WSRiskCategory
 
 # MAPPINGS for CSV filenames
 # filename {type}_{oid}_{aggregation}-{filter?}_{category}.csv
@@ -9,28 +9,28 @@ csv_round = 1
 # category names
 csv_names_categories = {
     'damage': {
-        WebserviceRiskCategory.BUSINESS_INTERRUPTION:
-        WebserviceRiskCategory.BUSINESS_INTERRUPTION,
-        WebserviceRiskCategory.CONTENTS:
-        WebserviceRiskCategory.CONTENTS,
-        WebserviceRiskCategory.NONSTRUCTURAL:
-        WebserviceRiskCategory.NONSTRUCTURAL,
-        WebserviceRiskCategory.OCCUPANTS:
-        WebserviceRiskCategory.OCCUPANTS,
-        WebserviceRiskCategory.STRUCTURAL:
-        WebserviceRiskCategory.STRUCTURAL
+        WSRiskCategory.BUSINESS_INTERRUPTION:
+        WSRiskCategory.BUSINESS_INTERRUPTION,
+        WSRiskCategory.CONTENTS:
+        WSRiskCategory.CONTENTS,
+        WSRiskCategory.NONSTRUCTURAL:
+        WSRiskCategory.NONSTRUCTURAL,
+        WSRiskCategory.OCCUPANTS:
+        WSRiskCategory.OCCUPANTS,
+        WSRiskCategory.STRUCTURAL:
+        WSRiskCategory.STRUCTURAL
     },
     'loss': {
-        WebserviceRiskCategory.BUSINESS_INTERRUPTION:
-        WebserviceRiskCategory.BUSINESS_INTERRUPTION,
-        WebserviceRiskCategory.CONTENTS:
-        WebserviceRiskCategory.CONTENTS,
-        WebserviceRiskCategory.NONSTRUCTURAL:
-        WebserviceRiskCategory.NONSTRUCTURAL,
-        WebserviceRiskCategory.OCCUPANTS:
-        WebserviceRiskCategory.OCCUPANTS,
-        WebserviceRiskCategory.STRUCTURAL:
-        WebserviceRiskCategory.STRUCTURAL
+        WSRiskCategory.BUSINESS_INTERRUPTION:
+        WSRiskCategory.BUSINESS_INTERRUPTION,
+        WSRiskCategory.CONTENTS:
+        WSRiskCategory.CONTENTS,
+        WSRiskCategory.NONSTRUCTURAL:
+        WSRiskCategory.NONSTRUCTURAL,
+        WSRiskCategory.OCCUPANTS:
+        WSRiskCategory.OCCUPANTS,
+        WSRiskCategory.STRUCTURAL:
+        WSRiskCategory.STRUCTURAL
     }
 }
 

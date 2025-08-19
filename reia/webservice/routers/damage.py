@@ -6,8 +6,8 @@ from pandas import DataFrame
 from reia.webservice.database import DBSessionDep
 from reia.webservice.repositories import (AggregationRepository,
                                           CalculationRepository)
-from reia.webservice.schemas import (DamageValueStatisticsSchema,
-                                     ReturnFormats, WebserviceRiskCategory)
+from reia.webservice.schemas import (WSDamageValueStatistics,
+                                     ReturnFormats, WSRiskCategory)
 from reia.webservice.utils import (aggregate_by_branch_and_event,
                                    calculate_statistics, csv_response,
                                    merge_statistics_to_buildings)
@@ -18,7 +18,7 @@ router = APIRouter(prefix='/damage', tags=['damage'])
 async def calculate_damages(
         calculation_id: int,
         aggregation_type: str,
-        damage_category: WebserviceRiskCategory,
+        damage_category: WSRiskCategory,
         db: DBSessionDep,
         filter_tag_like: str | None = None,
         sum: bool = False):
@@ -68,11 +68,11 @@ async def calculate_damages(
 
 
 @router.get("/{calculation_id}/{damage_category}/{aggregation_type}",
-            response_model=list[DamageValueStatisticsSchema],
+            response_model=list[WSDamageValueStatistics],
             response_model_exclude_none=True)
 async def get_damage(
         calculation_id: int,
-        damage_category: WebserviceRiskCategory,
+        damage_category: WSRiskCategory,
         aggregation_type: str,
         request: Request,
         statistics: Annotated[DataFrame, Depends(calculate_damages)],
@@ -83,5 +83,5 @@ async def get_damage(
     if format == ReturnFormats.CSV:
         return csv_response('damage', locals())
 
-    return [DamageValueStatisticsSchema.model_validate(x)
+    return [WSDamageValueStatistics.model_validate(x)
             for x in statistics.to_dict('records')]

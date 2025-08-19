@@ -6,11 +6,11 @@ from sqlalchemy.orm import selectin_polymorphic, selectinload
 
 from reia.datamodel import Calculation, DamageCalculation, LossCalculation
 from reia.webservice.repositories.base import async_repository_factory
-from reia.webservice.schemas import LossCalculationSchema
+from reia.webservice.schemas import WSCalculation
 
 
 class CalculationRepository(async_repository_factory(
-        LossCalculationSchema, Calculation)):
+        WSCalculation, Calculation)):
 
     @classmethod
     def get_filtered_query(

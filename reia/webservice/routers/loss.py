@@ -3,8 +3,8 @@ from fastapi import APIRouter, HTTPException, Request
 from reia.webservice.database import DBSessionDep
 from reia.webservice.repositories import (AggregationRepository,
                                           CalculationRepository)
-from reia.webservice.schemas import (LossValueStatisticsSchema, ReturnFormats,
-                                     WebserviceRiskCategory)
+from reia.webservice.schemas import (WSLossValueStatistics, ReturnFormats,
+                                     WSRiskCategory)
 from reia.webservice.utils import (aggregate_by_branch_and_event,
                                    calculate_statistics, csv_response)
 
@@ -12,12 +12,12 @@ router = APIRouter(prefix='/loss', tags=['loss'])
 
 
 @router.get("/{calculation_id}/{loss_category}/{aggregation_type}",
-            response_model=list[LossValueStatisticsSchema],
+            response_model=list[WSLossValueStatistics],
             response_model_exclude_none=True)
 async def get_losses(calculation_id: int,
                      aggregation_type: str,
                      request: Request,
-                     loss_category: WebserviceRiskCategory,
+                     loss_category: WSRiskCategory,
                      db: DBSessionDep,
                      filter_tag_like: str | None = None,
                      format: ReturnFormats = ReturnFormats.JSON,
@@ -64,5 +64,5 @@ async def get_losses(calculation_id: int,
     if format == ReturnFormats.CSV:
         return csv_response('loss', locals())
 
-    return [LossValueStatisticsSchema.model_validate(x)
+    return [WSLossValueStatistics.model_validate(x)
             for x in statistics.to_dict('records')]
