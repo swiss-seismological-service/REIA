@@ -1,0 +1,78 @@
+name: tests
+on:
+    workflow_call:
+        inputs:
+            python-versions:
+                required: true
+                type: string
+                default: '["3.10"]'
+
+jobs:
+    tests:
+        runs-on: ubuntu-latest
+
+        services:
+            postgres:
+                image: postgis/postgis:16-3.4
+                env:
+                    POSTGRES_USER: postgres
+                    POSTGRES_PASSWORD: postgres
+                    DB_USER: db_user
+                    DB_PASSWORD: db_password
+                    DB_NAME: db_name
+                options: >-
+                    --health-cmd "pg_isready -U postgres"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+                ports:
+                    - 5430:5432
+            openquake:
+                image: openquake/engine:3.16
+                env:
+                    LOCKDOWN: True
+                    OQ_ADMIN_LOGIN: oq_user
+                    OQ_ADMIN_PASSWORD: oq_password
+                    OQ_ADMIN_EMAIL: email@domain.com
+                options: >-
+                    --health-cmd "curl -f http://localhost:8800/v1/engine_version || exit 1"
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+                ports:
+                    - 8700:8800
+
+        strategy:
+            matrix:
+                python-version: ${{ fromJson(inputs.python-versions) }}
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ matrix.python-version }}
+            - name: Install dependencies
+              run: |
+                  python -m pip install --upgrade pip setuptools wheel
+                  pip install -e .[dev,ws]
+            - name: Run tests
+              run: |
+                  flake8
+                  pytest --cov=hermes --cov-report=xml
+              env:
+                  POSTGRES_HOST: localhost
+                  POSTGRES_PORT: 5430
+                  POSTGRES_USER: postgres
+                  POSTGRES_PASSWORD: postgres
+                  DB_USER: db_user
+                  DB_PASSWORD: db_password
+                  DB_NAME: db_name
+                  OQ_USER: oq_user
+                  OQ_PASSWORD: oq_password
+                  OQ_PORT: 8700
+            - name: Store the codecov report
+              if: matrix.python-version == '3.10'
+              uses: actions/upload-artifact@v4
+              with:
+                  name: coverage-report
+                  path: coverage.xml
+                  overwrite: true
