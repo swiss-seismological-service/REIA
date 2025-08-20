@@ -58,7 +58,7 @@ jobs:
             - name: Run tests
               run: |
                   flake8
-                  pytest --cov=hermes --cov-report=xml
+                  pytest --cov=reia --cov-report=xml
               env:
                   POSTGRES_HOST: localhost
                   POSTGRES_PORT: 5430
