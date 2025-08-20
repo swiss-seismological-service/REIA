@@ -32,7 +32,7 @@ def copy_pooled(df, tablename, max_entries=750_000):
     max_procs = config.max_processes
 
     nprocs = max(1, min(max_procs, int(np.ceil(len(df) / max_entries))))
-    nprocs = 2
+
     chunks = np.array_split(df, nprocs)
 
     pool_args = [(chunk, tablename) for chunk in chunks]
