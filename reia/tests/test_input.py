@@ -52,25 +52,17 @@ def test_exposuremodel(db_session):
 
     exposure_db = pd.read_csv(buffer_csv)
 
-    cols = ['lon', 'lat', 'structural', 'contents', 'business_interruption',
-            'nonstructural', 'day', 'night', 'number', 'transit']
+    exposure_raw_sorted = exposure_raw.sort_values(
+        by=['id']).reset_index(drop=True).reindex(
+        sorted(exposure_raw.columns), axis=1).drop(columns=['id'])
 
-    for col in cols:
-        np.testing.assert_almost_equal(
-            exposure_raw[col].sum(),
-            exposure_db[col].sum(),
-            decimal=6,
-            err_msg=f"Column {col} does not match between raw and db data.")
+    exposure_db_sorted = exposure_db.sort_values(
+        by=['id']).reset_index(drop=True).reindex(
+        sorted(exposure_db.columns), axis=1).drop(
+            columns=['id']).astype(exposure_raw_sorted.dtypes.to_dict())
 
-    for col in ['taxonomy', 'Canton', 'CantonGemeinde']:
-        assert set(exposure_raw[col].unique()) == set(
-            exposure_db[col].unique()), f"{col} values do not match."
-
-    exposure_raw[['lon', 'lat', 'CantonGemeinde']].sort_values(
-        by=['lon', 'lat', 'CantonGemeinde']).reset_index(drop=True).equals(
-        exposure_db[['lon', 'lat', 'CantonGemeinde']].sort_values(
-            by=['lon', 'lat', 'CantonGemeinde']).reset_index(drop=True)
-    )
+    assert exposure_raw_sorted.equals(exposure_db_sorted), \
+        "Database-generated exposure model does not match original CSV data"
 
 
 def test_fragilitymodel(db_session):
