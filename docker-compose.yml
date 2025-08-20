@@ -2,7 +2,7 @@ services:
   # PostgreSQL database with PostGIS extension
   postgres:
     image: postgis/postgis:16-3.4
-    container_name: reia_postgres
+    container_name: "${COMPOSE_PROJECT_NAME}_postgres"
     environment:
       # PostgreSQL superuser credentials (required by PostgreSQL image)
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -40,7 +40,7 @@ services:
   # OpenQuake Engine
   openquake:
     image: openquake/engine:3.16
-    container_name: reia_openquake
+    container_name: "${COMPOSE_PROJECT_NAME}_openquake"
     environment:
       # OpenQuake configuration from README.md
       LOCKDOWN: "True"
@@ -52,7 +52,7 @@ services:
     ports:
       - "${OQ_PORT:-8800}:8800"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8800/v1/engine_version || exit 1"]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8800/engine/'); print('ok')\" || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10
@@ -65,6 +65,7 @@ services:
 
   webservice:
     build: .
+    container_name: "${COMPOSE_PROJECT_NAME}_webservice"
     environment:
       - DB_NAME
       - DB_USER
