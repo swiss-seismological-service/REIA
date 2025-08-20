@@ -7,6 +7,7 @@ from reia.services.calculation import (CalculationDataService,
                                        CalculationService)
 from reia.services.logger import LoggerService
 from reia.services.status_tracker import StatusTracker
+from reia.services.creation_info import populate_creation_info
 
 
 class RiskAssessmentService:
@@ -41,6 +42,9 @@ class RiskAssessmentService:
             type=EEarthquakeType.NATURAL,
             status=EStatus.CREATED
         )
+
+        # Populate creation info with system values
+        populate_creation_info(risk_assessment)
         risk_assessment = RiskAssessmentRepository.create(
             self.session, risk_assessment)
 

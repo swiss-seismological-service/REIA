@@ -6,6 +6,7 @@ from reia.io import (CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING,
 from reia.schemas.calculation_schemas import (Calculation, CalculationBranch,
                                               CalculationBranchSettings)
 from reia.utils import flatten_config
+from reia.services.creation_info import populate_creation_info
 
 
 def validate_calculation_input(
@@ -76,8 +77,13 @@ def create_calculation(
         if aggregate_by else None
     }
 
-    return CALCULATION_MAPPING[calculation_mode].model_validate(
+    calculation = CALCULATION_MAPPING[calculation_mode].model_validate(
         calculation_dict)
+
+    # Populate creation info with system values
+    populate_creation_info(calculation)
+
+    return calculation
 
 
 def create_calculation_branch(config: configparser.ConfigParser,

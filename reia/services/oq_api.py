@@ -205,7 +205,7 @@ def oqapi_import_remote_calculation(
     """
     from reia.services.logger import LoggerService
     logger = LoggerService.get_logger(__name__)
-    
+
     # TODO: Error handling and logs
     dbserver.ensure_on()
     try:

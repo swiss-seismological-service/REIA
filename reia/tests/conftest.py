@@ -14,6 +14,7 @@ from reia.repositories.tests.database import (create_test_database,
 from reia.schemas.calculation_schemas import RiskAssessment
 from reia.services.calculation import (CalculationDataService,
                                        CalculationService)
+from reia.services.creation_info import populate_creation_info
 from reia.services.exposure import ExposureService
 from reia.services.fragility import FragilityService
 from reia.services.taxonomy import TaxonomyService
@@ -174,4 +175,8 @@ def risk_assessment(loss_calculation, damage_calculation, db_session):
         originid='smi:ch.ethz.sed/test',
         losscalculation_oid=loss_calculation.oid,
         damagecalculation_oid=damage_calculation.oid)
+
+    # Populate creation info with system values
+    populate_creation_info(riskassessment)
+
     return RiskAssessmentRepository.create(db_session, riskassessment)

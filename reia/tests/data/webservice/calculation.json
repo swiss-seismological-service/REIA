@@ -32,7 +32,10 @@
                 }
             ],
             "creationinfo": {
-                "creationtime": "2025-08-18T15:50:39"
+                "agencyid": "",
+                "author": "REIA-System",
+                "creationtime": "2025-08-20T14:23:28",
+                "version": "1.0.0"
             }
         },
         {
@@ -59,7 +62,10 @@
                 }
             ],
             "creationinfo": {
-                "creationtime": "2025-08-18T15:50:39"
+                "agencyid": "",
+                "author": "REIA-System",
+                "creationtime": "2025-08-20T14:23:28",
+                "version": "1.0.0"
             }
         }
     ]

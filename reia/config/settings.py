@@ -41,6 +41,8 @@ class REIASettings(Settings):
     # Application Configuration
     max_processes: int = Field(default=2)
 
+    agency_id: str = Field(default='')
+
     @computed_field
     @property
     def oq_api_auth(self) -> dict[str, str]:

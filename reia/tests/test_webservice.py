@@ -36,6 +36,9 @@ def compare_responses(
             assert len(actual) > 0, f"Actual list is empty at {path}"
             # For lists, compare up to the minimum length
             min_len = min(len(actual), len(expected))
+            # sort both lists to ensure order doesn't affect comparison
+            actual.sort(key=lambda x: json.dumps(x, sort_keys=True))
+            expected.sort(key=lambda x: json.dumps(x, sort_keys=True))
             for i in range(min_len):
                 compare_responses(actual[i], expected[i],
                                   f"{path}[{i}]", check_values, tolerance)
