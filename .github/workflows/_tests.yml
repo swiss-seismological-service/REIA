@@ -35,7 +35,7 @@ jobs:
                     OQ_ADMIN_PASSWORD: oq_password
                     OQ_ADMIN_EMAIL: email@domain.com
                 options: >-
-                    --health-cmd "curl -f http://localhost:8800/v1/engine_version || exit 1"
+                    --health-cmd "curl -f http://localhost:8700/v1/engine_version || exit 1"
                     --health-interval 10s
                     --health-timeout 5s
                     --health-retries 5
