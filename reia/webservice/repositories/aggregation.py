@@ -247,32 +247,3 @@ class AggregationRepository:
             ))
 
         return await pandas_read_sql(stmt, session)
-
-    @classmethod
-    async def get_mean_losses(
-        cls,
-        session: AsyncSession,
-        calculation_id,
-        aggregation_type,
-        loss_category,
-        filter_tag: str | None = None,
-        filter_like_tag: str | None = None
-    ) -> pd.DataFrame:
-        """Get mean losses aggregated by type"""
-
-        filter_condition = cls.calculationid_filter(calculation_id, LossValue)
-        filter_condition &= cls.losscategory_filter(loss_category, LossValue)
-        filter_condition &= cls.tagname_filter(filter_tag, LossValue)
-        filter_condition &= cls.tagname_like_filter(filter_like_tag, LossValue)
-
-        type_sub = cls.aggregation_type_subquery(aggregation_type)
-
-        stmt = select(func.sum(LossValue.loss_value * LossValue.weight),
-                      type_sub.c.name.label(aggregation_type))\
-            .select_from(LossValue)\
-            .join(riskvalue_aggregationtag) \
-            .join(type_sub) \
-            .where(filter_condition) \
-            .group_by(type_sub.c.name)
-
-        return await pandas_read_sql(stmt, session)

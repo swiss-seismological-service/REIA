@@ -68,3 +68,7 @@ reia = "reia.cli:app"
 
 [tool.pytest.ini_options]
 env = ["TESTING=1"]
+
+[tool.coverage.run]
+source = ["reia"]
+omit = ["**/tests/**", "**/test_*.py", "**/gunicorn.py", "**/alembic/**"]
