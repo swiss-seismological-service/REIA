@@ -1,8 +1,10 @@
+import pytest
 from numpy.testing import assert_almost_equal
 
 from reia.repositories.asset import (AggregationTagRepository, AssetRepository,
                                      SiteRepository)
-from reia.repositories.calculation import (CalculationRepository,
+from reia.repositories.calculation import (CalculationBranchRepository,
+                                           CalculationRepository,
                                            RiskAssessmentRepository)
 from reia.schemas.enums import ECalculationType, EStatus
 from reia.services.riskassessment import RiskAssessmentService
@@ -194,3 +196,55 @@ def test_damage_results(damage_calculation):
                          if dg.aggregationtags[0].type == 'Canton'
                          and dg.aggregationtags[0].name == 'GR'])
     assert_almost_equal(dg1_canton_gr, 2.73759E-03, 5)
+
+
+def test_get_calculation_branches(
+        db_session,
+        loss_calculation,
+        damage_calculation):
+    loss_branch = CalculationBranchRepository.get_by_id(
+        db_session, loss_calculation.losscalculationbranches[0].oid)
+    damage_branch = CalculationBranchRepository.get_by_id(
+        db_session, damage_calculation.damagecalculationbranches[0].oid)
+
+    assert loss_branch is not None
+    assert loss_branch.type == ECalculationType.LOSS
+    assert damage_branch is not None
+    assert damage_branch.type == ECalculationType.DAMAGE
+
+
+def test_get_calculation_by_type(db_session):
+    loss_calc = CalculationRepository.get_all_by_type(
+        db_session, ECalculationType.LOSS)
+    damage_calc = CalculationRepository.get_all_by_type(
+        db_session, ECalculationType.DAMAGE)
+
+    assert all(calc.type == ECalculationType.LOSS for calc in loss_calc)
+    assert all(calc.type == ECalculationType.DAMAGE for calc in damage_calc)
+
+
+def test_delete_risk_assessment(risk_assessment, db_session):
+    """Test the deletion of a risk assessment."""
+    riskassessment_oid = risk_assessment.oid
+
+    # Delete the risk assessment
+    deleted_count = RiskAssessmentRepository.delete(
+        db_session, riskassessment_oid)
+
+    assert deleted_count == 1, "Risk assessment should be deleted"
+
+    # Verify it no longer exists
+    deleted_assessment = RiskAssessmentRepository.get_by_id(
+        db_session, riskassessment_oid)
+    assert deleted_assessment is None, \
+        f"Risk assessment {riskassessment_oid} should not exist after deletion"
+
+
+def test_update_risk_assessment_status(risk_assessment, db_session):
+    """Test updating the status of a risk assessment."""
+    riskassessment_oid = risk_assessment.oid
+
+    with pytest.raises(ValueError):
+        # Attempt to update a non-existent risk assessment
+        RiskAssessmentRepository.update_risk_assessment_status(
+            db_session, riskassessment_oid, EStatus.COMPLETE)
