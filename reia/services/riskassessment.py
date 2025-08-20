@@ -13,8 +13,6 @@ class RiskAssessmentService:
     """Service for managing risk assessment workflows."""
 
     def __init__(self, session):
-        # Initialize logging for risk assessment workflows
-        LoggerService.setup_logging()
         self.logger = LoggerService.get_logger(__name__)
 
         self.session = session

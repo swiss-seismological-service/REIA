@@ -1,4 +1,5 @@
 import logging
+import os
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -8,6 +9,10 @@ from reia.services.logger import LoggerService
 
 class TestLoggerService:
     """Test cases for centralized logging service."""
+
+    def setup_method(self):
+        """Reset LoggerService state before each test."""
+        LoggerService._initialized = False
 
     def test_ensure_logs_directory_creation(self):
         """Test that logs directory is created when it doesn't exist."""
@@ -71,6 +76,35 @@ class TestLoggerService:
         mock_exists.assert_called_once_with("nonexistent_config.ini")
         mock_open_text.assert_called_once_with("reia.config", "logger.ini")
         mock_basicconfig.assert_called_once()
+
+    @patch.dict(os.environ, {'LOG_LEVEL': 'DEBUG'})
+    @patch('logging.getLogger')
+    def test_setup_logging_respects_log_level_env_var(self, mock_get_logger):
+        """Test that LOG_LEVEL environment variable is respected."""
+        mock_logger = Mock()
+        mock_handler = Mock()
+        mock_logger.handlers = [mock_handler]
+        mock_get_logger.return_value = mock_logger
+
+        with patch('reia.services.logger.LoggerService._ensure_logs_directory'):
+            with patch('importlib.resources.open_text'):
+                with patch('logging.config.fileConfig'):
+                    LoggerService.setup_logging()
+
+        mock_logger.setLevel.assert_called_once_with(logging.DEBUG)
+        mock_handler.setLevel.assert_called_once_with(logging.DEBUG)
+
+    def test_setup_logging_only_initializes_once(self):
+        """Test that setup_logging only initializes once."""
+        with patch('reia.services.logger.LoggerService._ensure_logs_directory'
+                   ) as mock_ensure:
+            with patch('importlib.resources.open_text'):
+                with patch('logging.config.fileConfig'):
+                    LoggerService.setup_logging()
+                    LoggerService.setup_logging()  # Second call
+
+        # Should only be called once
+        mock_ensure.assert_called_once()
 
 
 class TestOQCalculationAPILogging:

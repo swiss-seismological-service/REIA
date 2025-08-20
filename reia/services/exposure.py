@@ -8,9 +8,12 @@ from reia.repositories.asset import (AggregationGeometryRepository,
 from reia.repositories.types import SessionType
 from reia.schemas.exposure_schema import ExposureModel
 from reia.services import DataService
+from reia.services.logger import LoggerService
 
 
 class ExposureService(DataService):
+    logger = LoggerService.get_logger(__name__)
+
     @classmethod
     def import_from_file(
             cls,
@@ -27,6 +30,7 @@ class ExposureService(DataService):
         Returns:
             Created ExposureModel.
         """
+        cls.logger.info(f"Importing exposure model '{name}' from {file_path}")
         with open(file_path, 'r') as f:
             exposure, sites, assets, aggregationtags, assoc_table = \
                 parse_exposure(f)
@@ -34,6 +38,7 @@ class ExposureService(DataService):
         exposure.name = name
 
         exposuremodel = ExposureModelRepository.create(session, exposure)
+        cls.logger.debug(f"Created exposure model with OID {exposuremodel.oid}")
 
         # Add the exposure model OID to all DataFrames
         sites['_exposuremodel_oid'] = exposuremodel.oid
@@ -43,6 +48,9 @@ class ExposureService(DataService):
         AssetRepository.insert_from_exposuremodel(
             session, sites, assets, aggregationtags, assoc_table)
 
+        cls.logger.info(
+            f"Successfully imported exposure model '{name}' "
+            f"with {len(assets)} assets")
         return exposuremodel
 
     @classmethod

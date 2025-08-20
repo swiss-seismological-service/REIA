@@ -9,9 +9,12 @@ from reia.repositories.fragility import (MappingRepository,
 from reia.repositories.types import SessionType
 from reia.schemas.fragility_schemas import TaxonomyMap
 from reia.services import DataService
+from reia.services.logger import LoggerService
 
 
 class TaxonomyService(DataService):
+    logger = LoggerService.get_logger(__name__)
+
     @classmethod
     def import_from_file(
             cls,

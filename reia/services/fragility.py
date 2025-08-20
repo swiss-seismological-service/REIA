@@ -7,9 +7,12 @@ from reia.repositories.fragility import FragilityModelRepository
 from reia.repositories.types import SessionType
 from reia.schemas.fragility_schemas import FragilityModel
 from reia.services import DataService
+from reia.services.logger import LoggerService
 
 
 class FragilityService(DataService):
+    logger = LoggerService.get_logger(__name__)
+
     @classmethod
     def import_from_file(
             cls,
@@ -26,11 +29,13 @@ class FragilityService(DataService):
         Returns:
             Created FragilityModel.
         """
+        cls.logger.info(f"Importing fragility model '{name}' from {file_path}")
         with open(file_path, 'r') as f:
             model = parse_fragility(f)
         model.name = name
 
         fragility_model = FragilityModelRepository.create(session, model)
+        cls.logger.info(f"Successfully imported fragility model '{name}'")
         return fragility_model
 
     @classmethod

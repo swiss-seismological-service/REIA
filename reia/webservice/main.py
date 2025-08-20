@@ -4,8 +4,13 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from reia.config.settings import get_webservice_settings
+from reia.services.logger import LoggerService
 from reia.webservice.database import sessionmanager
 from reia.webservice.routers import calculation, damage, loss, riskassessment
+
+# Initialize logging once at startup
+LoggerService.setup_logging()
+logger = LoggerService.get_logger(__name__)
 
 
 @asynccontextmanager
@@ -14,10 +19,12 @@ async def lifespan(app: FastAPI):
     Function that handles startup and shutdown events.
     To understand more, read https://fastapi.tiangolo.com/advanced/events/
     """
+    logger.info("Starting REIA webservice")
     yield
     if sessionmanager._engine is not None:
         # Close the DB connection
         await sessionmanager.close()
+        logger.info("Shutting down REIA webservice")
 
 app = FastAPI(lifespan=lifespan, root_path=get_webservice_settings().root_path,
               title="Rapid Earthquake Impact Assessment Switzerland")

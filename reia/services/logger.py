@@ -8,6 +8,8 @@ from pathlib import Path
 class LoggerService:
     """Centralized logging service for REIA."""
 
+    _initialized = False
+
     @staticmethod
     def setup_logging(config_path: str = None) -> None:
         """Setup centralized logging configuration.
@@ -16,6 +18,10 @@ class LoggerService:
             config_path: Path to logging configuration file
                         (optional, uses package resource by default)
         """
+        # Prevent multiple initializations
+        if LoggerService._initialized:
+            return
+
         # Ensure logs directory exists
         LoggerService._ensure_logs_directory()
 
@@ -34,6 +40,16 @@ class LoggerService:
         except (FileNotFoundError, ImportError):
             # Fallback to basic configuration
             LoggerService._setup_basic_logging()
+
+        # Apply environment variable log level if specified
+        log_level = os.environ.get('LOG_LEVEL', '').upper()
+        if log_level in ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'):
+            logging.getLogger().setLevel(getattr(logging, log_level))
+            # Also update all handlers
+            for handler in logging.getLogger().handlers:
+                handler.setLevel(getattr(logging, log_level))
+
+        LoggerService._initialized = True
 
     @staticmethod
     def _ensure_logs_directory() -> None:

@@ -20,42 +20,52 @@ from reia.schemas.calculation_schemas import (Calculation, CalculationBranch,
                                               LossCalculation,
                                               LossCalculationBranch,
                                               RiskAssessment)
-from reia.schemas.enums import ECalculationType, EEarthquakeType, EStatus
+from reia.schemas.enums import ECalculationType, EStatus
+from reia.services.logger import LoggerService
+
+logger = LoggerService.get_logger(__name__)
 
 
 class RiskAssessmentRepository(repository_factory(
         RiskAssessment, RiskAssessmentORM)):
     @classmethod
     def delete(cls, session: Session, riskassessment_oid: int) -> int:
+        logger.info(f"Deleting risk assessment {riskassessment_oid}")
         # Fetch the risk assessment
         riskassessment = RiskAssessmentRepository.get_by_id(
             session, riskassessment_oid)
 
         if not riskassessment:
+            logger.warning(f"Risk assessment {riskassessment_oid} not found")
             return 0
 
         losscalc_oid = riskassessment.losscalculation_oid
         damagecalc_oid = riskassessment.damagecalculation_oid
 
         # Delete the RiskAssessment entry itself
-        RiskAssessmentRepository.delete(session, riskassessment_oid)
+        super().delete(session, riskassessment_oid)
 
         bind = session.get_bind()
 
         # Handle loss calculation
         if losscalc_oid:
+            logger.debug(f"Dropping loss calculation tables for {losscalc_oid}")
             drop_dynamic_table(bind, f"loss_assoc_{losscalc_oid}")
             drop_partition_table(bind, "loss_riskvalue", losscalc_oid)
             LossCalculationRepository.delete(session, losscalc_oid)
 
         # Handle damage calculation
         if damagecalc_oid:
+            logger.debug(
+                f"Dropping damage calculation tables for {damagecalc_oid}")
             drop_dynamic_table(bind, f"loss_assoc_{damagecalc_oid}")
             drop_partition_table(bind, "loss_riskvalue", damagecalc_oid)
             DamageCalculationRepository.delete(session, damagecalc_oid)
 
         session.commit()
         session.remove()
+        logger.info(
+            f"Successfully deleted risk assessment {riskassessment_oid}")
         return 1
 
     @classmethod
@@ -137,10 +147,10 @@ class CalculationRepository(repository_factory(
     def get_all_by_type(
             cls,
             session: Session,
-            type: EEarthquakeType | None = None) -> list[Calculation]:
+            type: ECalculationType | None = None) -> list[Calculation]:
 
         stmt = select(CalculationORM).where(
-            CalculationORM._earthquake_type == type if type else true()
+            CalculationORM._type == type if type else true()
         )
         result = session.execute(stmt).unique().scalars().all()
         return [Calculation.model_validate(row) for row in result]

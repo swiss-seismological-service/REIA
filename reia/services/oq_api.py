@@ -203,6 +203,9 @@ def oqapi_import_remote_calculation(
         calc_id can be a local pathname to a datastore not already
         present in the database: in that case it is imported in the db.
     """
+    from reia.services.logger import LoggerService
+    logger = LoggerService.get_logger(__name__)
+    
     # TODO: Error handling and logs
     dbserver.ensure_on()
     try:
@@ -230,4 +233,4 @@ def oqapi_import_remote_calculation(
         webex.close()
     with datastore.read(calc_id) as dstore:
         engine.expose_outputs(dstore, status='complete')
-    logging.info('Imported calculation %s successfully', calc_id)
+    logger.info('Imported calculation %s successfully', calc_id)

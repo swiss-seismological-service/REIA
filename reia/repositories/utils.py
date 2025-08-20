@@ -1,4 +1,3 @@
-import logging
 from contextlib import contextmanager
 from io import StringIO
 from multiprocessing import Pool
@@ -12,8 +11,9 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.sql import text
 
 from reia.config.settings import get_settings
+from reia.services.logger import LoggerService
 
-logging.basicConfig(level=logging.INFO)
+logger = LoggerService.get_logger(__name__)
 
 
 def make_connection():
@@ -47,7 +47,7 @@ def copy_raw(df, tablename):
     try:
         with conn.cursor() as cursor:
             cursor.execute("SET synchronous_commit TO OFF;")
-            logging.info(f"Copying {len(df)} rows to {tablename}...")
+            logger.info(f"Copying {len(df)} rows to {tablename}...")
             copy_from_dataframe(cursor, df, tablename)
     finally:
         conn.close()
@@ -63,9 +63,9 @@ def copy_from_dataframe(cursor, df: pd.DataFrame, table: str):
                 sql.Identifier(table), columns
             )
             cursor.copy_expert(stmt, buffer)
-            logging.info(f"Successfully copied {len(df)} rows to {table}.")
+            logger.info(f"Successfully copied {len(df)} rows to {table}.")
     except Exception as err:
-        logging.error(f"Error copying to {table}: {err}")
+        logger.error(f"Error copying to {table}: {err}")
         raise
 
 

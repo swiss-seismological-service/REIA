@@ -28,8 +28,6 @@ class CalculationService:
     """Service for managing OpenQuake calculations."""
 
     def __init__(self, session: SessionType):
-        # Initialize logging for calculation workflows
-        LoggerService.setup_logging()
         self.logger = LoggerService.get_logger(__name__)
 
         self.session = session

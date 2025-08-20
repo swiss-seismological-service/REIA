@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -15,17 +16,21 @@ from reia.repositories.fragility import (FragilityModelRepository,
                                          TaxonomyMapRepository)
 from reia.repositories.vulnerability import VulnerabilityModelRepository
 from reia.schemas.calculation_schemas import RiskAssessment
-from reia.schemas.enums import EEarthquakeType
+from reia.schemas.enums import ECalculationType
 from reia.services.calculation import (CalculationDataService,
                                        run_calculation_from_files,
                                        run_test_calculation)
 from reia.services.exposure import (ExposureService,
                                     add_geometries_from_shapefile)
 from reia.services.fragility import FragilityService
+from reia.services.logger import LoggerService
 from reia.services.riskassessment import RiskAssessmentService
 from reia.services.taxonomy import TaxonomyService
 from reia.services.vulnerability import VulnerabilityService
 from reia.utils import display_table
+
+# Initialize logging once at startup
+LoggerService.setup_logging()
 
 
 def _get_alembic_directory():
@@ -58,6 +63,20 @@ fragility = typer.Typer()
 taxonomymap = typer.Typer()
 calculation = typer.Typer()
 risk_assessment = typer.Typer()
+
+
+@app.callback()
+def main(
+    verbose: bool = typer.Option(False, "--verbose", "-v",
+                                 help="Enable verbose logging")
+) -> None:
+    """REIA - Rapid Earthquake Impact Assessment Switzerland."""
+    if verbose:
+        os.environ['LOG_LEVEL'] = 'DEBUG'
+        # Re-initialize logging with new level
+        LoggerService._initialized = False
+        LoggerService.setup_logging()
+
 
 app.add_typer(db, name='db',
               help='Database Commands')
@@ -550,12 +569,14 @@ def run_calculation(
 
 
 @calculation.command('list')
-def list_calculations(eqtype: Annotated[EEarthquakeType | None, typer.Option(
+def list_calculations(calc_type: Annotated[ECalculationType | None,
+                                           typer.Option(
         help='Filter by earthquake type')] = None) -> None:
-    """List all calculations, optionally filtered by earthquake type."""
+    """List all calculations, optionally filtered by calculation type."""
+
     with DatabaseSession() as session:
         calculations = CalculationRepository.get_all_by_type(
-            session, type=eqtype)
+            session, type=calc_type)
 
     headers = ['ID', 'Status', 'Type', 'Created', 'Description']
     rows = [[c.oid, c.status.name, c.type.name,
