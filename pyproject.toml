@@ -49,7 +49,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["flake8", "pytest", "pytest-cov", "pytest-env", "isort"]
+dev = [
+    "flake8",
+    "pytest",
+    "pytest-cov",
+    "pytest-env",
+    "isort",
+    "pytest_asyncio",
+]
 ws = ["asyncpg", "fastapi[all]", "gunicorn", "uvicorn"]
 
 [project.scripts]
