@@ -69,7 +69,7 @@ jobs:
                   DB_NAME: db_name
                   OQ_USER: oq_user
                   OQ_PASSWORD: oq_password
-                  OQ_PORT: 8700
+                  OQ_HOST: http://localhost:8700
             - name: Store the codecov report
               if: matrix.python-version == '3.10'
               uses: actions/upload-artifact@v4
