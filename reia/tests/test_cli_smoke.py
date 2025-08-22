@@ -6,7 +6,7 @@ import inspect
 
 from typer.testing import CliRunner
 
-from reia import cli
+from reia.cli import main as cli
 
 
 def test_cli_function_imports():

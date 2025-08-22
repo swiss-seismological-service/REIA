@@ -40,7 +40,7 @@ def _get_alembic_directory():
     from pathlib import Path
 
     # For installed package, alembic files are now in the reia/alembic package
-    package_alembic = Path(__file__).parent / "alembic" / "alembic.ini"
+    package_alembic = Path(__file__).parent.parent / "alembic" / "alembic.ini"
     current_dir_alembic = Path(os.getcwd()) / "alembic.ini"
 
     if package_alembic.exists():
