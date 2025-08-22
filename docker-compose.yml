@@ -23,6 +23,8 @@ services:
       - ./db/init_database.sh:/docker-entrypoint-initdb.d/00_init_database.sh:ro
       # Persistent data storage
       - postgres_data:/var/lib/postgresql/data
+    # Increase shared memory for large datasets
+    shm_size: 1gb
     command: 
       - postgres
       - -c

@@ -58,6 +58,18 @@ def upgrade() -> None:
     # indexes
     execute_sql_file("indexes.sql")
 
+    # optimize statistics for complex queries on partitioned tables
+    print("Optimizing table statistics for complex query performance...")
+    op.execute("""
+        -- Higher statistics targets for partitioned table query optimization
+        -- These columns are used in complex joins and need accurate selectivity estimates
+        ALTER TABLE loss_riskvalue ALTER COLUMN _calculation_oid SET STATISTICS 1000;
+        ALTER TABLE loss_riskvalue ALTER COLUMN losscategory SET STATISTICS 1000;
+        ALTER TABLE loss_assoc_riskvalue_aggregationtag ALTER COLUMN _calculation_oid SET STATISTICS 1000;
+        ALTER TABLE loss_assoc_riskvalue_aggregationtag ALTER COLUMN losscategory SET STATISTICS 1000;
+        ALTER TABLE loss_assoc_riskvalue_aggregationtag ALTER COLUMN aggregationtype SET STATISTICS 1000;
+    """)
+
     print("Database schema created successfully with all custom functions!")
 
 
