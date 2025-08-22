@@ -6,6 +6,7 @@ from pathlib import Path
 import typer
 from typing_extensions import Annotated
 
+from reia.cli.extensions import plugin_manager
 from reia.repositories import DatabaseSession
 from reia.repositories.asset import (AggregationGeometryRepository,
                                      AssetRepository, ExposureModelRepository,
@@ -92,6 +93,9 @@ app.add_typer(calculation, name='calculation',
               help='Create or execute calculations')
 app.add_typer(risk_assessment, name='risk-assessment',
               help='Manage Risk Assessments')
+
+# Load and register plugins
+plugin_manager.register_plugins(app)
 
 
 @db.command('migrate')
