@@ -117,35 +117,112 @@ def aggregate_by_branch_and_event(
 
 def calculate_statistics(
         data: pd.DataFrame, aggregation_type: str) -> pd.DataFrame:
-    # either loss_value or dg*_value
-    value_column = [i for i in data.columns if 'value' in i]
+    """
+    Calculate weighted statistics (mean, 10th and 90th percentiles) for value columns.
+    
+    Uses parallel processing for large datasets with multiple value columns
+    to improve performance.
+    
+    Args:
+        data: DataFrame with value columns, weight, and aggregation_type
+        aggregation_type: Column name to group by for statistics
+        
+    Returns:
+        DataFrame with calculated statistics per aggregation group
+    """
+    from concurrent.futures import ThreadPoolExecutor
 
+    value_columns = [col for col in data.columns if 'value' in col]
+    
+    if not value_columns:
+        return pd.DataFrame()
+
+    # Pre-compute groupby for quantile calculations
+    grouped_data = data.groupby(aggregation_type)
+    
+    def calculate_column_statistics(column_info):
+        """Calculate mean and percentiles for a single value column"""
+        _, column = column_info
+        base_name = column.split('_')[0]
+
+        # Create working copy with weighted values
+        working_data = data[[column, 'weight', aggregation_type]].copy()
+        working_data['weighted_value'] = working_data['weight'] * working_data[column]
+
+        # Calculate weighted mean
+        mean_values = working_data.groupby(aggregation_type)['weighted_value'].sum()
+
+        # Calculate weighted quantiles (10th and 90th percentiles)
+        quantile_results = _calculate_weighted_quantiles(
+            grouped_data, column, (0.1, 0.9)
+        )
+        pc10_values, pc90_values = zip(*quantile_results)
+
+        return {
+            f'{base_name}_mean': mean_values,
+            f'{base_name}_pc10': pd.Series(pc10_values, index=mean_values.index),
+            f'{base_name}_pc90': pd.Series(pc90_values, index=mean_values.index)
+        }
+
+    # Choose processing strategy based on data size and column count
+    column_statistics = _process_columns(
+        value_columns, calculate_column_statistics, data
+    )
+
+    # Combine all column statistics into final DataFrame
+    return _combine_statistics(column_statistics, aggregation_type)
+
+
+def _calculate_weighted_quantiles(grouped_data, column, quantiles):
+    """Calculate weighted quantiles with pandas version compatibility"""
+    try:
+        # Newer pandas versions
+        return grouped_data.apply(
+            lambda group: weighted_quantile(
+                group[column], quantiles, group['weight']
+            ),
+            include_groups=False
+        )
+    except TypeError:
+        # Older pandas versions fallback
+        return grouped_data.apply(
+            lambda group: weighted_quantile(
+                group[column], quantiles, group['weight']
+            )
+        )
+
+
+def _process_columns(value_columns, calculate_fn, data):
+    """Process columns sequentially or in parallel based on data characteristics"""
+    from concurrent.futures import ThreadPoolExecutor
+    
+    should_parallelize = len(value_columns) > 1 and len(data) > 100000
+    
+    if should_parallelize:
+        # Parallel processing for large multi-column datasets
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            return list(executor.map(
+                calculate_fn, enumerate(value_columns)
+            ))
+    else:
+        # Sequential processing for small datasets or single columns
+        return [calculate_fn((i, col)) for i, col in enumerate(value_columns)]
+
+
+def _combine_statistics(column_statistics, aggregation_type):
+    """Combine individual column statistics into final DataFrame"""
+    if not column_statistics:
+        return pd.DataFrame()
+    
+    # Merge all column results
     statistics = pd.DataFrame()
+    for column_result in column_statistics:
+        for stat_name, stat_series in column_result.items():
+            statistics[stat_name] = stat_series
 
-    # calculate weighted loss
-    for col in value_column:
-
-        base_name = col.split('_')[0]
-
-        data['weighted'] = data['weight'] * data[col]
-
-        # initialize with mean
-        statistics[f'{base_name}_mean'] = \
-            data.groupby(aggregation_type)['weighted'].sum()
-
-        # calculate quantiles
-        statistics[f'{base_name}_pc10'], statistics[f'{base_name}_pc90'] = \
-            zip(*data.groupby(aggregation_type).apply(
-                lambda x: weighted_quantile(
-                    x[col], (0.1, 0.9), x['weight'])))
-
-        # drop intermediate column again, form original df
-        data.drop(columns=['weighted'])
-
+    # Format final output
     statistics = statistics.rename_axis('tag').reset_index()
-
     statistics['tag'] = statistics['tag'].apply(lambda x: [x] if x else [])
-
     statistics = statistics.round(5)
 
     return statistics
@@ -184,4 +261,5 @@ async def pandas_read_sql(stmt, session):
     result = await session.execute(stmt)
     rows = result.fetchall()
     columns = result.keys()
-    return pd.DataFrame(rows, columns=columns)
+    df = pd.DataFrame(rows, columns=columns)
+    return df
