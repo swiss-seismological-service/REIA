@@ -26,13 +26,30 @@ async def lifespan(app: FastAPI):
         await sessionmanager.close()
         logger.info("Shutting down REIA webservice")
 
-app = FastAPI(lifespan=lifespan, root_path=get_webservice_settings().root_path,
-              title="Rapid Earthquake Impact Assessment Switzerland")
 
-app.include_router(loss.router, prefix='/v1')
-app.include_router(damage.router, prefix='/v1')
-app.include_router(riskassessment.router, prefix='/v1')
-app.include_router(calculation.router, prefix='/v1')
+def create_app(
+    *,
+    extra_routers: list = None,
+    title: str = "Rapid Earthquake Impact Assessment",
+) -> FastAPI:
+
+    app = FastAPI(
+        lifespan=lifespan,
+        root_path=get_webservice_settings().root_path,
+        title=title)
+
+    app.include_router(loss.router, prefix='/v1')
+    app.include_router(damage.router, prefix='/v1')
+    app.include_router(riskassessment.router, prefix='/v1')
+    app.include_router(calculation.router, prefix='/v1')
+
+    for r in extra_routers or []:
+        app.include_router(r)
+
+    return app
+
+
+app = create_app()
 
 app = CORSMiddleware(
     app=app,
