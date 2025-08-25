@@ -113,48 +113,56 @@ class AggregationRepository:
         filter_tag: str | None = None,
         filter_like_tag: str | None = None
     ) -> pd.DataFrame:
-        """Get aggregated loss data with filtering"""
+        """Get aggregated loss data with filtering - optimized version"""
 
         loss_category = ELossCategory[loss_category.name]
 
-        risk_sub = select(LossValue).where(and_(
+        # Optimized: Select only needed columns
+        risk_sub = select(
+            LossValue._oid,
+            LossValue.loss_value,
+            LossValue.weight,
+            LossValue._calculationbranch_oid,
+            LossValue.eventid,
+            LossValue.losscategory,
+            LossValue._calculation_oid
+        ).where(and_(
             LossValue._calculation_oid == calculation_id,
             LossValue.losscategory == loss_category,
             LossValue._type == ECalculationType.LOSS
         )).subquery()
 
-        agg_sub = select(AggregationTag).where(and_(
-            AggregationTag.type == aggregation_type,
-            AggregationTag.name.like(
-                filter_like_tag) if filter_like_tag else True,
-            (AggregationTag.name == filter_tag) if filter_tag else True
-        )).subquery()
+        # Optimized: Push filters down and select only needed columns
+        agg_conditions = [AggregationTag.type == aggregation_type]
+        if filter_like_tag:
+            agg_conditions.append(AggregationTag.name.like(filter_like_tag))
+        if filter_tag:
+            agg_conditions.append(AggregationTag.name == filter_tag)
+            
+        agg_sub = select(
+            AggregationTag._oid,
+            AggregationTag.name,
+            AggregationTag.type
+        ).where(and_(*agg_conditions)).subquery()
 
-        stmt = select(risk_sub.c.loss_value,
-                      risk_sub.c.weight,
-                      risk_sub.c._calculationbranch_oid.label('branchid'),
-                      risk_sub.c.eventid,
-                      agg_sub.c.name.label(aggregation_type)) \
-            .select_from(risk_sub) \
+        # Main query - returns individual rows for accurate percentile calculation
+        stmt = select(
+            risk_sub.c.loss_value,
+            risk_sub.c.weight,
+            risk_sub.c._calculationbranch_oid.label('branchid'),
+            risk_sub.c.eventid,
+            agg_sub.c.name.label(aggregation_type)
+        ).select_from(risk_sub) \
             .join(riskvalue_aggregationtag, and_(
                 riskvalue_aggregationtag.c.riskvalue == risk_sub.c._oid,
-                riskvalue_aggregationtag.c.losscategory
-                == risk_sub.c.losscategory,
-                riskvalue_aggregationtag.c._calculation_oid
-                == risk_sub.c._calculation_oid
+                riskvalue_aggregationtag.c.losscategory == risk_sub.c.losscategory,
+                riskvalue_aggregationtag.c._calculation_oid == risk_sub.c._calculation_oid
             )) \
             .join(agg_sub, and_(
                 agg_sub.c._oid == riskvalue_aggregationtag.c.aggregationtag,
                 agg_sub.c.type == riskvalue_aggregationtag.c.aggregationtype
-            )) \
-            .where(and_(
-                agg_sub.c.name.like(
-                    filter_like_tag) if filter_like_tag else True,
-                (AggregationTag.name == filter_tag) if filter_tag else True,
-                risk_sub.c.losscategory == loss_category,
-                risk_sub.c._calculation_oid == calculation_id,
-                risk_sub.c._type == ECalculationType.LOSS
             ))
+
         return await pandas_read_sql(stmt, session)
 
     @classmethod
@@ -195,55 +203,62 @@ class AggregationRepository:
         filter_tag: str | None = None,
         filter_like_tag: str | None = None
     ) -> pd.DataFrame:
-        """Get aggregated damage data with filtering"""
+        """Get aggregated damage data with filtering - optimized version"""
 
         loss_category = ELossCategory[loss_category.name]
 
-        damage_sub = select(DamageValue).where(and_(
+        # Optimized: Select only needed columns
+        damage_sub = select(
+            DamageValue._oid,
+            DamageValue.dg1_value,
+            DamageValue.dg2_value,
+            DamageValue.dg3_value,
+            DamageValue.dg4_value,
+            DamageValue.dg5_value,
+            DamageValue.weight,
+            DamageValue._calculationbranch_oid,
+            DamageValue.eventid,
+            DamageValue.losscategory,
+            DamageValue._calculation_oid
+        ).where(and_(
             DamageValue._calculation_oid == calculation_id,
             DamageValue.losscategory == loss_category,
             DamageValue._type == ECalculationType.DAMAGE
         )).subquery()
 
+        # Optimized: Push filters down and select only needed columns
+        agg_conditions = [AggregationTag.type == aggregation_type]
+        if filter_like_tag:
+            agg_conditions.append(AggregationTag.name.like(filter_like_tag))
+        if filter_tag:
+            agg_conditions.append(AggregationTag.name == filter_tag)
+            
         agg_sub = select(
+            AggregationTag._oid,
             AggregationTag.name,
-            AggregationTag.type,
-            AggregationTag._oid
-        ).where(and_(
-                AggregationTag.type == aggregation_type,
-                AggregationTag.name.like(
-                    filter_like_tag) if filter_like_tag else True,
-                (AggregationTag.name == filter_tag) if filter_tag else True
-                )).subquery()
+            AggregationTag.type
+        ).where(and_(*agg_conditions)).subquery()
 
-        stmt = select(damage_sub.c.dg1_value.label('dg1_value'),
-                      damage_sub.c.dg2_value.label('dg2_value'),
-                      damage_sub.c.dg3_value.label('dg3_value'),
-                      damage_sub.c.dg4_value.label('dg4_value'),
-                      damage_sub.c.dg5_value.label('dg5_value'),
-                      damage_sub.c.weight,
-                      damage_sub.c._calculationbranch_oid.label('branchid'),
-                      damage_sub.c.eventid,
-                      agg_sub.c.name.label(aggregation_type)) \
-            .select_from(damage_sub) \
+        # Main query - returns individual rows for accurate percentile calculation
+        stmt = select(
+            damage_sub.c.dg1_value,
+            damage_sub.c.dg2_value,
+            damage_sub.c.dg3_value,
+            damage_sub.c.dg4_value,
+            damage_sub.c.dg5_value,
+            damage_sub.c.weight,
+            damage_sub.c._calculationbranch_oid.label('branchid'),
+            damage_sub.c.eventid,
+            agg_sub.c.name.label(aggregation_type)
+        ).select_from(damage_sub) \
             .join(riskvalue_aggregationtag, and_(
                 riskvalue_aggregationtag.c.riskvalue == damage_sub.c._oid,
-                riskvalue_aggregationtag.c.losscategory
-                == damage_sub.c.losscategory,
-                riskvalue_aggregationtag.c._calculation_oid
-                == damage_sub.c._calculation_oid
+                riskvalue_aggregationtag.c.losscategory == damage_sub.c.losscategory,
+                riskvalue_aggregationtag.c._calculation_oid == damage_sub.c._calculation_oid
             )) \
             .join(agg_sub, and_(
                 agg_sub.c._oid == riskvalue_aggregationtag.c.aggregationtag,
                 agg_sub.c.type == riskvalue_aggregationtag.c.aggregationtype
-            )) \
-            .where(and_(
-                agg_sub.c.name.like(
-                    filter_like_tag) if filter_like_tag else True,
-                (AggregationTag.name == filter_tag) if filter_tag else True,
-                damage_sub.c.losscategory == loss_category,
-                damage_sub.c._calculation_oid == calculation_id,
-                damage_sub.c._type == ECalculationType.DAMAGE
             ))
 
         return await pandas_read_sql(stmt, session)
