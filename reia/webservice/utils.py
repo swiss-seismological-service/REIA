@@ -2,8 +2,9 @@ import pandas as pd
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 
-from reia.config.names import (csv_column_names, csv_names_aggregations,
-                               csv_names_categories, csv_names_sum, csv_round)
+from reia.config.settings import get_webservice_settings
+
+settings = get_webservice_settings()
 
 
 def replace_path_param_type(app: FastAPI,
@@ -42,7 +43,7 @@ def csv_response(type: str, *args) -> StreamingResponse:
         data.drop(columns=['tag'], inplace=True)
     data = rename_column_headers(data, type, category, agg)
 
-    data = data.round(csv_round)
+    data = data.round(settings.csv_names.round)
 
     output = data.to_csv(index=False)
 
@@ -55,14 +56,15 @@ def csv_response(type: str, *args) -> StreamingResponse:
 
 def construct_csv_filename(type, oid, agg, filter, category, sum) -> str:
     if sum:
-        agg = csv_names_sum[agg] if agg in csv_names_sum else f'{agg}-sum'
+        agg = settings.csv_names.sum[
+            agg] if agg in settings.csv_names.sum else f'{agg}-sum'
     else:
-        agg = csv_names_aggregations[agg] if agg in \
-            csv_names_aggregations else agg
+        agg = settings.csv_names.aggregations[agg] if agg in \
+            settings.csv_names.aggregations else agg
 
-    category = csv_names_categories[type][category] if (
-        type in csv_names_categories
-        and category in csv_names_categories[type]) else category
+    category = settings.csv_names.categories[type][category] if (
+        type in settings.csv_names.categories
+        and category in settings.csv_names.categories[type]) else category
 
     return f"{type}_{oid}_" \
         f"{agg}" \
@@ -73,12 +75,12 @@ def construct_csv_filename(type, oid, agg, filter, category, sum) -> str:
 def rename_column_headers(
         df: pd.DataFrame, type, category, agg) -> pd.DataFrame:
 
-    mapping = csv_column_names[type][category] if (
-        type in csv_column_names
-        and category in csv_column_names[type]) else {}
+    mapping = settings.csv_names.column_names[type][category] if (
+        type in settings.csv_names.column_names
+        and category in settings.csv_names.column_names[type]) else {}
 
-    tag_mapping = csv_column_names['aggregation'][agg] if (
-        agg in csv_column_names['aggregation']) else {}
+    tag_mapping = settings.csv_names.column_names.aggregation[agg] if (
+        agg in settings.csv_names.column_names.aggregation) else {}
 
     # build list of dictionary keys and apply order to df columns
     # as well as unselecting columns which are not present in naming dict

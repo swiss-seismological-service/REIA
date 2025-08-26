@@ -1,8 +1,41 @@
 import os
 from functools import lru_cache
+from pathlib import Path
 
-from pydantic import Field, computed_field
+from pydantic import BaseModel, Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class CSVNamesCategories(BaseModel):
+    damage: dict
+    loss: dict
+
+    # after loading each dict, convert keys to WSRiskCategory enum
+    # using pydantic validaters
+    @model_validator(mode='after')
+    def convert_keys(self):
+        from reia.webservice.schemas import WSRiskCategory
+
+        def convert(d):
+            return {WSRiskCategory[k]: v for k, v in d.items()}
+
+        self.damage = convert(self.damage)
+        self.loss = convert(self.loss)
+        return self
+
+
+class CSVColumnNames(BaseModel):
+    aggregation: dict
+    damage: dict
+    loss: dict
+
+
+class CSVNames(BaseModel):
+    round: int
+    categories: CSVNamesCategories
+    aggregations: dict
+    sum: dict
+    column_names: CSVColumnNames
 
 
 class Settings(BaseSettings):
@@ -69,6 +102,15 @@ class WebserviceSettings(Settings):
 
     allow_origins: list = Field(default=[])
     allow_origin_regex: str = Field(default='')
+
+    csv_names_path: str = Field(default='reia/config/csv_settings.json')
+
+    @computed_field
+    @property
+    def csv_names(self) -> CSVNames:
+        return CSVNames.model_validate_json(
+            Path(self.csv_names_path).read_text()
+        )
 
     @computed_field
     @property
