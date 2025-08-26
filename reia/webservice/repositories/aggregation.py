@@ -1,264 +1,239 @@
 import pandas as pd
-from sqlalchemy import and_, func, select
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from reia.datamodel import (AggregationTag, Asset, Calculation,
-                            CalculationBranch, DamageCalculationBranch,
-                            DamageValue, ExposureModel, LossValue,
-                            asset_aggregationtag, riskvalue_aggregationtag)
-from reia.schemas.enums import ECalculationType, ELossCategory
 from reia.webservice.schemas import WSRiskCategory
-from reia.webservice.utils import pandas_read_sql
 
 
-class AggregationRepository:
-    """Repository for aggregation-related queries and statistics"""
-
-    @staticmethod
-    def losscategory_filter(f, model):
-        return model.losscategory == f if f else True
-
-    @staticmethod
-    def tagname_filter(f, model):
-        return model.aggregationtags.any(
-            AggregationTag.name == f) if f else True
-
-    @staticmethod
-    def tagname_like_filter(f, model):
-        return model.aggregationtags.any(
-            AggregationTag.name.like(f)) if f else True
-
-    @staticmethod
-    def tagtype_filter(t, model):
-        return model.aggregationtags.any(
-            AggregationTag.type == t) if t else True
-
-    @staticmethod
-    def calculationid_filter(f, model):
-        return model._calculation_oid == f if f else True
-
-    @staticmethod
-    def aggregation_type_subquery(aggregation_type):
-        return select(AggregationTag).where(
-            AggregationTag.type == aggregation_type).subquery()
+class AggregationRepositoryOptimized:
+    """
+    Optimized repository for aggregation-related queries
+    with database-side statistics
+    """
 
     @classmethod
-    async def get_aggregation_types(cls, session: AsyncSession) -> dict:
-        """Get all distinct aggregation types"""
-        stmt = select(AggregationTag.type).distinct()
-        results = await session.execute(stmt)
-        types = results.scalars().all()
-        edict = {}
-        for t in types:
-            edict[t.upper()] = t
-        return edict
-
-    @classmethod
-    async def get_total_buildings_country(
-        cls, session: AsyncSession, calculation_id: int
-    ) -> int | None:
-        """Get total building count for a calculation across country"""
-        exp_sub = select(ExposureModel._oid) \
-            .join(DamageCalculationBranch) \
-            .join(Calculation) \
-            .where(Calculation._oid == calculation_id) \
-            .limit(1).scalar_subquery()
-
-        stmt = select(func.sum(Asset.buildingcount).label('buildingcount')) \
-            .select_from(Asset) \
-            .where(Asset._exposuremodel_oid == exp_sub)
-        result = await session.execute(stmt)
-        return result.scalar()
-
-    @classmethod
-    async def get_total_buildings(
-        cls,
-        session: AsyncSession,
-        calculation_id: int,
-        aggregation_type: str,
-        filter_tag: str | None = None,
-        filter_like_tag: str | None = None
-    ) -> pd.DataFrame:
-        """Get total buildings aggregated by type with optional filtering"""
-
-        type_sub = cls.aggregation_type_subquery(aggregation_type)
-
-        exp_sub = select(ExposureModel._oid) \
-            .join(DamageCalculationBranch) \
-            .join(Calculation) \
-            .where(Calculation._oid == calculation_id) \
-            .limit(1).subquery()
-
-        filter_condition = cls.tagname_like_filter(filter_like_tag, Asset)
-        filter_condition &= cls.tagname_filter(filter_tag, Asset)
-
-        stmt = select(func.sum(Asset.buildingcount).label('buildingcount'),
-                      type_sub.c.name.label(aggregation_type))\
-            .select_from(Asset)\
-            .join(asset_aggregationtag) \
-            .join(type_sub) \
-            .join(exp_sub, exp_sub.c._oid == Asset._exposuremodel_oid) \
-            .where(filter_condition) \
-            .group_by(type_sub.c.name)
-
-        return await pandas_read_sql(stmt, session)
-
-    @classmethod
-    async def get_aggregated_loss(
+    async def get_damage_statistics_optimized(
         cls,
         session: AsyncSession,
         calculation_id: int,
         aggregation_type: str,
         loss_category: WSRiskCategory,
-        filter_tag: str | None = None,
         filter_like_tag: str | None = None
     ) -> pd.DataFrame:
-        """Get aggregated loss data with filtering - optimized version"""
+        """
+        Get optimized damage statistics with weighted mean and percentiles
+        calculated in database
+        """
 
-        loss_category = ELossCategory[loss_category.name]
+        loss_category_str = loss_category.name  # Use the enum name (uppercase)
+        name_pattern = f'%{filter_like_tag}%' if filter_like_tag else '%'
 
-        # Optimized: Select only needed columns
-        risk_sub = select(
-            LossValue._oid,
-            LossValue.loss_value,
-            LossValue.weight,
-            LossValue._calculationbranch_oid,
-            LossValue.eventid,
-            LossValue.losscategory,
-            LossValue._calculation_oid
-        ).where(and_(
-            LossValue._calculation_oid == calculation_id,
-            LossValue.losscategory == loss_category,
-            LossValue._type == ECalculationType.LOSS
-        )).subquery()
+        # Complete optimized SQL query that returns exact webservice format
+        sql_query = text("""
+        WITH damage_data AS (
+            SELECT
+                lat.name as tag_name,
+                rv.dg1_value,
+                rv.dg2_value,
+                rv.dg3_value,
+                rv.dg4_value,
+                rv.dg5_value,
+                rv.weight
+            FROM loss_riskvalue rv
+            INNER JOIN loss_assoc_riskvalue_aggregationtag assoc ON
+                rv._oid = assoc.riskvalue
+                AND rv._calculation_oid = assoc._calculation_oid
+                AND rv.losscategory = assoc.losscategory
+            INNER JOIN loss_aggregationtag lat ON
+                         assoc.aggregationtag = lat._oid
+            WHERE
+                rv._calculation_oid = :calculation_id
+                AND rv.losscategory = :loss_category_str
+                AND rv._type = 'DAMAGE'
+                AND assoc.aggregationtype = :aggregation_type
+                AND lat.name LIKE :name_pattern
+        ),
+        damage_statistics AS (
+            SELECT
+                tag_name,
+                -- All damage grade statistics using sparse data functions
+                weighted_mean_sparse(array_agg(dg1_value),
+                    array_agg(weight)) as dg1_mean,
+                weighted_quantile_sparse(array_agg(dg1_value),
+                    array_agg(weight), ARRAY[0.1, 0.9]) as dg1_quantiles,
 
-        # Optimized: Push filters down and select only needed columns
-        agg_conditions = [AggregationTag.type == aggregation_type]
-        if filter_like_tag:
-            agg_conditions.append(AggregationTag.name.like(filter_like_tag))
-        if filter_tag:
-            agg_conditions.append(AggregationTag.name == filter_tag)
-            
-        agg_sub = select(
-            AggregationTag._oid,
-            AggregationTag.name,
-            AggregationTag.type
-        ).where(and_(*agg_conditions)).subquery()
+                weighted_mean_sparse(array_agg(dg2_value),
+                    array_agg(weight)) as dg2_mean,
+                weighted_quantile_sparse(array_agg(dg2_value),
+                    array_agg(weight), ARRAY[0.1, 0.9]) as dg2_quantiles,
 
-        # Main query - returns individual rows for accurate percentile calculation
-        stmt = select(
-            risk_sub.c.loss_value,
-            risk_sub.c.weight,
-            risk_sub.c._calculationbranch_oid.label('branchid'),
-            risk_sub.c.eventid,
-            agg_sub.c.name.label(aggregation_type)
-        ).select_from(risk_sub) \
-            .join(riskvalue_aggregationtag, and_(
-                riskvalue_aggregationtag.c.riskvalue == risk_sub.c._oid,
-                riskvalue_aggregationtag.c.losscategory == risk_sub.c.losscategory,
-                riskvalue_aggregationtag.c._calculation_oid == risk_sub.c._calculation_oid
-            )) \
-            .join(agg_sub, and_(
-                agg_sub.c._oid == riskvalue_aggregationtag.c.aggregationtag,
-                agg_sub.c.type == riskvalue_aggregationtag.c.aggregationtype
-            ))
+                weighted_mean_sparse(array_agg(dg3_value),
+                    array_agg(weight)) as dg3_mean,
+                weighted_quantile_sparse(array_agg(dg3_value),
+                    array_agg(weight), ARRAY[0.1, 0.9]) as dg3_quantiles,
 
-        return await pandas_read_sql(stmt, session)
+                weighted_mean_sparse(array_agg(dg4_value),
+                    array_agg(weight)) as dg4_mean,
+                weighted_quantile_sparse(array_agg(dg4_value),
+                    array_agg(weight), ARRAY[0.1, 0.9]) as dg4_quantiles,
+
+                weighted_mean_sparse(array_agg(dg5_value),
+                    array_agg(weight)) as dg5_mean,
+                weighted_quantile_sparse(array_agg(dg5_value),
+                    array_agg(weight), ARRAY[0.1, 0.9]) as dg5_quantiles
+            FROM damage_data
+            GROUP BY tag_name
+        ),
+        all_tags AS (
+            SELECT DISTINCT lat.name as tag_name
+            FROM loss_aggregationtag lat
+            INNER JOIN loss_aggregationgeometry geom ON
+                geom._aggregationtag_oid = lat._oid
+            WHERE
+                lat.type = :aggregation_type
+                AND lat.name LIKE :name_pattern
+                AND geom._exposuremodel_oid IN (
+                    SELECT _exposuremodel_oid
+                    FROM loss_calculationbranch
+                    WHERE _calculation_oid = :calculation_id
+                )
+        ),
+        building_counts AS (
+            SELECT
+                lat.name as tag_name,
+                SUM(ast.buildingcount) as total_buildings
+            FROM loss_aggregationtag lat
+            INNER JOIN loss_assoc_asset_aggregationtag assoc ON
+                lat._oid = assoc.aggregationtag
+            INNER JOIN loss_asset ast ON assoc.asset = ast._oid
+            INNER JOIN (
+                SELECT _exposuremodel_oid
+                FROM loss_calculationbranch
+                WHERE _calculation_oid = :calculation_id
+                LIMIT 1
+            ) exp_sub ON ast._exposuremodel_oid = exp_sub._exposuremodel_oid
+            WHERE
+                lat.type = :aggregation_type
+                AND lat.name LIKE :name_pattern
+            GROUP BY lat.name
+        )
+        SELECT
+            :loss_category_value as category,
+            ARRAY[at.tag_name] as tag,
+            COALESCE(ROUND(ds.dg1_mean::numeric, 5), 0) as dg1_mean,
+            COALESCE(ROUND(ds.dg1_quantiles[1]::numeric, 5), 0) as dg1_pc10,
+            COALESCE(ROUND(ds.dg1_quantiles[2]::numeric, 5), 0) as dg1_pc90,
+            COALESCE(ROUND(ds.dg2_mean::numeric, 5), 0) as dg2_mean,
+            COALESCE(ROUND(ds.dg2_quantiles[1]::numeric, 5), 0) as dg2_pc10,
+            COALESCE(ROUND(ds.dg2_quantiles[2]::numeric, 5), 0) as dg2_pc90,
+            COALESCE(ROUND(ds.dg3_mean::numeric, 5), 0) as dg3_mean,
+            COALESCE(ROUND(ds.dg3_quantiles[1]::numeric, 5), 0) as dg3_pc10,
+            COALESCE(ROUND(ds.dg3_quantiles[2]::numeric, 5), 0) as dg3_pc90,
+            COALESCE(ROUND(ds.dg4_mean::numeric, 5), 0) as dg4_mean,
+            COALESCE(ROUND(ds.dg4_quantiles[1]::numeric, 5), 0) as dg4_pc10,
+            COALESCE(ROUND(ds.dg4_quantiles[2]::numeric, 5), 0) as dg4_pc90,
+            COALESCE(ROUND(ds.dg5_mean::numeric, 5), 0) as dg5_mean,
+            COALESCE(ROUND(ds.dg5_quantiles[1]::numeric, 5), 0) as dg5_pc10,
+            COALESCE(ROUND(ds.dg5_quantiles[2]::numeric, 5), 0) as dg5_pc90,
+            COALESCE(bc.total_buildings::numeric, 0) as buildings
+        FROM all_tags at
+        LEFT JOIN damage_statistics ds ON at.tag_name = ds.tag_name
+        LEFT JOIN building_counts bc ON at.tag_name = bc.tag_name
+        ORDER BY at.tag_name
+        """)
+
+        result = await session.execute(sql_query, {
+            'calculation_id': calculation_id,
+            'loss_category_str': loss_category_str,
+            'loss_category_value': loss_category.value,
+            'aggregation_type': aggregation_type,
+            'name_pattern': name_pattern
+        })
+        rows = result.fetchall()
+        columns = result.keys()
+        return pd.DataFrame(rows, columns=columns)
 
     @classmethod
-    async def get_aggregation_tags(
-        cls,
-        session: AsyncSession,
-        aggregation_type: str,
-        calculation_id: int,
-        tag_like: str | None
-    ) -> pd.DataFrame:
-        """Get aggregation tags for a calculation with optional filtering"""
-
-        stmt = select(ExposureModel._oid) \
-            .join(CalculationBranch) \
-            .join(Calculation) \
-            .where(Calculation._oid == calculation_id)
-
-        exposuremodel_oids = await session.execute(stmt)
-        exposuremodel_oids = exposuremodel_oids.unique().scalars().all()
-
-        stmt = select(AggregationTag.name.label(aggregation_type)).where(and_(
-            AggregationTag.type == aggregation_type,
-            AggregationTag.name.like(tag_like) if tag_like else True,
-            AggregationTag._exposuremodel_oid.in_(exposuremodel_oids)
-        ))
-
-        df = await pandas_read_sql(stmt, session)
-        df.drop_duplicates(inplace=True)
-        return df
-
-    @classmethod
-    async def get_aggregated_damage(
+    async def get_loss_statistics_optimized(
         cls,
         session: AsyncSession,
         calculation_id: int,
         aggregation_type: str,
         loss_category: WSRiskCategory,
-        filter_tag: str | None = None,
         filter_like_tag: str | None = None
     ) -> pd.DataFrame:
-        """Get aggregated damage data with filtering - optimized version"""
+        """
+        Get optimized loss statistics with weighted mean and
+        percentiles calculated in database
+        """
 
-        loss_category = ELossCategory[loss_category.name]
+        loss_category_str = loss_category.name  # Use the enum name (uppercase)
+        name_pattern = f'%{filter_like_tag}%' if filter_like_tag else '%'
 
-        # Optimized: Select only needed columns
-        damage_sub = select(
-            DamageValue._oid,
-            DamageValue.dg1_value,
-            DamageValue.dg2_value,
-            DamageValue.dg3_value,
-            DamageValue.dg4_value,
-            DamageValue.dg5_value,
-            DamageValue.weight,
-            DamageValue._calculationbranch_oid,
-            DamageValue.eventid,
-            DamageValue.losscategory,
-            DamageValue._calculation_oid
-        ).where(and_(
-            DamageValue._calculation_oid == calculation_id,
-            DamageValue.losscategory == loss_category,
-            DamageValue._type == ECalculationType.DAMAGE
-        )).subquery()
+        # Complete optimized SQL query that returns exact webservice format
+        sql_query = text("""
+        WITH loss_data AS (
+            SELECT
+                lat.name as tag_name,
+                rv.loss_value,
+                rv.weight
+            FROM loss_riskvalue rv
+            INNER JOIN loss_assoc_riskvalue_aggregationtag assoc ON
+                rv._oid = assoc.riskvalue
+                AND rv._calculation_oid = assoc._calculation_oid
+                AND rv.losscategory = assoc.losscategory
+            INNER JOIN loss_aggregationtag lat ON
+                         assoc.aggregationtag = lat._oid
+            WHERE
+                rv._calculation_oid = :calculation_id
+                AND rv.losscategory = :loss_category_str
+                AND rv._type = 'LOSS'
+                AND assoc.aggregationtype = :aggregation_type
+                AND lat.name LIKE :name_pattern
+        ),
+        loss_statistics AS (
+            SELECT
+                tag_name,
+                -- Loss statistics using sparse data functions
+                weighted_mean_sparse(array_agg(loss_value),
+                    array_agg(weight)) as loss_mean,
+                weighted_quantile_sparse(array_agg(loss_value),
+                    array_agg(weight), ARRAY[0.1, 0.9]) as loss_quantiles
+            FROM loss_data
+            GROUP BY tag_name
+        ),
+        all_tags AS (
+            SELECT DISTINCT lat.name as tag_name
+            FROM loss_aggregationtag lat
+            INNER JOIN loss_aggregationgeometry geom ON
+                         geom._aggregationtag_oid = lat._oid
+            WHERE
+                lat.type = :aggregation_type
+                AND lat.name LIKE :name_pattern
+                AND geom._exposuremodel_oid IN (
+                    SELECT _exposuremodel_oid
+                    FROM loss_calculationbranch
+                    WHERE _calculation_oid = :calculation_id
+                )
+        )
+        SELECT
+            :loss_category_value as category,
+            ARRAY[at.tag_name] as tag,
+            COALESCE(ROUND(ls.loss_mean::numeric, 5), 0) as loss_mean,
+            COALESCE(ROUND(ls.loss_quantiles[1]::numeric, 5), 0) as loss_pc10,
+            COALESCE(ROUND(ls.loss_quantiles[2]::numeric, 5), 0) as loss_pc90
+        FROM all_tags at
+        LEFT JOIN loss_statistics ls ON at.tag_name = ls.tag_name
+        ORDER BY at.tag_name
+        """)
 
-        # Optimized: Push filters down and select only needed columns
-        agg_conditions = [AggregationTag.type == aggregation_type]
-        if filter_like_tag:
-            agg_conditions.append(AggregationTag.name.like(filter_like_tag))
-        if filter_tag:
-            agg_conditions.append(AggregationTag.name == filter_tag)
-            
-        agg_sub = select(
-            AggregationTag._oid,
-            AggregationTag.name,
-            AggregationTag.type
-        ).where(and_(*agg_conditions)).subquery()
-
-        # Main query - returns individual rows for accurate percentile calculation
-        stmt = select(
-            damage_sub.c.dg1_value,
-            damage_sub.c.dg2_value,
-            damage_sub.c.dg3_value,
-            damage_sub.c.dg4_value,
-            damage_sub.c.dg5_value,
-            damage_sub.c.weight,
-            damage_sub.c._calculationbranch_oid.label('branchid'),
-            damage_sub.c.eventid,
-            agg_sub.c.name.label(aggregation_type)
-        ).select_from(damage_sub) \
-            .join(riskvalue_aggregationtag, and_(
-                riskvalue_aggregationtag.c.riskvalue == damage_sub.c._oid,
-                riskvalue_aggregationtag.c.losscategory == damage_sub.c.losscategory,
-                riskvalue_aggregationtag.c._calculation_oid == damage_sub.c._calculation_oid
-            )) \
-            .join(agg_sub, and_(
-                agg_sub.c._oid == riskvalue_aggregationtag.c.aggregationtag,
-                agg_sub.c.type == riskvalue_aggregationtag.c.aggregationtype
-            ))
-
-        return await pandas_read_sql(stmt, session)
+        result = await session.execute(sql_query, {
+            'calculation_id': calculation_id,
+            'loss_category_str': loss_category_str,
+            'loss_category_value': loss_category.value,
+            'aggregation_type': aggregation_type,
+            'name_pattern': name_pattern
+        })
+        rows = result.fetchall()
+        columns = result.keys()
+        return pd.DataFrame(rows, columns=columns)

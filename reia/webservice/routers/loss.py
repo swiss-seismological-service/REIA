@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, Request
 
 from reia.webservice.database import DBSessionDep
-from reia.webservice.repositories import (AggregationRepository,
-                                          CalculationRepository)
-from reia.webservice.schemas import (WSLossValueStatistics, ReturnFormats,
+from reia.webservice.repositories import CalculationRepository
+from reia.webservice.repositories.aggregation import \
+    AggregationRepositoryOptimized
+from reia.webservice.schemas import (ReturnFormats, WSLossValueStatistics,
                                      WSRiskCategory)
-from reia.webservice.utils import (aggregate_by_branch_and_event,
-                                   calculate_statistics, csv_response)
+from reia.webservice.utils import aggregate_by_branch_and_event, csv_response
 
 router = APIRouter(prefix='/loss', tags=['loss'])
 
@@ -27,39 +27,24 @@ async def get_losses(calculation_id: int,
     by a specific aggregation type.
     """
 
-    like_tag = f'%{filter_tag_like}%' if filter_tag_like else None
+    # Check if calculation exists
+    if not await CalculationRepository.get_by_id(db, calculation_id):
+        raise HTTPException(
+            status_code=404, detail="Loss calculation not found.")
 
-    tags = await AggregationRepository.get_aggregation_tags(
-        db, aggregation_type, calculation_id, like_tag)
+    # Use optimized repository for database-side statistics calculation
+    statistics = \
+        await AggregationRepositoryOptimized.get_loss_statistics_optimized(
+            db, calculation_id, aggregation_type,
+            loss_category, filter_tag_like)
 
-    db_result = await AggregationRepository.get_aggregated_loss(
-        db,
-        calculation_id,
-        aggregation_type,
-        loss_category,
-        filter_like_tag=like_tag)
-
-    if tags.empty:
+    if statistics.empty:
         raise HTTPException(
             status_code=404, detail="No aggregationtags found.")
 
-    if db_result.empty:
-        if not await CalculationRepository.get_by_id(db, calculation_id):
-            raise HTTPException(
-                status_code=404, detail="Loss calculation not found.")
-
-    # merge with aggregationtags to add missing (no loss) aggregationtags
-    db_result = db_result.merge(
-        tags, how='outer', on=aggregation_type) \
-        .infer_objects().fillna(0)
-    # .infer_objects(copy=False).fillna(0)
-
+    # Handle sum aggregation if requested
     if sum:
-        db_result = aggregate_by_branch_and_event(db_result, aggregation_type)
-
-    statistics = calculate_statistics(db_result, aggregation_type)
-
-    statistics['category'] = loss_category
+        statistics = aggregate_by_branch_and_event(statistics, aggregation_type)
 
     if format == ReturnFormats.CSV:
         return csv_response('loss', locals())
