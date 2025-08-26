@@ -1,7 +1,7 @@
 -- Weighted statistics functions for sparse data optimization
 -- These functions handle sparse data where sum(weights) < 1.0 represents implicit zeros
 
--- Create weighted mean function for sparse data
+-- Create optimized weighted mean function for sparse data
 CREATE OR REPLACE FUNCTION weighted_mean_sparse(
     vals DOUBLE PRECISION[],
     weights DOUBLE PRECISION[]
@@ -12,8 +12,7 @@ BEGIN
         RETURN 0.0;
     END IF;
     
-    -- For sparse data: return sum(weight * value) directly
-    -- This assumes the missing weight represents zero values
+    -- Use vectorized operations - much faster than loops
     RETURN (
         SELECT SUM(v * w)
         FROM unnest(vals, weights) AS t(v, w)
@@ -22,25 +21,27 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE;
 
--- Create weighted quantile function for sparse data
+-- Create optimized weighted quantile function for sparse data
 CREATE OR REPLACE FUNCTION weighted_quantile_sparse(
     vals DOUBLE PRECISION[],
     weights DOUBLE PRECISION[],
     quantiles DOUBLE PRECISION[]
 ) RETURNS DOUBLE PRECISION[] AS $$
 DECLARE
-    sorted_indices INTEGER[];
-    cumsum DOUBLE PRECISION;
-    total_weight DOUBLE PRECISION;
-    result DOUBLE PRECISION[];
     n INTEGER;
-    idx INTEGER;
-    jdx INTEGER;
-    q DOUBLE PRECISION;
-    prev_cumsum DOUBLE PRECISION;
-    extended_vals DOUBLE PRECISION[];
-    extended_weights DOUBLE PRECISION[];
+    total_weight DOUBLE PRECISION := 0.0;
     zero_weight DOUBLE PRECISION;
+    sorted_data DOUBLE PRECISION[][];
+    cumsum DOUBLE PRECISION := 0.0;
+    result DOUBLE PRECISION[] := '{}';
+    q DOUBLE PRECISION;
+    target_weight DOUBLE PRECISION;
+    i INTEGER;
+    lower_val DOUBLE PRECISION;
+    upper_val DOUBLE PRECISION;
+    lower_cum DOUBLE PRECISION;
+    upper_cum DOUBLE PRECISION;
+    interp_factor DOUBLE PRECISION;
 BEGIN
     -- Handle NULL or empty arrays
     IF vals IS NULL OR weights IS NULL OR array_length(vals, 1) IS NULL THEN
@@ -52,71 +53,63 @@ BEGIN
         RETURN array_fill(0.0, ARRAY[array_length(quantiles, 1)]);
     END IF;
     
-    -- Calculate total weight
-    total_weight := 0.0;
-    FOR idx IN 1..n LOOP
-        IF weights[idx] > 0 THEN
-            total_weight := total_weight + weights[idx];
-        END IF;
-    END LOOP;
+    -- Calculate total weight more efficiently
+    SELECT SUM(w) INTO total_weight
+    FROM unnest(weights) w
+    WHERE w > 0;
     
-    -- Handle sparse data: add zeros if sum of weights < 1
-    IF total_weight < 1.0 THEN
-        zero_weight := 1.0 - total_weight;
-        extended_vals := vals || ARRAY[0.0];
-        extended_weights := weights || ARRAY[zero_weight];
-        n := n + 1;
-    ELSE
-        extended_vals := vals;
-        extended_weights := weights;
-    END IF;
-    
-    -- Get sorted indices for extended arrays
-    sorted_indices := ARRAY(
-        SELECT generate_series 
-        FROM generate_series(1, n)
-        ORDER BY extended_vals[generate_series]
+    -- Create and sort value-weight pairs in one operation
+    sorted_data := ARRAY(
+        SELECT ARRAY[v, w]
+        FROM unnest(vals, weights) AS t(v, w)
+        WHERE w > 0
+        ORDER BY v
     );
     
-    -- Calculate percentiles using C=0 method with extended data
-    result := ARRAY[]::DOUBLE PRECISION[];
+    -- Handle sparse data: add zero if needed
+    IF total_weight < 1.0 THEN
+        zero_weight := 1.0 - total_weight;
+        -- Insert zero at the correct position
+        IF sorted_data[1][1] > 0 THEN
+            sorted_data := ARRAY[ARRAY[0.0, zero_weight]] || sorted_data;
+        ELSE
+            sorted_data := sorted_data || ARRAY[ARRAY[0.0, zero_weight]];
+        END IF;
+        total_weight := 1.0;
+    END IF;
     
-    FOR idx IN 1..array_length(quantiles, 1) LOOP
-        q := quantiles[idx];
+    n := array_length(sorted_data, 1);
+    
+    -- Calculate quantiles
+    FOR i IN 1..array_length(quantiles, 1) LOOP
+        q := quantiles[i];
+        target_weight := q * total_weight;
         
         -- Handle edge cases
-        IF q <= 0 THEN
-            result := array_append(result, extended_vals[sorted_indices[1]]);
+        IF q <= 0 OR target_weight <= sorted_data[1][2] THEN
+            result := array_append(result, sorted_data[1][1]);
         ELSIF q >= 1 THEN
-            result := array_append(result, extended_vals[sorted_indices[n]]);
+            result := array_append(result, sorted_data[n][1]);
         ELSE
-            -- Find the position using cumulative sum
+            -- Find position using binary-like search through cumulative weights
             cumsum := 0.0;
-            prev_cumsum := 0.0;
-            
-            FOR jdx IN 1..n LOOP
-                prev_cumsum := cumsum;
-                cumsum := cumsum + extended_weights[sorted_indices[jdx]];
+            FOR j IN 1..n LOOP
+                lower_cum := cumsum;
+                cumsum := cumsum + sorted_data[j][2];
                 
-                IF cumsum >= q THEN
-                    -- Linear interpolation
-                    IF jdx > 1 AND cumsum > prev_cumsum THEN
-                        result := array_append(result,
-                            extended_vals[sorted_indices[jdx-1]] + 
-                            (extended_vals[sorted_indices[jdx]] - extended_vals[sorted_indices[jdx-1]]) * 
-                            ((q - prev_cumsum) / (cumsum - prev_cumsum))
-                        );
+                IF cumsum >= target_weight THEN
+                    IF j = 1 OR cumsum = target_weight THEN
+                        result := array_append(result, sorted_data[j][1]);
                     ELSE
-                        result := array_append(result, extended_vals[sorted_indices[jdx]]);
+                        -- Linear interpolation
+                        lower_val := sorted_data[j-1][1];
+                        upper_val := sorted_data[j][1];
+                        interp_factor := (target_weight - lower_cum) / sorted_data[j][2];
+                        result := array_append(result, lower_val + interp_factor * (upper_val - lower_val));
                     END IF;
                     EXIT;
                 END IF;
             END LOOP;
-            
-            -- If we didn't find it (shouldn't happen), use last value
-            IF array_length(result, 1) < idx THEN
-                result := array_append(result, extended_vals[sorted_indices[n]]);
-            END IF;
         END IF;
     END LOOP;
     
