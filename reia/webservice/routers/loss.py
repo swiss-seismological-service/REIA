@@ -40,7 +40,7 @@ async def get_losses(calculation_id: int,
 
     if statistics.empty:
         raise HTTPException(
-            status_code=404, detail="No aggregationtags found.")
+            status_code=404, detail="No data.")
 
     # Handle sum aggregation if requested
     if sum:

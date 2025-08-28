@@ -35,7 +35,7 @@ async def calculate_damages(
 
     if statistics.empty:
         raise HTTPException(
-            status_code=404, detail="Aggregationtag not found.")
+            status_code=404, detail="No Data.")
 
     # Handle sum aggregation if requested
     if sum:

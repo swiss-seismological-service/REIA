@@ -57,29 +57,29 @@ class AggregationRepositoryOptimized:
             SELECT
                 tag_name,
                 -- All damage grade statistics using sparse data functions
-                weighted_mean_sparse(array_agg(dg1_value),
+                weighted_mean(array_agg(dg1_value),
                     array_agg(weight)) as dg1_mean,
-                weighted_quantile_sparse(array_agg(dg1_value),
+                weighted_quantile(array_agg(dg1_value),
                     array_agg(weight), ARRAY[0.1, 0.9]) as dg1_quantiles,
 
-                weighted_mean_sparse(array_agg(dg2_value),
+                weighted_mean(array_agg(dg2_value),
                     array_agg(weight)) as dg2_mean,
-                weighted_quantile_sparse(array_agg(dg2_value),
+                weighted_quantile(array_agg(dg2_value),
                     array_agg(weight), ARRAY[0.1, 0.9]) as dg2_quantiles,
 
-                weighted_mean_sparse(array_agg(dg3_value),
+                weighted_mean(array_agg(dg3_value),
                     array_agg(weight)) as dg3_mean,
-                weighted_quantile_sparse(array_agg(dg3_value),
+                weighted_quantile(array_agg(dg3_value),
                     array_agg(weight), ARRAY[0.1, 0.9]) as dg3_quantiles,
 
-                weighted_mean_sparse(array_agg(dg4_value),
+                weighted_mean(array_agg(dg4_value),
                     array_agg(weight)) as dg4_mean,
-                weighted_quantile_sparse(array_agg(dg4_value),
+                weighted_quantile(array_agg(dg4_value),
                     array_agg(weight), ARRAY[0.1, 0.9]) as dg4_quantiles,
 
-                weighted_mean_sparse(array_agg(dg5_value),
+                weighted_mean(array_agg(dg5_value),
                     array_agg(weight)) as dg5_mean,
-                weighted_quantile_sparse(array_agg(dg5_value),
+                weighted_quantile(array_agg(dg5_value),
                     array_agg(weight), ARRAY[0.1, 0.9]) as dg5_quantiles
             FROM damage_data
             GROUP BY tag_name
@@ -87,16 +87,14 @@ class AggregationRepositoryOptimized:
         all_tags AS (
             SELECT DISTINCT lat.name as tag_name
             FROM loss_aggregationtag lat
-            INNER JOIN loss_aggregationgeometry geom ON
-                geom._aggregationtag_oid = lat._oid
+            INNER JOIN loss_assoc_asset_aggregationtag asset_assoc ON
+                lat._oid = asset_assoc.aggregationtag
+            INNER JOIN loss_asset ast ON asset_assoc.asset = ast._oid
+            INNER JOIN loss_calculationbranch cb ON ast._exposuremodel_oid = cb._exposuremodel_oid
             WHERE
                 lat.type = :aggregation_type
                 AND lat.name LIKE :name_pattern
-                AND geom._exposuremodel_oid IN (
-                    SELECT _exposuremodel_oid
-                    FROM loss_calculationbranch
-                    WHERE _calculation_oid = :calculation_id
-                )
+                AND cb._calculation_oid = :calculation_id
         ),
         building_counts AS (
             SELECT
@@ -195,9 +193,9 @@ class AggregationRepositoryOptimized:
             SELECT
                 tag_name,
                 -- Loss statistics using sparse data functions
-                weighted_mean_sparse(array_agg(loss_value),
+                weighted_mean(array_agg(loss_value),
                     array_agg(weight)) as loss_mean,
-                weighted_quantile_sparse(array_agg(loss_value),
+                weighted_quantile(array_agg(loss_value),
                     array_agg(weight), ARRAY[0.1, 0.9]) as loss_quantiles
             FROM loss_data
             GROUP BY tag_name
@@ -205,16 +203,14 @@ class AggregationRepositoryOptimized:
         all_tags AS (
             SELECT DISTINCT lat.name as tag_name
             FROM loss_aggregationtag lat
-            INNER JOIN loss_aggregationgeometry geom ON
-                         geom._aggregationtag_oid = lat._oid
+            INNER JOIN loss_assoc_asset_aggregationtag asset_assoc ON
+                lat._oid = asset_assoc.aggregationtag
+            INNER JOIN loss_asset ast ON asset_assoc.asset = ast._oid
+            INNER JOIN loss_calculationbranch cb ON ast._exposuremodel_oid = cb._exposuremodel_oid
             WHERE
                 lat.type = :aggregation_type
                 AND lat.name LIKE :name_pattern
-                AND geom._exposuremodel_oid IN (
-                    SELECT _exposuremodel_oid
-                    FROM loss_calculationbranch
-                    WHERE _calculation_oid = :calculation_id
-                )
+                AND cb._calculation_oid = :calculation_id
         )
         SELECT
             :loss_category_value as category,

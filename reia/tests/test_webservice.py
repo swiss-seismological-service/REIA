@@ -77,12 +77,14 @@ async def test_calculation_endpoint(test_client):
 
 
 @pytest.mark.asyncio
-async def test_loss_endpoint(test_client):
+async def test_loss_endpoint(test_client, loss_calculation):
     """Test /loss endpoint structure, keys and values."""
-    response = await test_client.get("/v1/loss/1/structural/Canton")
-    assert response.status_code == 200
+    response = await test_client.get(
+        f"/v1/loss/{loss_calculation.oid}/structural/Canton")
+    assert response.status_code == 200, response.text
 
     expected_data = load_expected_response("loss")
+
     compare_responses(
         response.json(),
         expected_data,
@@ -91,12 +93,14 @@ async def test_loss_endpoint(test_client):
 
 
 @pytest.mark.asyncio
-async def test_damage_endpoint(test_client):
+async def test_damage_endpoint(test_client, damage_calculation):
     """Test /damage endpoint structure, keys and values."""
-    response = await test_client.get("/v1/damage/2/structural/Canton")
-    assert response.status_code == 200
+    response = await test_client.get(
+        f"/v1/damage/{damage_calculation.oid}/structural/Canton")
+    assert response.status_code == 200, response.text
 
     expected_data = load_expected_response("damage")
+
     compare_responses(
         response.json(),
         expected_data,
