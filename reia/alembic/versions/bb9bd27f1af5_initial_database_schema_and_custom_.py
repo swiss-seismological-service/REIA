@@ -32,13 +32,56 @@ def execute_sql_file(filename: str) -> None:
         raise FileNotFoundError(f"SQL file not found: {sql_file}")
 
 
+def create_weighted_statistics_extension() -> None:
+    """Create weighted_statistics extension if available."""
+    print("Checking for weighted_statistics extension...")
+
+    # Check if extension is available
+    conn = op.get_bind()
+    result = conn.execute(sa.text("""
+        SELECT 1 FROM pg_available_extensions
+        WHERE name = 'weighted_statistics'
+    """)).fetchone()
+
+    if result:
+        print("Creating weighted_statistics extension...")
+        try:
+            op.execute("CREATE EXTENSION IF NOT EXISTS weighted_statistics")
+            print("weighted_statistics extension created successfully!")
+        except Exception as e:
+            print(f"Warning: Could not create weighted_statistics "
+                  f"extension: {e}")
+            print("Continuing with database setup...")
+    else:
+        print("weighted_statistics extension not available.")
+        print("""
+Extension installation instructions:
+
+For Docker users:
+The extension should be automatically built into the custom PostgreSQL image.
+If you see this message, please ensure Docker containers are rebuilt:
+  docker-compose down && docker-compose up --build
+
+For bare-metal users:
+Follow installation instructions at:
+https://github.com/schmidni/pg_weighted_statistics
+Or install via PGXN: pgxn install weighted_statistics
+
+The database will function without this extension but weighted statistics
+functions will not be available.
+        """)
+
+
 def upgrade() -> None:
     """Upgrade schema."""
     print("Creating REIA database schema...")
 
+    # Try to create the weighted_statistics extension first
+    create_weighted_statistics_extension()
+
     # Create all SQLAlchemy tables
     # Import all models to ensure they're registered
-    from reia.datamodel import (asset, calculations, fragility,  # noqa
+    from reia.datamodel import (asset, calculations, fragility,  # noqa: F401
                                 lossvalues, vulnerability)
     from reia.datamodel.base import ORMBase
     from reia.repositories import engine
@@ -58,25 +101,8 @@ def upgrade() -> None:
     # indexes
     execute_sql_file("indexes.sql")
 
-    # weighted statistics functions for optimized queries
-    execute_sql_file("weighted_statistics_functions.sql")
-
     # optimize statistics for complex queries on partitioned tables
-    print("Optimizing table statistics for complex query performance...")
-    op.execute("""
-        -- Higher statistics targets for partitioned table query optimization
-        -- These columns are used in complex joins
-        ALTER TABLE loss_riskvalue ALTER COLUMN
-               _calculation_oid SET STATISTICS 1000;
-        ALTER TABLE loss_riskvalue ALTER COLUMN
-               losscategory SET STATISTICS 1000;
-        ALTER TABLE loss_assoc_riskvalue_aggregationtag ALTER COLUMN
-               _calculation_oid SET STATISTICS 1000;
-        ALTER TABLE loss_assoc_riskvalue_aggregationtag ALTER COLUMN
-               losscategory SET STATISTICS 1000;
-        ALTER TABLE loss_assoc_riskvalue_aggregationtag ALTER COLUMN
-               aggregationtype SET STATISTICS 1000;
-    """)
+    execute_sql_file("table_statistics_optimization.sql")
 
     print("Database schema created successfully with all custom functions!")
 
@@ -119,6 +145,14 @@ def downgrade() -> None:
                              DOUBLE PRECISION[], DOUBLE PRECISION[]) CASCADE;
         """))
         print("Dropped custom functions.")
+
+        # Drop weighted_statistics extension if it exists
+        try:
+            conn.execute(sa.text(
+                "DROP EXTENSION IF EXISTS weighted_statistics CASCADE;"))
+            print("Dropped weighted_statistics extension.")
+        except Exception as e:
+            print(f"Note: Could not drop weighted_statistics extension: {e}")
 
         # Drop custom indexes (let PostgreSQL handle dependencies)
         custom_indexes = [

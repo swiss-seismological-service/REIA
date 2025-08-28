@@ -9,6 +9,7 @@ REIA is a tool for rapid earthquake impact assessment that integrates with OpenQ
 - Python ≥3.10, ≤3.12
 - Docker and Docker Compose
 - PostgreSQL (if not using Docker)
+- **pg_weighted_statistics extension** (automatically installed with Docker)
 
 ### Installation
 
@@ -45,8 +46,10 @@ REIA is a tool for rapid earthquake impact assessment that integrates with OpenQ
 
 2. **Start services**:
    ```bash
-   docker-compose up -d
+   docker-compose up -d --build
    ```
+   
+   **Note**: The `--build` flag is needed on first run to build the custom PostgreSQL image with the pg_weighted_statistics extension.
 
 3. **Wait for services to be healthy** (optional but recommended):
    ```bash
@@ -68,8 +71,11 @@ REIA is a tool for rapid earthquake impact assessment that integrates with OpenQ
 ### Running without Docker
 
 1. **Set up PostgreSQL** with PostGIS extension
-2. **Configure `.env`** with your database connection details
-3. **Run migrations**:
+2. **Install pg_weighted_statistics extension**:
+   - Follow installation instructions at: https://github.com/schmidni/pg_weighted_statistics
+   - Or install via PGXN: `pgxn install pg_weighted_statistics`
+3. **Configure `.env`** with your database connection details
+4. **Run migrations**:
    ```bash
    reia db migrate
    ```
@@ -85,7 +91,7 @@ pytest --cov=.
 
 When using Docker Compose, the following services are available:
 
-- **PostgreSQL**: Database with PostGIS extension (port 5432)
+- **PostgreSQL**: Database with PostGIS and pg_weighted_statistics extensions (port 5432)
 - **OpenQuake**: Seismic hazard and risk calculations (port 8800)
 
 ## Environment Variables

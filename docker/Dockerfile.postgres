@@ -1,0 +1,59 @@
+FROM postgis/postgis:16-3.4
+
+LABEL maintainer="REIA Team"
+LABEL description="PostgreSQL with PostGIS and pg_weighted_statistics extensions"
+
+# Install build dependencies as root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    postgresql-server-dev-16 \
+    git \
+    ca-certificates
+
+# Detect required clang version from PostgreSQL build configuration
+RUN REQUIRED_CLANG=$(pg_config --configure | grep -oP 'clang-\K[0-9]+' | head -1) && \
+    if [ -z "$REQUIRED_CLANG" ]; then \
+    # Check what clang version is referenced in PostgreSQL's Makefile.global
+    if [ -f "/usr/lib/postgresql/16/lib/pgxs/src/Makefile.global" ]; then \
+    REQUIRED_CLANG=$(grep -oP '/usr/bin/clang-\K[0-9]+' /usr/lib/postgresql/16/lib/pgxs/src/Makefile.global | head -1); \
+    fi; \
+    fi && \
+    if [ -z "$REQUIRED_CLANG" ]; then \
+    echo "Could not detect required clang version, installing default clang..." && \
+    apt-get install -y --no-install-recommends clang llvm; \
+    else \
+    echo "Installing clang-$REQUIRED_CLANG and llvm-$REQUIRED_CLANG..." && \
+    apt-get install -y --no-install-recommends \
+    clang-$REQUIRED_CLANG \
+    llvm-$REQUIRED_CLANG && \
+    ln -sf /usr/bin/clang-$REQUIRED_CLANG /usr/bin/clang && \
+    ln -sf /usr/bin/clang++-$REQUIRED_CLANG /usr/bin/clang++; \
+    fi
+
+RUN cd /tmp && \
+    git clone https://github.com/schmidni/pg_weighted_statistics.git && \
+    cd pg_weighted_statistics && \
+    make USE_PGXS=1 && \
+    make USE_PGXS=1 install && \
+    echo "Extension installed successfully. Checking installation..." && \
+    ls -la /usr/share/postgresql/16/extension/weighted_statistics* && \
+    ls -la /usr/lib/postgresql/16/lib/weighted_statistics*
+
+# Clean up build dependencies but preserve the installed extension
+RUN REQUIRED_CLANG=$(pg_config --configure | grep -oP 'clang-\K[0-9]+' | head -1) && \
+    if [ -n "$REQUIRED_CLANG" ]; then \
+    apt-get remove -y build-essential clang-$REQUIRED_CLANG llvm-$REQUIRED_CLANG postgresql-server-dev-16 git; \
+    else \
+    apt-get remove -y build-essential clang llvm postgresql-server-dev-16 git; \
+    fi && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /tmp/pg_weighted_statistics && \
+    echo "Cleanup completed. Verifying extension files still exist..." && \
+    ls -la /usr/share/postgresql/16/extension/weighted_statistics* && \
+    ls -la /usr/lib/postgresql/16/lib/weighted_statistics*
+
+# Create initialization script to enable the extension
+RUN echo '#!/bin/bash\nset -e\necho "Creating weighted_statistics extension..."\npsql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL\n    CREATE EXTENSION IF NOT EXISTS weighted_statistics;\nEOSQL\necho "weighted_statistics extension created successfully!"' > /docker-entrypoint-initdb.d/00-create-extension.sh && \
+    chmod +x /docker-entrypoint-initdb.d/00-create-extension.sh

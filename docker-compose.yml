@@ -1,7 +1,9 @@
 services:
-  # PostgreSQL database with PostGIS extension
+  # PostgreSQL database with PostGIS and pg_weighted_statistics extensions
   postgres:
-    image: postgis/postgis:16-3.4
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.postgres
     container_name: "${COMPOSE_PROJECT_NAME}_postgres"
     environment:
       # PostgreSQL superuser credentials (required by PostgreSQL image)
@@ -66,7 +68,9 @@ services:
         condition: service_healthy
 
   webservice:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.webservice
     container_name: "${COMPOSE_PROJECT_NAME}_webservice"
     environment:
       - DB_NAME
