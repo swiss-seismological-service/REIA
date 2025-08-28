@@ -51,6 +51,41 @@ jobs:
             - uses: actions/setup-python@v5
               with:
                   python-version: ${{ matrix.python-version }}
+            - name: Install pg_weighted_statistics extension
+              run: |
+                  # Install build dependencies
+                  sudo apt-get update
+                  sudo apt-get install -y build-essential postgresql-server-dev-16 git
+                  
+                  # Detect required clang version (GitHub Actions usually has PostgreSQL built with clang-14)
+                  REQUIRED_CLANG=$(pg_config --configure | grep -oP 'clang-\K[0-9]+' | head -1)
+                  
+                  if [ -z "$REQUIRED_CLANG" ]; then
+                      echo "Could not detect required clang version, installing default clang..."
+                      sudo apt-get install -y clang llvm
+                  else
+                      echo "Installing clang-$REQUIRED_CLANG and llvm-$REQUIRED_CLANG..."
+                      sudo apt-get install -y clang-$REQUIRED_CLANG llvm-$REQUIRED_CLANG
+                      
+                      # Create symlinks for the detected version
+                      sudo ln -sf /usr/bin/clang-$REQUIRED_CLANG /usr/bin/clang
+                      sudo ln -sf /usr/bin/clang++-$REQUIRED_CLANG /usr/bin/clang++
+                  fi
+                  
+                  echo "Clang setup completed: $(clang --version | head -1)"
+                  
+                  # Clone and install extension
+                  cd /tmp
+                  git clone https://github.com/schmidni/pg_weighted_statistics.git
+                  cd pg_weighted_statistics
+                  make USE_PGXS=1
+                  sudo make USE_PGXS=1 install
+                  
+                  # Wait for PostgreSQL to be ready
+                  sleep 5
+                  
+                  # Create extension in test database
+                  PGPASSWORD=postgres psql -h localhost -p 5430 -U postgres -d postgres -c "CREATE EXTENSION IF NOT EXISTS pg_weighted_statistics;"
             - name: Install dependencies
               run: |
                   python -m pip install --upgrade pip setuptools wheel
