@@ -32,11 +32,9 @@ def execute_sql_file(filename: str) -> None:
         raise FileNotFoundError(f"SQL file not found: {sql_file}")
 
 
-def create_weighted_statistics_extension() -> None:
-    """Create weighted_statistics extension if available."""
+def check_weighted_statistics_extension() -> None:
+    """Check if weighted_statistics extension is available."""
     print("Checking for weighted_statistics extension...")
-
-    # Check if extension is available
     conn = op.get_bind()
     result = conn.execute(sa.text("""
         SELECT 1 FROM pg_available_extensions
@@ -44,14 +42,7 @@ def create_weighted_statistics_extension() -> None:
     """)).fetchone()
 
     if result:
-        print("Creating weighted_statistics extension...")
-        try:
-            op.execute("CREATE EXTENSION IF NOT EXISTS weighted_statistics")
-            print("weighted_statistics extension created successfully!")
-        except Exception as e:
-            print(f"Warning: Could not create weighted_statistics "
-                  f"extension: {e}")
-            print("Continuing with database setup...")
+        print("OK - weighted_statistics extension is available.")
     else:
         print("weighted_statistics extension not available.")
         print("""
@@ -76,8 +67,8 @@ def upgrade() -> None:
     """Upgrade schema."""
     print("Creating REIA database schema...")
 
-    # Try to create the weighted_statistics extension first
-    create_weighted_statistics_extension()
+    # Check if weighted_statistics extension is available
+    check_weighted_statistics_extension()
 
     # Create all SQLAlchemy tables
     # Import all models to ensure they're registered
@@ -145,30 +136,6 @@ def downgrade() -> None:
                              DOUBLE PRECISION[], DOUBLE PRECISION[]) CASCADE;
         """))
         print("Dropped custom functions.")
-
-        # Drop weighted_statistics extension if it exists
-        try:
-            conn.execute(sa.text(
-                "DROP EXTENSION IF EXISTS weighted_statistics CASCADE;"))
-            print("Dropped weighted_statistics extension.")
-        except Exception as e:
-            print(f"Note: Could not drop weighted_statistics extension: {e}")
-
-        # Drop custom indexes (let PostgreSQL handle dependencies)
-        custom_indexes = [
-            'idx_aggregationtag_name',
-            'idx_aggregationtag_type',
-            'idx_assoc_riskvalue_aggregationtag',
-            'idx_assoc_riskvalue_aggregationtype',
-            'idx_assoc_riskvalue_riskvalue',
-            'idx_calculation_status_type',
-            'idx_calculationbranch_calculation',
-            'idx_riskvalue_oid',
-            'idx_riskvalue_type',
-            'idx_riskvalue_calculationbranch']
-        for index in custom_indexes:
-            conn.execute(sa.text(f"DROP INDEX IF EXISTS {index} CASCADE;"))
-        print("Dropped custom indexes.")
 
         print("Drop all tables...")
 
