@@ -1,10 +1,10 @@
-import os
 from operator import attrgetter
 
 import pandas as pd
 from openquake.commonlib.datastore import DataStore
 from openquake.risklib.scientific import LOSSTYPE
 
+from reia.config.settings import get_settings
 from reia.io import RISK_COLUMNS_MAPPING
 from reia.schemas.calculation_schemas import CalculationBranch
 from reia.schemas.enums import ELossCategory, ERiskType
@@ -35,7 +35,7 @@ def extract_risk_from_datastore(dstore: DataStore,
     cols_mapping = RISK_COLUMNS_MAPPING[risk_type]
     df = df.rename(columns=cols_mapping)[cols_mapping.values()]
 
-    if int(os.getenv('OQ_VERSION', '15')) >= 15:
+    if get_settings().oq_version >= 15:
         loss_types = LOSSTYPE
     else:
         loss_types = dstore['oqparam'].loss_types

@@ -67,6 +67,8 @@ class REIASettings(Settings):
     oq_user: str = Field(default='user')
     oq_password: str = Field(default='password')
 
+    oq_version: int = Field(default=16)
+
     # Database Superuser
     postgres_user: str = Field(default='postgres')
     postgres_password: str = Field(default='postgres')
