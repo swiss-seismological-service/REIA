@@ -53,7 +53,3 @@ RUN REQUIRED_CLANG=$(pg_config --configure | grep -oP 'clang-\K[0-9]+' | head -1
     echo "Cleanup completed. Verifying extension files still exist..." && \
     ls -la /usr/share/postgresql/16/extension/weighted_statistics* && \
     ls -la /usr/lib/postgresql/16/lib/weighted_statistics*
-
-# Create initialization script to enable the extension
-RUN echo '#!/bin/bash\nset -e\necho "Creating weighted_statistics extension..."\npsql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL\n    CREATE EXTENSION IF NOT EXISTS weighted_statistics;\nEOSQL\necho "weighted_statistics extension created successfully!"' > /docker-entrypoint-initdb.d/00-create-extension.sh && \
-    chmod +x /docker-entrypoint-initdb.d/00-create-extension.sh
