@@ -93,29 +93,6 @@ def rename_column_headers(
     return df.rename(columns=mapping | tag_mapping)
 
 
-def aggregate_by_branch_and_event(
-        data: pd.DataFrame, aggregation_type) -> pd.DataFrame:
-
-    # group by branch and event
-    group = data.groupby(
-        lambda x: data['branchid'].loc[x]
-        + data['eventid'].loc[x] * (10 ** 4))
-
-    # get value columns
-    value_column = [i for i in data.columns if 'value' in i]
-
-    values = pd.DataFrame()
-    values['weight'] = group.apply(
-        lambda x: x['weight'].sum() / len(x))
-    for name in value_column:
-        values[name] = group.apply(
-            lambda x: x[name].sum())
-
-    values[aggregation_type] = False
-
-    return values
-
-
 async def pandas_read_sql(stmt, session):
     """
     Get a pandas dataframe from a SQL statement.

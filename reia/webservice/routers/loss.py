@@ -6,7 +6,7 @@ from reia.webservice.repositories.aggregation import \
     AggregationRepositoryOptimized
 from reia.webservice.schemas import (ReturnFormats, WSLossValueStatistics,
                                      WSRiskCategory)
-from reia.webservice.utils import aggregate_by_branch_and_event, csv_response
+from reia.webservice.utils import csv_response
 
 router = APIRouter(prefix='/loss', tags=['loss'])
 
@@ -44,8 +44,10 @@ async def get_losses(calculation_id: int,
 
     # Handle sum aggregation if requested
     if sum:
-        statistics = aggregate_by_branch_and_event(statistics, aggregation_type)
+        statistics = statistics.groupby('category').sum().reset_index()
+        statistics['tag'] = [[] for _ in range(len(statistics))]
 
+    print(statistics)
     if format == ReturnFormats.CSV:
         return csv_response('loss', locals())
 
