@@ -13,7 +13,7 @@ jobs:
 
         services:
             postgres:
-                image: postgis/postgis:16-3.4
+                image: ghcr.io/schmidni/pg_weighted_statistics:sha256-353ed3ce2ef87511707d09912c17efebeacd816d615412dc53d1d22f5625b411
                 env:
                     POSTGRES_USER: postgres
                     POSTGRES_PASSWORD: postgres
@@ -51,47 +51,6 @@ jobs:
             - uses: actions/setup-python@v5
               with:
                   python-version: ${{ matrix.python-version }}
-
-            - name: Install pg_weighted_statistics extension
-              run: |
-                  # Get the PostgreSQL container ID
-                  POSTGRES_CONTAINER=$(docker ps -qf "ancestor=postgis/postgis:16-3.4")
-                  
-                  # Install build dependencies and build extension inside the container
-                  docker exec $POSTGRES_CONTAINER bash -c "
-                      apt-get update && 
-                      apt-get install -y build-essential postgresql-server-dev-16 git &&
-                      
-                      # Detect required clang version
-                      REQUIRED_CLANG=\$(pg_config --configure | grep -oP 'clang-\K[0-9]+' | head -1)
-                      
-                      if [ -z \"\$REQUIRED_CLANG\" ]; then
-                          echo 'Could not detect required clang version, installing default clang...'
-                          apt-get install -y clang llvm
-                      else
-                          echo \"Installing clang-\$REQUIRED_CLANG and llvm-\$REQUIRED_CLANG...\"
-                          apt-get install -y clang-\$REQUIRED_CLANG llvm-\$REQUIRED_CLANG
-                          
-                          # Create symlinks for the detected version
-                          ln -sf /usr/bin/clang-\$REQUIRED_CLANG /usr/bin/clang
-                          ln -sf /usr/bin/clang++-\$REQUIRED_CLANG /usr/bin/clang++
-                      fi
-                      
-                      echo \"Clang setup completed: \$(clang --version | head -1)\"
-                      
-                      # Clone and build extension
-                      cd /tmp &&
-                      git clone https://github.com/schmidni/pg_weighted_statistics.git &&
-                      cd pg_weighted_statistics &&
-                      make USE_PGXS=1 &&
-                      make USE_PGXS=1 install
-                  "
-                  
-                  # Wait for PostgreSQL to be ready
-                  sleep 5
-
-                  # Create extension in test database
-                  PGPASSWORD=postgres psql -h localhost -p 5430 -U postgres -d postgres -c "CREATE EXTENSION IF NOT EXISTS pg_weighted_statistics;"
 
             - name: Install dependencies
               run: |
