@@ -47,7 +47,6 @@ async def get_losses(calculation_id: int,
         statistics = statistics.groupby('category').sum().reset_index()
         statistics['tag'] = [[] for _ in range(len(statistics))]
 
-    print(statistics)
     if format == ReturnFormats.CSV:
         return csv_response('loss', locals())
 

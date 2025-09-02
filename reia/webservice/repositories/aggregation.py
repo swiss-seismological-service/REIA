@@ -90,7 +90,8 @@ class AggregationRepositoryOptimized:
             INNER JOIN loss_assoc_asset_aggregationtag asset_assoc ON
                 lat._oid = asset_assoc.aggregationtag
             INNER JOIN loss_asset ast ON asset_assoc.asset = ast._oid
-            INNER JOIN loss_calculationbranch cb ON ast._exposuremodel_oid = cb._exposuremodel_oid
+            INNER JOIN loss_calculationbranch cb ON
+                         ast._exposuremodel_oid = cb._exposuremodel_oid
             WHERE
                 lat.type = :aggregation_type
                 AND lat.name LIKE :name_pattern
@@ -206,7 +207,8 @@ class AggregationRepositoryOptimized:
             INNER JOIN loss_assoc_asset_aggregationtag asset_assoc ON
                 lat._oid = asset_assoc.aggregationtag
             INNER JOIN loss_asset ast ON asset_assoc.asset = ast._oid
-            INNER JOIN loss_calculationbranch cb ON ast._exposuremodel_oid = cb._exposuremodel_oid
+            INNER JOIN loss_calculationbranch cb ON
+                         ast._exposuremodel_oid = cb._exposuremodel_oid
             WHERE
                 lat.type = :aggregation_type
                 AND lat.name LIKE :name_pattern
