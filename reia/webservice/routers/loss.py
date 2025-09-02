@@ -2,8 +2,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from reia.webservice.database import DBSessionDep
 from reia.webservice.repositories import CalculationRepository
-from reia.webservice.repositories.aggregation import \
-    AggregationRepositoryOptimized
+from reia.webservice.repositories.aggregation import AggregationRepository
 from reia.webservice.schemas import (ReturnFormats, WSLossValueStatistics,
                                      WSRiskCategory)
 from reia.webservice.utils import csv_response
@@ -34,7 +33,7 @@ async def get_losses(calculation_id: int,
 
     # Use optimized repository for database-side statistics calculation
     statistics = \
-        await AggregationRepositoryOptimized.get_loss_statistics_optimized(
+        await AggregationRepository.get_loss_statistics(
             db, calculation_id, aggregation_type,
             loss_category, filter_tag_like)
 

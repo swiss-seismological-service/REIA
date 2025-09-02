@@ -5,14 +5,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from reia.webservice.schemas import WSRiskCategory
 
 
-class AggregationRepositoryOptimized:
+class AggregationRepository:
     """
-    Optimized repository for aggregation-related queries
-    with database-side statistics
+    Repository for aggregation-related queries with database-side statistics
     """
 
     @classmethod
-    async def get_damage_statistics_optimized(
+    async def get_damage_statistics(
         cls,
         session: AsyncSession,
         calculation_id: int,
@@ -21,14 +20,14 @@ class AggregationRepositoryOptimized:
         filter_like_tag: str | None = None
     ) -> pd.DataFrame:
         """
-        Get optimized damage statistics with weighted mean and percentiles
+        Get damage statistics with weighted mean and percentiles
         calculated in database
         """
 
         loss_category_str = loss_category.name  # Use the enum name (uppercase)
         name_pattern = f'%{filter_like_tag}%' if filter_like_tag else '%'
 
-        # Complete optimized SQL query that returns exact webservice format
+        # Complete SQL query that returns exact webservice format
         sql_query = text("""
         WITH damage_data AS (
             SELECT
@@ -153,7 +152,7 @@ class AggregationRepositoryOptimized:
         return pd.DataFrame(rows, columns=columns)
 
     @classmethod
-    async def get_loss_statistics_optimized(
+    async def get_loss_statistics(
         cls,
         session: AsyncSession,
         calculation_id: int,
@@ -162,14 +161,14 @@ class AggregationRepositoryOptimized:
         filter_like_tag: str | None = None
     ) -> pd.DataFrame:
         """
-        Get optimized loss statistics with weighted mean and
+        Get loss statistics with weighted mean and
         percentiles calculated in database
         """
 
         loss_category_str = loss_category.name  # Use the enum name (uppercase)
         name_pattern = f'%{filter_like_tag}%' if filter_like_tag else '%'
 
-        # Complete optimized SQL query that returns exact webservice format
+        # Complete SQL query that returns exact webservice format
         sql_query = text("""
         WITH loss_data AS (
             SELECT

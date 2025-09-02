@@ -5,8 +5,7 @@ from pandas import DataFrame
 
 from reia.webservice.database import DBSessionDep
 from reia.webservice.repositories import CalculationRepository
-from reia.webservice.repositories.aggregation import \
-    AggregationRepositoryOptimized
+from reia.webservice.repositories.aggregation import AggregationRepository
 from reia.webservice.schemas import (ReturnFormats, WSDamageValueStatistics,
                                      WSRiskCategory)
 from reia.webservice.utils import csv_response
@@ -29,7 +28,7 @@ async def calculate_damages(
 
     # Use optimized repository for database-side statistics calculation
     statistics = \
-        await AggregationRepositoryOptimized.get_damage_statistics_optimized(
+        await AggregationRepository.get_damage_statistics(
             db, calculation_id, aggregation_type,
             damage_category, filter_tag_like)
 
