@@ -48,25 +48,12 @@ REIA is a tool for rapid earthquake impact assessment that integrates with OpenQ
    ```bash
    docker-compose up -d --build
    ```
-   
-   **Note**: The `--build` flag is needed on first run to build the custom PostgreSQL image with the pg_weighted_statistics extension.
 
-3. **Wait for services to be healthy** (optional but recommended):
-   ```bash
-   # Check that PostgreSQL is ready
-   docker-compose logs postgres
-   
-   # Check service status  
-   docker-compose ps
-   ```
-
-4. **Set up database schema**:
+3. **Set up database schema**:
    ```bash
    # This must be run manually after Docker services are up
    reia db migrate
    ```
-
-**Note**: The migration step is intentionally manual for safety reasons. This ensures you have control over when schema changes are applied, especially important in production environments.
 
 ### Running without Docker
 
@@ -74,8 +61,13 @@ REIA is a tool for rapid earthquake impact assessment that integrates with OpenQ
 2. **Install pg_weighted_statistics extension**:
    - Follow installation instructions at: https://github.com/schmidni/pg_weighted_statistics
    - Or install via PGXN: `pgxn install pg_weighted_statistics`
-3. **Configure `.env`** with your database connection details
-4. **Run migrations**:
+3. **Create Extensions** in your database:
+   ```sql
+   CREATE EXTENSION postgis;
+   CREATE EXTENSION weighted_statistics;
+   ```
+4. **Configure `.env`** with your database connection details
+5. **Run migrations**:
    ```bash
    reia db migrate
    ```
@@ -108,9 +100,7 @@ reia db current          # Show current migration
 reia db history          # Show migration history
 reia db downgrade <revision>    # Rollback to previous migration
 reia db downgrade -- -1 # Rollback to by 1 migration
-# Legacy operations (for compatibility)
-reia db init            # Initialize database (old method)
-reia db drop            # Drop all tables
+reia db downgrade base  # Remove all Tables, Functions and Triggers
 ```
 
 ### Data Management
@@ -148,15 +138,15 @@ reia calculation list                   # List all calculations
 ### Example Workflow
 ```bash
 # 1. Start services
-docker-compose up -d
+docker-compose up -d --build
 
 # 2. Set up database
 reia db migrate
 
 # 3. Add models
-reia exposure add data/exposure.xml "My Exposure Model"
-reia vulnerability add data/vulnerability.xml "My Vulnerability Model"
-reia fragility add data/fragility.xml "My Fragility Model"
+reia exposure add data/exposure.xml "Exposure_model_1"
+reia vulnerability add data/vulnerability.xml "Vulnerability_model_1"
+reia fragility add data/fragility.xml "Fragility_model_1"
 
 # 4. Run risk assessment
 reia risk-assessment run "scenario_1" --loss settings/loss.ini --damage settings/damage.ini
