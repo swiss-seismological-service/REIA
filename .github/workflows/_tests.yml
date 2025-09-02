@@ -13,7 +13,7 @@ jobs:
 
         services:
             postgres:
-                image: ghcr.io/schmidni/pg_weighted_statistics:sha256-353ed3ce2ef87511707d09912c17efebeacd816d615412dc53d1d22f5625b411
+                image: ghcr.io/schmidni/pg_weighted_statistics:pg16-postgis3.5
                 env:
                     POSTGRES_USER: postgres
                     POSTGRES_PASSWORD: postgres
