@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 
 from reia.config.settings import get_webservice_settings
+from reia.webservice.schemas import WSRiskCategory
 
 settings = get_webservice_settings()
 
@@ -54,7 +55,12 @@ def csv_response(type: str, *args) -> StreamingResponse:
                  f"attachment;filename={filename}.csv"})
 
 
-def construct_csv_filename(type, oid, agg, filter, category, sum) -> str:
+def construct_csv_filename(type: str,
+                           oid: int,
+                           agg: str,
+                           filter: str,
+                           category: WSRiskCategory,
+                           sum: bool) -> str:
     if sum:
         agg = settings.csv_names.sum[
             agg] if agg in settings.csv_names.sum else f'{agg}-sum'
@@ -69,18 +75,17 @@ def construct_csv_filename(type, oid, agg, filter, category, sum) -> str:
     return f"{type}_{oid}_" \
         f"{agg}" \
         f"{f'-{filter}' if filter else ''}" \
-        f"_{category}"
+        f"_{category.value}"
 
 
-def rename_column_headers(
-        df: pd.DataFrame, type, category, agg) -> pd.DataFrame:
+def rename_column_headers(df: pd.DataFrame,
+                          type: str,
+                          category: WSRiskCategory,
+                          agg: str) -> pd.DataFrame:
 
-    mapping = settings.csv_names.column_names[type][category] if (
-        type in settings.csv_names.column_names
-        and category in settings.csv_names.column_names[type]) else {}
-
-    tag_mapping = settings.csv_names.column_names.aggregation[agg] if (
-        agg in settings.csv_names.column_names.aggregation) else {}
+    column_names = getattr(settings.csv_names.column_names, type)
+    mapping = column_names.get(category.value, {})
+    tag_mapping = settings.csv_names.column_names.aggregation.get(agg, {})
 
     # build list of dictionary keys and apply order to df columns
     # as well as unselecting columns which are not present in naming dict

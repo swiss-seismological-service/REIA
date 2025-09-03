@@ -11,7 +11,7 @@ test_model/
 ./*.sh
 CLAUDE.md
 .claude/
-
+notes_*.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
