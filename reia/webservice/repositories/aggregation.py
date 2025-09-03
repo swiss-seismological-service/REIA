@@ -47,41 +47,41 @@ class AggregationRepository:
                          assoc.aggregationtag = lat._oid
             WHERE
                 rv._calculation_oid = :calculation_id
-                AND rv.losscategory = :loss_category_str
-                AND rv._type = 'DAMAGE'
+                AND rv.losscategory = CAST(:loss_category_str AS elosscategory)
                 AND assoc.aggregationtype = :aggregation_type
+                AND lat.type = :aggregation_type
                 AND lat.name LIKE :name_pattern
         ),
         damage_statistics AS (
             SELECT
                 tag_name,
-                -- All damage grade statistics using sparse data functions
-                weighted_mean(array_agg(dg1_value),
-                    array_agg(weight)) as dg1_mean,
-                weighted_quantile(array_agg(dg1_value),
-                    array_agg(weight), ARRAY[0.1, 0.9]) as dg1_quantiles,
-
-                weighted_mean(array_agg(dg2_value),
-                    array_agg(weight)) as dg2_mean,
-                weighted_quantile(array_agg(dg2_value),
-                    array_agg(weight), ARRAY[0.1, 0.9]) as dg2_quantiles,
-
-                weighted_mean(array_agg(dg3_value),
-                    array_agg(weight)) as dg3_mean,
-                weighted_quantile(array_agg(dg3_value),
-                    array_agg(weight), ARRAY[0.1, 0.9]) as dg3_quantiles,
-
-                weighted_mean(array_agg(dg4_value),
-                    array_agg(weight)) as dg4_mean,
-                weighted_quantile(array_agg(dg4_value),
-                    array_agg(weight), ARRAY[0.1, 0.9]) as dg4_quantiles,
-
-                weighted_mean(array_agg(dg5_value),
-                    array_agg(weight)) as dg5_mean,
-                weighted_quantile(array_agg(dg5_value),
-                    array_agg(weight), ARRAY[0.1, 0.9]) as dg5_quantiles
-            FROM damage_data
-            GROUP BY tag_name
+                weighted_mean(dg1_values, weights) as dg1_mean,
+                weighted_quantile(dg1_values, weights,
+                                    ARRAY[0.1, 0.9]) as dg1_quantiles,
+                weighted_mean(dg2_values, weights) as dg2_mean,
+                weighted_quantile(dg2_values, weights,
+                                    ARRAY[0.1, 0.9]) as dg2_quantiles,
+                weighted_mean(dg3_values, weights) as dg3_mean,
+                weighted_quantile(dg3_values, weights,
+                                    ARRAY[0.1, 0.9]) as dg3_quantiles,
+                weighted_mean(dg4_values, weights) as dg4_mean,
+                weighted_quantile(dg4_values, weights,
+                                    ARRAY[0.1, 0.9]) as dg4_quantiles,
+                weighted_mean(dg5_values, weights) as dg5_mean,
+                weighted_quantile(dg5_values, weights,
+                                    ARRAY[0.1, 0.9]) as dg5_quantiles
+            FROM (
+                SELECT
+                    tag_name,
+                    array_agg(dg1_value) as dg1_values,
+                    array_agg(dg2_value) as dg2_values,
+                    array_agg(dg3_value) as dg3_values,
+                    array_agg(dg4_value) as dg4_values,
+                    array_agg(dg5_value) as dg5_values,
+                    array_agg(weight) as weights
+                FROM damage_data
+                GROUP BY tag_name
+            ) aggregated
         ),
         all_tags AS (
             SELECT DISTINCT lat.name as tag_name
@@ -184,9 +184,9 @@ class AggregationRepository:
                          assoc.aggregationtag = lat._oid
             WHERE
                 rv._calculation_oid = :calculation_id
-                AND rv.losscategory = :loss_category_str
-                AND rv._type = 'LOSS'
+                AND rv.losscategory = CAST(:loss_category_str AS elosscategory)
                 AND assoc.aggregationtype = :aggregation_type
+                AND lat.type = :aggregation_type
                 AND lat.name LIKE :name_pattern
         ),
         loss_statistics AS (

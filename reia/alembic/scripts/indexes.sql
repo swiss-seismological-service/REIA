@@ -1,20 +1,20 @@
 -- 1. Composite index for aggregation geometry joins
 -- Optimizes the join between aggregationtag and aggregationgeometry tables
 -- Converts hash join to index scan
-CREATE INDEX IF NOT EXISTS idx_aggregationgeometry_composite 
+CREATE INDEX IF NOT EXISTS idx_aggregationgeometry_tag_model
 ON loss_aggregationgeometry (_aggregationtag_oid, _exposuremodel_oid);
 
 -- 2. Index for risk value lookups
 -- Enables efficient index scan instead of sequential scan on loss_riskvalue
 -- Critical for joining with association table
-CREATE INDEX IF NOT EXISTS idx_riskvalue_calc_category_type 
-ON loss_riskvalue (_calculation_oid, losscategory, _type, _oid);
+CREATE INDEX IF NOT EXISTS idx_riskvalue_calc_category
+ON loss_riskvalue (_oid, _calculation_oid, losscategory);
 
 -- 3. Covering index for association table
 -- Enables index-only scan on loss_assoc_riskvalue_aggregationtag
 -- Significantly reduces I/O by avoiding table lookups
-CREATE INDEX IF NOT EXISTS idx_assoc_join_optimized 
-ON loss_assoc_riskvalue_aggregationtag (aggregationtype, _calculation_oid, losscategory, aggregationtag, riskvalue);
+CREATE INDEX IF NOT EXISTS idx_assoc_join
+ON loss_assoc_riskvalue_aggregationtag (riskvalue, _calculation_oid, losscategory, aggregationtag, aggregationtype);
 
 -- 4. Index for calculation branch lookups
 -- Optimizes the subquery for finding exposure models
@@ -25,8 +25,8 @@ ON loss_calculationbranch (_calculation_oid, _exposuremodel_oid);
 -- 5. Pattern-optimized index for aggregation tag filtering
 -- Optimizes type filtering with LIKE pattern matching on name
 -- Uses text_pattern_ops for efficient pattern matching queries
-CREATE INDEX IF NOT EXISTS idx_aggregationtag_type_name_oid 
-ON loss_aggregationtag (type, name text_pattern_ops, _oid);
+CREATE INDEX IF NOT EXISTS idx_aggregationtag_name_oid 
+ON loss_aggregationtag (name text_pattern_ops, _oid);
 
 -- 6. Asset lookup index
 -- Optimizes asset queries by exposure model and site
