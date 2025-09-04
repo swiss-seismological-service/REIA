@@ -1,1 +1,0 @@
-ALTER TABLE loss_aggregationtag ADD CONSTRAINT loss_aggregationtag_name_type__exposuremodel_oid_key UNIQUE (name, type, _exposuremodel_oid);
