@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/swiss-seismological-service/REIA/graph/badge.svg?token=HDUMCZ0VLK)](https://codecov.io/gh/swiss-seismological-service/REIA)
+
 # Rapid Earthquake Impact Assessment
 
 REIA is a tool for rapid earthquake impact assessment that integrates with OpenQuake engine for seismic risk calculations.
