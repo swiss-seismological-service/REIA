@@ -4,10 +4,10 @@ from reia.repositories.calculation import RiskAssessmentRepository
 from reia.schemas.calculation_schemas import RiskAssessment
 from reia.schemas.enums import EEarthquakeType, EStatus
 from reia.services.calculation import (CalculationDataService,
-                                       CalculationService)
+                                       CalculationExecutionService)
+from reia.services.creation_info import populate_creation_info
 from reia.services.logger import LoggerService
 from reia.services.status_tracker import StatusTracker
-from reia.services.creation_info import populate_creation_info
 
 
 class RiskAssessmentService:
@@ -110,5 +110,5 @@ class RiskAssessmentService:
         calculation, branch_settings = CalculationDataService.import_from_file(
             self.session, [config_path], [1])
 
-        calc_service = CalculationService(self.session)
+        calc_service = CalculationExecutionService(self.session)
         return calc_service.run_calculations(calculation, branch_settings)

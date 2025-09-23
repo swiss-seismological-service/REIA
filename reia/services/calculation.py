@@ -24,7 +24,7 @@ from reia.services.vulnerability import VulnerabilityService
 from reia.utils import create_file_buffer_configparser
 
 
-class CalculationService:
+class CalculationExecutionService:
     """Service for managing OpenQuake calculations."""
 
     def __init__(self, session: SessionType):
@@ -200,7 +200,7 @@ def run_calculation_from_files(session: SessionType,
         session, settings_files, weights)
 
     # Run calculations using the service
-    calc_service = CalculationService(session)
+    calc_service = CalculationExecutionService(session)
     calculation = calc_service.run_calculations(calculation, branch_settings)
 
     return calculation
@@ -333,7 +333,7 @@ class CalculationDataService(DataService):
                 working_job['fragility'][k] = file.name
                 calculation_files.append(file)
 
-        # Copy hazard files from disk to memory
+        # Copy hazard files (gmfs/sites) from disk to memory
         for k, v in working_job['hazard'].items():
             with open(v, 'r') as f:
                 file = io.StringIO(f.read())

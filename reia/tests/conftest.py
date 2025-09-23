@@ -13,7 +13,7 @@ from reia.repositories.tests.database import (create_test_database,
                                               upgrade_test_database)
 from reia.schemas.calculation_schemas import RiskAssessment
 from reia.services.calculation import (CalculationDataService,
-                                       CalculationService)
+                                       CalculationExecutionService)
 from reia.services.creation_info import populate_creation_info
 from reia.services.exposure import ExposureService
 from reia.services.fragility import FragilityService
@@ -133,7 +133,7 @@ def loss_calculation(loss_config, db_session):
     calculation, branch_settings = CalculationDataService.import_from_file(
         db_session, [loss_config], [1])
 
-    calc_service = CalculationService(db_session)
+    calc_service = CalculationExecutionService(db_session)
     return calc_service.run_calculations(calculation, branch_settings)
 
 
@@ -165,7 +165,7 @@ def damage_calculation(damage_config, db_session):
     calculation, branch_settings = CalculationDataService.import_from_file(
         db_session, [damage_config], [1])
 
-    calc_service = CalculationService(db_session)
+    calc_service = CalculationExecutionService(db_session)
     return calc_service.run_calculations(calculation, branch_settings)
 
 
