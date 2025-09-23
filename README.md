@@ -9,19 +9,17 @@ REIA is a tool for rapid earthquake impact assessment that integrates with OpenQ
 ### Prerequisites
 
 - Python ≥3.10, ≤3.12
-- Docker and Docker Compose
-- PostgreSQL (if not using Docker)
-- **pg_weighted_statistics extension** (automatically installed with Docker)
+- Docker
 
-### Installation
+### 1. Installation
 
-1. **Clone the repository**:
+1.1 **Clone the repository**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/swiss-seismological-service/REIA.git
    cd REIA
    ```
 
-2. **Set up environment**:
+1.2 **Set up environment**:
    ```bash
    # Create virtual environment
    python -m venv env
@@ -31,53 +29,50 @@ REIA is a tool for rapid earthquake impact assessment that integrates with OpenQ
    pip install -e .[dev]
    ```
 
-3. **Configure environment variables**:
+1.3 **Configure environment variables**:
    ```bash
    # Copy example environment file
    cp .env.example .env
    # Edit .env with your settings
    ```
 
-### Running with Docker Compose (Recommended)
+### 2. Set up Services with Docker Compose (Recommended)
 
-1. **Configure environment**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your preferred settings
-   ```
-
-2. **Start services**:
+2.1 **Start services**:
    ```bash
    docker-compose up -d --build
    ```
 
-3. **Set up database schema**:
+2.2 **Set up database schema**:
    ```bash
    # This must be run manually after Docker services are up
    reia db migrate
    ```
 
-### Running without Docker
+### 2. (Alternative) Set up Services without Docker
 
-1. **Set up PostgreSQL** with PostGIS extension
-2. **Install pg_weighted_statistics extension**:
-   - Follow installation instructions at: https://github.com/schmidni/pg_weighted_statistics
-   - Or install via PGXN: `pgxn install pg_weighted_statistics`
-3. **Create Extensions** in your database:
+   2.1 **Set up PostgreSQL** with PostGIS extension
+
+   2.2 **Install pg_weighted_statistics extension**:  
+     - Follow installation instructions at: https://github.com/schmidni/pg_weighted_statistics  
+     - Or install via PGXN: `pgxn install pg_weighted_statistics`  
+
+   2.3 **Create Extensions** in your database:
    ```sql
    CREATE EXTENSION postgis;
    CREATE EXTENSION weighted_statistics;
    ```
-4. **Configure `.env`** with your database connection details
-5. **Run migrations**:
+
+2.4 **Configure `.env`** with your database connection details  
+2.5 **Run migrations**:
    ```bash
    reia db migrate
    ```
+2.6 Install OpenQuake engine: [Instructions](https://docs.openquake.org/oq-engine/master/manual/getting-started/installation-instructions/index.html)
 
-### Run Tests
+### 3. Run Tests
 
 ```bash
-pip install -e .[dev]
 pytest --cov=.
 ```
 
