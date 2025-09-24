@@ -34,6 +34,7 @@ dependencies = [
     "fiona<1.10",
     "geoalchemy2",
     "geopandas",
+    "geopy",
     "Jinja2",
     "numpy<2",
     "openquake.engine==v3.16.7",

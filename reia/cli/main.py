@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import typer
+from typer import Argument
 from typing_extensions import Annotated
 
 from reia.cli.extensions import plugin_manager
@@ -24,6 +25,7 @@ from reia.services.calculation import (CalculationDataService,
 from reia.services.exposure import (ExposureService,
                                     add_geometries_from_shapefile)
 from reia.services.fragility import FragilityService
+from reia.services.gmfs import GMFService
 from reia.services.logger import LoggerService
 from reia.services.riskassessment import RiskAssessmentService
 from reia.services.taxonomy import TaxonomyService
@@ -64,6 +66,9 @@ fragility = typer.Typer()
 taxonomymap = typer.Typer()
 calculation = typer.Typer()
 risk_assessment = typer.Typer()
+gmfs = typer.Typer()
+
+gmf_service = GMFService()
 
 
 @app.callback()
@@ -93,6 +98,8 @@ app.add_typer(calculation, name='calculation',
               help='Create or execute calculations')
 app.add_typer(risk_assessment, name='risk-assessment',
               help='Manage Risk Assessments')
+app.add_typer(gmfs, name='gmfs',
+              help='Manage GMF files')
 
 # Load and register plugins
 plugin_manager.register_plugins(app)
@@ -673,3 +680,38 @@ def run_risk_assessment(
         f'{risk_assessment.status.name}')
 
     return risk_assessment.oid
+
+
+@gmfs.command('from-dstore')
+def export_gmfs_from_dstore(dstore: Path, directory: Path):
+    gmf_data, site_collection = gmf_service.export_from_datastore(str(dstore))
+
+    with open(Path(directory, 'gmfs.csv'), 'w') as f:
+        gmf_data.to_csv(f, index=False)
+
+    with open(Path(directory, 'sites.csv'), 'w') as f:
+        site_collection.to_csv(f, index=False)
+
+
+@gmfs.command('sample')
+def sample_gmfs(exposure_xml:
+                Annotated[Path, Argument(help='Exposure xml file path.')],
+                psa03:
+                Annotated[Path, Argument(help='PSA 0.3 shakemap file path.')],
+                psa06:
+                Annotated[Path, Argument(help='PSA 0.6 shakemap file path.')]):
+    try:
+        gmf_service.sample_from_csv([exposure_xml], psa03, psa06)
+    except BaseException as e:
+        typer.echo('Uncaught error sampling gmfs.')
+        typer.echo(str(e))
+        import errno
+        sys.exit(errno.EINVAL)
+
+
+@gmfs.command('shakemap')
+def sample_shakemap(exposure_xml: Path, grid_xml: Path, uncertainty_xml: Path):
+    gmf_service.sample_from_shakemap(
+        [exposure_xml],
+        str(grid_xml),
+        str(uncertainty_xml))
