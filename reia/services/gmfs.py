@@ -26,8 +26,7 @@ class GMFService:
     def sample_from_csv(
         self,
         exposure_xml: list[str],
-        psa03_csv: str,
-        psa06_csv: str,
+        csv_files: list[str],
         num_gmfs: int = 500,
     ) -> None:
         """Sample ground motion fields (GMFs) from CSV files."""
@@ -39,10 +38,15 @@ class GMFService:
             mesh.lons, mesh.lats)
 
         # read csv files and merge into one dataframe
-        psa03 = pd.read_csv(psa03_csv, delimiter=",")
-        psa06 = pd.read_csv(psa06_csv, delimiter=",")
+        dfs = [pd.read_csv(csv_file, delimiter=",") for csv_file in csv_files]
 
-        gmfs = psa03.merge(psa06, on=['lat', 'lon'], how='inner').dropna()
+        # merge all dataframes on lat/lon
+        gmfs = dfs[0]
+        for df in dfs[1:]:
+            gmfs = gmfs.merge(df, on=['lat', 'lon'], how='outer')
+
+        # fill missing values with 0
+        gmfs = gmfs.fillna(0)
 
         # filter array, correct unit (%g to g)
         filter_psa06 = gmfs['psa06_%g'] / 100

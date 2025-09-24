@@ -694,14 +694,12 @@ def export_gmfs_from_dstore(dstore: Path, directory: Path):
 
 
 @gmfs.command('sample')
-def sample_gmfs(exposure_xml:
-                Annotated[Path, Argument(help='Exposure xml file path.')],
-                psa03:
-                Annotated[Path, Argument(help='PSA 0.3 shakemap file path.')],
-                psa06:
-                Annotated[Path, Argument(help='PSA 0.6 shakemap file path.')]):
+def sample_gmfs(
+    exposure_xml: Annotated[Path, Argument(help='Exposure xml file path.')],
+    csv_files: Annotated[list[Path], Argument(help='List of CSV shakemap file paths.')]
+):
     try:
-        gmf_service.sample_from_csv([exposure_xml], psa03, psa06)
+        gmf_service.sample_from_csv([exposure_xml], [str(f) for f in csv_files])
     except BaseException as e:
         typer.echo('Uncaught error sampling gmfs.')
         typer.echo(str(e))

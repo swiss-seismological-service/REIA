@@ -31,8 +31,7 @@ def test_sample_from_csv(tmp_path, monkeypatch):
 
     GMFService().sample_from_csv(
         [str(tmp_xml)],
-        str(psa03_csv),
-        str(psa06_csv),
+        [str(psa03_csv), str(psa06_csv)],
         num_gmfs=5,
     )
 
