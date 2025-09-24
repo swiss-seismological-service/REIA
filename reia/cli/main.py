@@ -710,8 +710,16 @@ def sample_gmfs(exposure_xml:
 
 
 @gmfs.command('shakemap')
-def sample_shakemap(exposure_xml: Path, grid_xml: Path, uncertainty_xml: Path):
+def sample_shakemap(
+    exposure_xml: Path,
+    grid_xml: Path,
+    uncertainty_xml: Path,
+    imts: Annotated[list[str], Argument(
+        help='List of intensity measure types (e.g., SA(0.3) SA(1.0))'
+    )]
+):
     gmf_service.sample_from_shakemap(
         [exposure_xml],
         str(grid_xml),
-        str(uncertainty_xml))
+        str(uncertainty_xml),
+        imts)

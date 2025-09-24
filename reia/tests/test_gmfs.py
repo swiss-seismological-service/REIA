@@ -58,8 +58,10 @@ def test_sample_from_csv(tmp_path, monkeypatch):
         abs=1e-5,
     )
 
-    assert gmfs_df["gmv_SA(0.3)"].mean() == pytest.approx(0.0126388978, abs=1e-6)
-    assert gmfs_df["gmv_SA(0.6)"].mean() == pytest.approx(0.0046657511, abs=1e-6)
+    assert gmfs_df["gmv_SA(0.3)"].mean() == pytest.approx(0.0126388978,
+                                                          abs=1e-6)
+    assert gmfs_df["gmv_SA(0.6)"].mean() == pytest.approx(0.0046657511,
+                                                          abs=1e-6)
 
 
 def test_sample_from_shakemap(tmp_path, monkeypatch):
@@ -86,6 +88,7 @@ def test_sample_from_shakemap(tmp_path, monkeypatch):
         [str(tmp_exposure)],
         str(tmp_grid),
         str(tmp_uncertainty),
+        ['SA(0.3)', 'SA(1.0)'],
     )
 
     sites_path = tmp_path / "sites_gen.csv"
@@ -98,20 +101,20 @@ def test_sample_from_shakemap(tmp_path, monkeypatch):
     gmfs_df = pd.read_csv(gmfs_path)
 
     assert list(sites_df.columns) == ["site_id", "lon", "lat"]
-    assert list(gmfs_df.columns) == ["sid", "eid", "SA(0.3)", "SA(1.0)"]
+    assert list(gmfs_df.columns) == ["sid", "eid", "gmv_SA(0.3)", "gmv_SA(1.0)"]
 
     sid0 = gmfs_df[gmfs_df["sid"] == 0].sort_values("eid").head(5)
-    assert sid0["SA(0.3)"].tolist() == pytest.approx(
+    assert sid0["gmv_SA(0.3)"].tolist() == pytest.approx(
         [0.03192, 0.10167, 0.05700, 0.04544, 0.02102],
         abs=1e-5,
     )
-    assert sid0["SA(1.0)"].tolist() == pytest.approx(
+    assert sid0["gmv_SA(1.0)"].tolist() == pytest.approx(
         [0.02985, 0.02273, 0.01563, 0.03765, 0.02914],
         abs=1e-5,
     )
 
-    assert gmfs_df["SA(0.3)"].mean() == pytest.approx(0.06375648, abs=1e-6)
-    assert gmfs_df["SA(1.0)"].mean() == pytest.approx(0.03498002, abs=1e-6)
+    assert gmfs_df["gmv_SA(0.3)"].mean() == pytest.approx(0.06375648, abs=1e-6)
+    assert gmfs_df["gmv_SA(1.0)"].mean() == pytest.approx(0.03498002, abs=1e-6)
 
 
 def test_export_from_datastore(tmp_path):

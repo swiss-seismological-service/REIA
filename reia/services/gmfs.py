@@ -137,6 +137,7 @@ class GMFService:
         exposure_xml: list[str],
         grid_xml: str,
         uncertainty_xml: str,
+        imts: list[str],
     ) -> None:
         """Sample ground motion fields (GMFs) from shakemap files."""
 
@@ -150,17 +151,15 @@ class GMFService:
                    "uncertainty_url": uncertainty_xml}
 
         sitecol, shkmp, discarded = get_sitecol_shakemap(
-            uridict, ['SA(0.3)', 'SA(1.0)'], full_sitecol, mode='filter')
+            uridict, imts, full_sitecol, mode='filter')
 
         gmf_dict = {'kind': 'basic'}
 
         _, gmfs = to_gmfs(
-            shkmp, gmf_dict, False, 2, 100, 42, [
-                'SA(0.3)', 'SA(1.0)'])
+            shkmp, gmf_dict, False, 2, 100, 42, imts)
 
         self._write_gmf_csvs(
-            gmfs, full_sitecol, sitecol, [
-                'SA(0.3)', 'SA(1.0)'])
+            gmfs, full_sitecol, sitecol, [f'gmv_{imt}' for imt in imts])
 
     def export_from_datastore(
         self,
