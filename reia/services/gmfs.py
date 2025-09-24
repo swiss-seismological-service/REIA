@@ -11,7 +11,6 @@ import pandas as pd
 from geopy import distance
 from openquake.commonlib.datastore import read
 from openquake.hazardlib import geo
-from openquake.hazardlib.shakemap.gmfs import to_gmfs
 from openquake.hazardlib.shakemap.maps import get_sitecol_shakemap
 from openquake.hazardlib.site import SiteCollection
 from openquake.risklib.asset import Exposure
@@ -48,21 +47,15 @@ class GMFService:
         # fill missing values with 0
         gmfs = gmfs.fillna(0)
 
-        # filter array, correct unit (%g to g)
+        # filter array, correct unit (%g to g) - keep values in original scale for filtering
         filter_psa06 = gmfs['psa06_%g'] / 100
         filter_psa03 = gmfs['psa03_%g'] / 100
 
-        # mean values are the expectation in log space,
-        # transform to expectation in normal space
-        gmfs['psa03_%g'] = np.log(gmfs['psa03_%g']) - \
-            (gmfs['lnpsa03_uncertainty'] ** 2 / 2)
-        gmfs['psa06_%g'] = np.log(gmfs['psa06_%g']) - \
-            (gmfs['lnpsa06_uncertainty'] ** 2 / 2)
+        # Keep original values in %g - no log transformation here
 
-        # filter out sites with low psa values
-        # lower threshold can be raised once confident the pipeline works
-        thresholds = [(0.05, 0.1), (0.005, 0.01),
-                      (0.0005, 0.001)]
+        # filter out sites with low psa values (in g units after /100 conversion)
+        # thresholds were always in normal space since they compare against filter_psa* variables
+        thresholds = [(0.05, 0.1), (0.005, 0.01), (0.0005, 0.001)]
         len_before = gmfs.shape[0]
 
         # filter adaptively so that there are some sites left
@@ -109,30 +102,30 @@ class GMFService:
             self._write_gmf_csvs(empty_gmfs, full_sitecol, full_sitecol)
             return
 
+        # Convert CSV data to the same structured array format as OpenQuake shakemap
+        N = len(gmfs)
         imts = ['psa03_%g', 'psa06_%g']
-        stds = ['lnpsa03_uncertainty', 'lnpsa06_uncertainty']
 
-        # build up gmfs matrix for sampling
-        M = len(imts)       # Number of imts
-        N = len(gmfs)       # number of sites
+        # Create structured array with the same format as OpenQuake shakemap
+        dtype = [('lon', '<f4'), ('lat', '<f4'), ('vs30', '<f4'),
+                 ('val', [(imt, '<f4') for imt in imts]),
+                 ('std', [(imt, '<f4') for imt in imts])]
 
-        # SAMPLING
-        # generate standard normal random variates of shape (M*N, E)
-        Z = truncnorm.rvs(-2, 2, loc=0, scale=1,
-                          size=(M * N, num_gmfs), random_state=41)
+        shakemap = np.zeros(N, dtype=dtype)
+        shakemap['lon'] = gmfs['lon']
+        shakemap['lat'] = gmfs['lat']
+        shakemap['vs30'] = 600.0  # Default VS30 value
 
-        # build array of mean values of shape (M*N, E)
-        mu = np.array([np.ones(num_gmfs) * gmfs[str(imt)][j]
-                       for imt in imts for j in range(N)])
+        # Convert CSV data to OpenQuake shakemap format - values are in original %g scale
+        shakemap['val']['psa03_%g'] = gmfs['psa03_%g']  # Values in %g
+        shakemap['val']['psa06_%g'] = gmfs['psa06_%g']  # Values in %g
+        shakemap['std']['psa03_%g'] = gmfs['lnpsa03_uncertainty']  # Std in log space
+        shakemap['std']['psa06_%g'] = gmfs['lnpsa06_uncertainty']  # Std in log space
 
-        sig = np.array([gmfs[std] for std in stds]).flatten()
+        gmf_dict = {'kind': 'basic'}
 
-        # "sig" is already given in normal space (its unit is ln(%g)).
-        # Create samples in normal space and transform to log space
-        # in order to get normally distributed samples.
-        gmfs = np.exp((Z.T * sig).T + mu) / 100
-
-        gmfs = gmfs.reshape((M, N, num_gmfs)).transpose(1, 2, 0)
+        _, gmfs = self.to_gmfs(
+            shakemap, gmf_dict, False, 2, num_gmfs, 41, imts)
 
         self._write_gmf_csvs(gmfs, full_sitecol, sitecol)
 
@@ -159,11 +152,95 @@ class GMFService:
 
         gmf_dict = {'kind': 'basic'}
 
-        _, gmfs = to_gmfs(
+        _, gmfs = self.to_gmfs(
             shkmp, gmf_dict, False, 2, 100, 42, imts)
 
         self._write_gmf_csvs(
             gmfs, full_sitecol, sitecol, [f'gmv_{imt}' for imt in imts])
+
+    def to_gmfs(
+        self,
+        shakemap,
+        gmf_dict,
+        vs30,
+        truncation_level,
+        num_gmfs,
+        seed,
+        imts=None
+    ) -> Tuple[list, np.ndarray]:
+        """Generate ground motion fields from shakemap data.
+
+        Compatible with OpenQuake's to_gmfs signature but only supports
+        'basic' and 'mmi' calculation methods.
+
+        Args:
+            shakemap: Dictionary containing site data and ground motion values
+            gmf_dict: Dictionary with 'kind' key specifying method ('basic' or 'mmi')
+            vs30: VS30 values (ignored in this implementation)
+            truncation_level: Truncation level for random sampling
+            num_gmfs: Number of GMF realizations to generate
+            seed: Random seed for reproducible results
+            imts: List of intensity measure types
+
+        Returns:
+            Tuple of (imts_list, gmfs_array) where gmfs_array has shape (N, E, M)
+        """
+        method = gmf_dict.get('kind', 'basic')
+        if method not in ['basic', 'mmi']:
+            raise ValueError(f"Unsupported method: {method}. Only 'basic' and 'mmi' are supported.")
+
+        if imts is None:
+            imts = list(shakemap.imts)
+
+        M = len(imts)  # Number of IMTs
+        N = len(shakemap)  # Number of sites
+
+        # Generate truncated normal random variables
+        Z = truncnorm.rvs(-truncation_level, truncation_level,
+                         loc=0, scale=1,
+                         size=(M * N, num_gmfs),
+                         random_state=seed)
+
+        if method == 'basic':
+            # Basic method: log-normal distribution with %g to g conversion
+            mu_vals = []
+            sig_vals = []
+
+            for imt in imts:
+                for j in range(N):
+                    # Take log of values and apply standard processing
+                    mu_vals.append(np.ones(num_gmfs) * np.log(shakemap[j]['val'][imt]))
+                    sig_vals.append(shakemap[j]['std'][imt])
+
+            mu = np.array(mu_vals)
+            sig = np.array(sig_vals)
+
+            # Apply variance correction for log-normal distribution
+            mu = mu - (sig.reshape(-1, 1) ** 2 / 2)
+
+            # Generate samples and convert from %g to g
+            gmfs = np.exp((Z.T * sig).T + mu) / 100
+
+        elif method == 'mmi':
+            # MMI method: simple normal distribution
+            mu_vals = []
+            sig_vals = []
+
+            for imt in imts:
+                for j in range(N):
+                    # Access the IMT-specific values from the structured array
+                    mu_vals.append(np.ones(num_gmfs) * shakemap[j]['val'][imt])
+                    sig_vals.append(shakemap[j]['std'][imt])
+
+            mu = np.array(mu_vals)
+            sig = np.array(sig_vals)
+
+            gmfs = (Z.T * sig).T + mu
+
+        # Reshape to (N, E, M) format
+        gmfs = gmfs.reshape((M, N, num_gmfs)).transpose(1, 2, 0)
+
+        return imts, gmfs
 
     def export_from_datastore(
         self,

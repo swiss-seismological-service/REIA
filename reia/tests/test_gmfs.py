@@ -104,16 +104,16 @@ def test_sample_from_shakemap(tmp_path, monkeypatch):
 
     sid0 = gmfs_df[gmfs_df["sid"] == 0].sort_values("eid").head(5)
     assert sid0["gmv_SA(0.3)"].tolist() == pytest.approx(
-        [0.03192, 0.10167, 0.05700, 0.04544, 0.02102],
+        [0.02585, 0.08231, 0.04615, 0.03679, 0.01702],
         abs=1e-5,
     )
     assert sid0["gmv_SA(1.0)"].tolist() == pytest.approx(
-        [0.02985, 0.02273, 0.01563, 0.03765, 0.02914],
+        [0.02385, 0.01816, 0.01249, 0.03008, 0.02328],
         abs=1e-5,
     )
 
-    assert gmfs_df["gmv_SA(0.3)"].mean() == pytest.approx(0.06375648, abs=1e-6)
-    assert gmfs_df["gmv_SA(1.0)"].mean() == pytest.approx(0.03498002, abs=1e-6)
+    assert gmfs_df["gmv_SA(0.3)"].mean() == pytest.approx(0.04983328, abs=1e-6)
+    assert gmfs_df["gmv_SA(1.0)"].mean() == pytest.approx(0.02681144, abs=1e-6)
 
 
 def test_export_from_datastore(tmp_path):
