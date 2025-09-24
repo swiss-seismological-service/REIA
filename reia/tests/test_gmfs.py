@@ -125,18 +125,18 @@ def test_export_from_datastore(tmp_path):
         str(datastore_path))
 
     assert gmf_data.shape == (8307, 4)
-    assert list(gmf_data.columns) == ["sid", "eid", "gmv_0", "gmv_1"]
+    assert list(gmf_data.columns) == ["sid", "eid", "gmv_PGA", "gmv_SA(0.3)"]
     assert site_collection.shape == (407, 3)
     assert list(site_collection.columns) == ["site_id", "lon", "lat"]
 
     sample_row = gmf_data[(gmf_data["sid"] == 233) & (gmf_data["eid"] == 8)]
     assert not sample_row.empty
     sample = sample_row.iloc[0]
-    assert sample["gmv_0"] == pytest.approx(0.005419, abs=1e-6)
-    assert sample["gmv_1"] == pytest.approx(0.069012, abs=1e-6)
+    assert sample["gmv_PGA"] == pytest.approx(0.005419, abs=1e-6)
+    assert sample["gmv_SA(0.3)"] == pytest.approx(0.069012, abs=1e-6)
 
-    assert gmf_data["gmv_0"].mean() == pytest.approx(0.063709, abs=1e-6)
-    assert gmf_data["gmv_1"].mean() == pytest.approx(0.126406, abs=1e-6)
+    assert gmf_data["gmv_PGA"].mean() == pytest.approx(0.063709, abs=1e-6)
+    assert gmf_data["gmv_SA(0.3)"].mean() == pytest.approx(0.126406, abs=1e-6)
 
     first_site = site_collection.iloc[0]
     assert first_site["lon"] == pytest.approx(81.55049, abs=1e-5)

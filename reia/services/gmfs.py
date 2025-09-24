@@ -173,6 +173,23 @@ class GMFService:
         site_collection = store.read_df('sitecol')[['sids', 'lon', 'lat']]
         gmf_data = store.read_df('gmf_data')
 
+        # rename gmv_* columns based on IMT metadata stored in the datastore
+        gmf_attrs = store.hdf5['gmf_data'].attrs
+        imts_attr = gmf_attrs.get('imts', '')
+        if isinstance(imts_attr, bytes):
+            imts_attr = imts_attr.decode()
+        imts = [imt.strip() for imt in imts_attr.split() if imt.strip()]
+
+        rename_map = {}
+        for idx, imt in enumerate(imts):
+            col = f'gmv_{idx}'
+            renamed = f'gmv_{imt}'
+            if col in gmf_data.columns and renamed not in gmf_data.columns:
+                rename_map[col] = renamed
+
+        if rename_map:
+            gmf_data = gmf_data.rename(columns=rename_map)
+
         site_collection.rename(columns={'sids': 'site_id'}, inplace=True)
 
         return (gmf_data, site_collection)
