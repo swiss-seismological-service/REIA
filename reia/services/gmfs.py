@@ -47,14 +47,17 @@ class GMFService:
         # fill missing values with 0
         gmfs = gmfs.fillna(0)
 
-        # filter array, correct unit (%g to g) - keep values in original scale for filtering
+        # filter array, correct unit (%g to g) - keep values in original scale
+        # for filtering
         filter_psa06 = gmfs['psa06_%g'] / 100
         filter_psa03 = gmfs['psa03_%g'] / 100
 
         # Keep original values in %g - no log transformation here
 
-        # filter out sites with low psa values (in g units after /100 conversion)
-        # thresholds were always in normal space since they compare against filter_psa* variables
+        # filter out sites with low psa values
+        # (in g units after /100 conversion)
+        # thresholds were always in normal space since they compare against
+        # filter_psa* variables
         thresholds = [(0.05, 0.1), (0.005, 0.01), (0.0005, 0.001)]
         len_before = gmfs.shape[0]
 
@@ -102,7 +105,8 @@ class GMFService:
             self._write_gmf_csvs(empty_gmfs, full_sitecol, full_sitecol)
             return
 
-        # Convert CSV data to the same structured array format as OpenQuake shakemap
+        # Convert CSV data to the same structured array format
+        # as OpenQuake shakemap
         N = len(gmfs)
         imts = ['psa03_%g', 'psa06_%g']
 
@@ -116,11 +120,14 @@ class GMFService:
         shakemap['lat'] = gmfs['lat']
         shakemap['vs30'] = 600.0  # Default VS30 value
 
-        # Convert CSV data to OpenQuake shakemap format - values are in original %g scale
+        # Convert CSV data to OpenQuake shakemap format -
+        # values are in original %g scale
         shakemap['val']['psa03_%g'] = gmfs['psa03_%g']  # Values in %g
         shakemap['val']['psa06_%g'] = gmfs['psa06_%g']  # Values in %g
-        shakemap['std']['psa03_%g'] = gmfs['lnpsa03_uncertainty']  # Std in log space
-        shakemap['std']['psa06_%g'] = gmfs['lnpsa06_uncertainty']  # Std in log space
+        # Std in log space
+        shakemap['std']['psa03_%g'] = gmfs['lnpsa03_uncertainty']
+        # Std in log space
+        shakemap['std']['psa06_%g'] = gmfs['lnpsa06_uncertainty']
 
         gmf_dict = {'kind': 'basic'}
 
@@ -175,7 +182,8 @@ class GMFService:
 
         Args:
             shakemap: Dictionary containing site data and ground motion values
-            gmf_dict: Dictionary with 'kind' key specifying method ('basic' or 'mmi')
+            gmf_dict: Dictionary with 'kind' key specifying method
+                ('basic' or 'mmi')
             vs30: VS30 values (ignored in this implementation)
             truncation_level: Truncation level for random sampling
             num_gmfs: Number of GMF realizations to generate
@@ -183,11 +191,14 @@ class GMFService:
             imts: List of intensity measure types
 
         Returns:
-            Tuple of (imts_list, gmfs_array) where gmfs_array has shape (N, E, M)
+            Tuple of (imts_list, gmfs_array)
+            where gmfs_array has shape (N, E, M)
         """
         method = gmf_dict.get('kind', 'basic')
         if method not in ['basic', 'mmi']:
-            raise ValueError(f"Unsupported method: {method}. Only 'basic' and 'mmi' are supported.")
+            raise ValueError(
+                f"Unsupported method: {method}. Only "
+                "'basic' and 'mmi' are supported.")
 
         if imts is None:
             imts = list(shakemap.imts)
@@ -197,9 +208,9 @@ class GMFService:
 
         # Generate truncated normal random variables
         Z = truncnorm.rvs(-truncation_level, truncation_level,
-                         loc=0, scale=1,
-                         size=(M * N, num_gmfs),
-                         random_state=seed)
+                          loc=0, scale=1,
+                          size=(M * N, num_gmfs),
+                          random_state=seed)
 
         if method == 'basic':
             # Basic method: log-normal distribution with %g to g conversion
@@ -209,7 +220,10 @@ class GMFService:
             for imt in imts:
                 for j in range(N):
                     # Take log of values and apply standard processing
-                    mu_vals.append(np.ones(num_gmfs) * np.log(shakemap[j]['val'][imt]))
+                    mu_vals.append(
+                        np.ones(num_gmfs)
+                        * np.log(
+                            shakemap[j]['val'][imt]))
                     sig_vals.append(shakemap[j]['std'][imt])
 
             mu = np.array(mu_vals)
