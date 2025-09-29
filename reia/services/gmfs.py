@@ -1,8 +1,10 @@
+import configparser
 import csv
-import errno
+import json
 import logging
 import os
-import sys
+from io import StringIO
+from pathlib import Path
 from typing import Tuple
 
 import geopandas as gpd
@@ -16,6 +18,8 @@ from openquake.hazardlib.site import SiteCollection
 from openquake.risklib.asset import Exposure
 from scipy.stats import truncnorm
 
+from reia.utils import write_buffer_temp
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -24,15 +28,22 @@ class GMFService:
 
     def sample_from_csv(
         self,
-        exposure_xml: list[str],
+        exposure_xml: Path,
         csv_files: list[str],
+        imts: list[str],
+        gmf_cols: list[str] | None = None,
+        uncertainty_cols: list[str] | None = None,
         num_gmfs: int = 500,
-    ) -> None:
+        assoc_distance: float = 10,
+        truncation_level: float = 2,
+        seed: int = 42,
+        minimum_intensities: dict = {}
+    ) -> tuple[StringIO, StringIO]:
         """Sample ground motion fields (GMFs) from CSV files."""
 
         # create a SiteCollection
         mesh, _ = Exposure.read(
-            exposure_xml, check_dupl=False).get_mesh_assets_by_site()
+            [str(exposure_xml)], check_dupl=False).get_mesh_assets_by_site()
         full_sitecol = SiteCollection.from_points(
             mesh.lons, mesh.lats)
 
@@ -44,46 +55,38 @@ class GMFService:
         for df in dfs[1:]:
             gmfs = gmfs.merge(df, on=['lat', 'lon'], how='outer')
 
-        # fill missing values with 0
-        gmfs = gmfs.fillna(0)
+        gmfs = gmfs.dropna()
 
-        # filter array, correct unit (%g to g) - keep values in original scale
-        # for filtering
-        filter_psa06 = gmfs['psa06_%g'] / 100
-        filter_psa03 = gmfs['psa03_%g'] / 100
-
-        # Keep original values in %g - no log transformation here
-
-        # filter out sites with low psa values
-        # (in g units after /100 conversion)
-        # thresholds were always in normal space since they compare against
-        # filter_psa* variables
-        thresholds = [(0.05, 0.1), (0.005, 0.01), (0.0005, 0.001)]
+        if gmf_cols is not None:
+            gmfs = gmfs.rename(columns={col: imt for col, imt in
+                                        zip(gmf_cols, imts)})
+        if uncertainty_cols is not None:
+            gmfs = gmfs.rename(columns={col: f'{imt}_std' for col, imt in
+                                        zip(uncertainty_cols, imts)})
         len_before = gmfs.shape[0]
 
-        # filter adaptively so that there are some sites left
-        for ts in thresholds:
-            df = gmfs[(filter_psa06 > ts[0]) & (filter_psa03 > ts[1])]
-            if not df.empty:
-                break
-        gmfs = df
+        # filter out sites with low minimum intensity values
+        for imt in imts:
+            if imt in minimum_intensities:
+                min_intensity = minimum_intensities[imt]
+                gmfs = gmfs[gmfs[imt] / 100 >= min_intensity]
 
-        # if gmfs are empty, check if there were any gmfs passed in the first
-        # place
+        # if gmfs are empty, check if there were any gmfs
+        # passed in the first place
         if gmfs.empty:
             if len_before == 0:
-                LOGGER.error('Input to GMF sampling is empty.')
-                sys.exit(errno.EINVAL)
-
+                LOGGER.warning('Input to GMF sampling is empty.')
             # if all were filtered out, log a warning and return zero-valued
-            # gmfs
-            LOGGER.warning('Input GMFs are too small.')
+            else:
+                LOGGER.warning('Input GMFs are lower than the '
+                               'configured minimum intensities.')
+
             empty_gmfs = np.zeros((1, num_gmfs, 2))
-            self._write_gmf_csvs(empty_gmfs, full_sitecol, full_sitecol)
-            return
+            return self._write_gmf_csvs(
+                empty_gmfs, full_sitecol, full_sitecol, imts)
 
         # calculate association distance
-        assoc_distance = self._calculate_mean_association_distance(gmfs, 3)
+        # assoc_distance = self._calculate_mean_association_distance(gmfs, 3)
 
         # convert back to numpy arrays
         gmfs = gmfs.to_records(index=False)
@@ -102,13 +105,12 @@ class GMFService:
                            f'{gmfs.shape[0]-num} are outside of Switzerland.')
             # and return zero-valued gmfs
             empty_gmfs = np.zeros((1, num_gmfs, 2))
-            self._write_gmf_csvs(empty_gmfs, full_sitecol, full_sitecol)
-            return
+            return self._write_gmf_csvs(
+                empty_gmfs, full_sitecol, full_sitecol, imts)
 
         # Convert CSV data to the same structured array format
         # as OpenQuake shakemap
         N = len(gmfs)
-        imts = ['psa03_%g', 'psa06_%g']
 
         # Create structured array with the same format as OpenQuake shakemap
         dtype = [('lon', '<f4'), ('lat', '<f4'), ('vs30', '<f4'),
@@ -118,23 +120,21 @@ class GMFService:
         shakemap = np.zeros(N, dtype=dtype)
         shakemap['lon'] = gmfs['lon']
         shakemap['lat'] = gmfs['lat']
-        shakemap['vs30'] = 600.0  # Default VS30 value
+        shakemap['vs30'] = None  # Default VS30 value
 
-        # Convert CSV data to OpenQuake shakemap format -
-        # values are in original %g scale
-        shakemap['val']['psa03_%g'] = gmfs['psa03_%g']  # Values in %g
-        shakemap['val']['psa06_%g'] = gmfs['psa06_%g']  # Values in %g
-        # Std in log space
-        shakemap['std']['psa03_%g'] = gmfs['lnpsa03_uncertainty']
-        # Std in log space
-        shakemap['std']['psa06_%g'] = gmfs['lnpsa06_uncertainty']
+        # Convert CSV data to OpenQuake shakemap format
+        for imt in imts:
+            shakemap['val'][imt] = gmfs[imt]  # Values in %g
+            shakemap['std'][imt] = gmfs[f'{imt}_std']
 
         gmf_dict = {'kind': 'basic'}
 
+        LOGGER.info(f'Sampling {num_gmfs} GMFs for {len(sitecol)} sites.')
         _, gmfs = self.to_gmfs(
-            shakemap, gmf_dict, False, 2, num_gmfs, 41, imts)
+            shakemap, gmf_dict, False, truncation_level, num_gmfs, seed, imts)
 
-        self._write_gmf_csvs(gmfs, full_sitecol, sitecol)
+        LOGGER.info('Writing GMFs to CSV files.')
+        return self._write_gmf_csvs(gmfs, full_sitecol, sitecol, imts)
 
     def sample_from_shakemap(
         self,
@@ -162,8 +162,7 @@ class GMFService:
         _, gmfs = self.to_gmfs(
             shkmp, gmf_dict, False, 2, 100, 42, imts)
 
-        self._write_gmf_csvs(
-            gmfs, full_sitecol, sitecol, [f'gmv_{imt}' for imt in imts])
+        return self._write_gmf_csvs(gmfs, full_sitecol, sitecol, imts)
 
     def to_gmfs(
         self,
@@ -291,34 +290,44 @@ class GMFService:
     def _write_gmf_csvs(
         self,
         gmfs: np.ndarray,
-        full_sitecol: SiteCollection,
-        sitecol: SiteCollection,
-        sa_levels: list[str] = ['gmv_SA(0.3)', 'gmv_SA(0.6)'],
-    ) -> None:
-        """Write the GMFs and site collection to CSV files."""
+        full_sitecol,
+        sitecol,
+        imts: list[str],
+    ) -> Tuple[StringIO, StringIO]:
+        """Write the GMFs and site collection to StringIO CSV buffers."""
 
-        with open('sites_gen.csv', 'w') as f:
-            writer = csv.writer(f)
+        sites_buf = StringIO()
+        gmfs_buf = StringIO()
 
-            # write the header
-            writer.writerow(['site_id', 'lon', 'lat'])
+        # Write sites
+        writer = csv.writer(sites_buf)
+        writer.writerow(['site_id', 'lon', 'lat'])
+        for site in full_sitecol:
+            writer.writerow([
+                site.id,
+                round(site.location.longitude, 5),
+                round(site.location.latitude, 5),
+            ])
 
-            for site in full_sitecol:
-                # write the data
-                writer.writerow([site.id,
-                                round(site.location.longitude, 5),
-                                round(site.location.latitude, 5)])
+        # Write gmfs
+        writer = csv.writer(gmfs_buf)
+        writer.writerow(['sid', 'eid'] + [f'gmv_{imt}' for imt in imts])
+        for sid, samples in zip(sitecol.sids, gmfs):
+            for eid, val in enumerate(samples):
+                writer.writerow([
+                    sid,
+                    eid,
+                    round(val[0], 5),
+                    round(val[1], 5),
+                ])
 
-        with open('gmfs_gen.csv', 'w') as f:
-            writer = csv.writer(f)
+        # rewind to the beginning so the caller can read from them
+        sites_buf.seek(0)
+        sites_buf.name = 'sites.csv'
+        gmfs_buf.name = 'gmfs.csv'
+        gmfs_buf.seek(0)
 
-            # write the header
-            writer.writerow(['sid', 'eid'] + sa_levels)
-
-            for sid, samples in zip(sitecol.sids, gmfs):
-                for eid, val in enumerate(samples):
-                    writer.writerow(
-                        [sid, eid, round(val[0], 5), round(val[1], 5)])
+        return (gmfs_buf, sites_buf)
 
     def _calculate_mean_association_distance(
         self,
@@ -378,3 +387,55 @@ class GMFService:
 
         joined_gdf = gpd.sjoin(gdf, data_poly, predicate='within')
         return joined_gdf.empty, joined_gdf.shape[0]
+
+
+class GMFConfigurationService:
+    @staticmethod
+    def parse_hazard_source(config: configparser.ConfigParser,
+                            exposure_xml: StringIO,
+                            exposure_csv: StringIO
+                            ) -> tuple[StringIO, StringIO]:
+        """Parse hazard source configuration from config file.
+
+        Args:
+            config: ConfigParser object with hazard source section.
+
+        """
+
+        imts = [x.strip() for x in config['hazard']
+                ['intensity_measure_types'].split(',')]
+        truncation_level = config['hazard'].getfloat('truncation_level', None)
+        random_seed = config['hazard'].getint('random_seed', None)
+        asset_hazard_distance = config['hazard'].getfloat(
+            'asset_hazard_distance', None)
+        n_gmfs = config['hazard'].getint('number_of_ground_motion_fields', None)
+        minimum_intensity = json.loads(config["hazard"]["minimum_intensity"])
+
+        # write exposure xml and csv to temporary files
+        exp_xml, tmp_dir = write_buffer_temp(exposure_xml, 'exposure.xml')
+        exp_csv, tmp_dir = write_buffer_temp(
+            exposure_csv, 'exposure_assets.csv', tmp_dir)
+
+        # parse the lists of GMF and uncertainty columns
+        if config['hazard_source']['source_type'] == 'custom_csv':
+            gmf_cols = [x.strip() for x in
+                        config['hazard_source']['gmf_cols'].split(',')]
+            uncertainty_cols = [x.strip() for x in
+                                config['hazard_source']
+                                ['uncertainty_cols'].split(',')]
+            csv_files = [x.strip() for x in
+                         config['hazard_source']['files'].split(',')]
+
+        gmfs_service = GMFService()
+        return gmfs_service.sample_from_csv(
+            exp_xml,
+            csv_files,
+            imts,
+            gmf_cols,
+            uncertainty_cols,
+            n_gmfs,
+            asset_hazard_distance,
+            truncation_level,
+            random_seed,
+            minimum_intensity
+        )

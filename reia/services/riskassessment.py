@@ -19,14 +19,16 @@ class RiskAssessmentService:
         self.session = session
         self.status_tracker = StatusTracker(session)
 
-    def run_risk_assessment(self, originid: str, loss_config_path: Path,
-                            damage_config_path: Path) -> RiskAssessment:
+    def run_risk_assessment(self,
+                            originid: str,
+                            configs: list[Path],
+                            weights: list[float]) -> RiskAssessment:
         """Run a complete risk assessment with loss and damage calculations.
 
         Args:
             originid: Unique identifier for the risk assessment
-            loss_config_path: Path to loss calculation configuration file
-            damage_config_path: Path to damage calculation configuration file
+            configs:
+            weights:
 
         Returns:
             Created RiskAssessment object
@@ -48,28 +50,38 @@ class RiskAssessmentService:
         risk_assessment = RiskAssessmentRepository.create(
             self.session, risk_assessment)
 
-        try:
-            # Update status to executing
-            risk_assessment = self.status_tracker.update_status(
-                risk_assessment,
-                EStatus.EXECUTING,
-                "Starting risk assessment processing")
+        # Update status to executing
+        risk_assessment = self.status_tracker.update_status(
+            risk_assessment,
+            EStatus.EXECUTING,
+            "Starting risk assessment processing")
 
-            # Run loss calculation
-            self.logger.info("Starting loss calculation for risk "
-                             f"assessment {risk_assessment.oid}")
-            loss_calculation = self._run_calculation(loss_config_path)
+        loss, damage = CalculationDataService.import_from_files(
+            self.session, configs, weights)
+
+        calc_service = CalculationExecutionService(self.session)
+
+        try:
+            # run loss calculations
+            loss_calculation, loss_branches = loss
+            self.logger.info(f"Running loss calculation for "
+                             f"risk assessment {risk_assessment.oid} "
+                             f"with {len(loss_branches)} branches.")
+            loss_calculation = calc_service.run_calculations(
+                loss_calculation, loss_branches)
             risk_assessment.losscalculation_oid = loss_calculation.oid
             risk_assessment = RiskAssessmentRepository.update(
                 self.session, risk_assessment)
             self.logger.info("Loss calculation completed with "
                              f"status: {loss_calculation.status.name}")
 
-            # Run damage calculation
-            self.logger.info("Starting damage calculation for "
-                             f"risk assessment {risk_assessment.oid}")
-            damage_calculation = self._run_calculation(
-                damage_config_path)
+            # run damage calculations
+            damage_calculation, damage_branches = damage
+            self.logger.info(f"Running damage calculation for "
+                             f"risk assessment {risk_assessment.oid} "
+                             f"with {len(damage_branches)} branches.")
+            damage_calculation = calc_service.run_calculations(
+                damage_calculation, damage_branches)
             risk_assessment.damagecalculation_oid = damage_calculation.oid
             risk_assessment = RiskAssessmentRepository.update(
                 self.session, risk_assessment)
@@ -90,7 +102,7 @@ class RiskAssessmentService:
                              f"final status: {final_status.name}")
             return risk_assessment
 
-        except BaseException as e:
+        except Exception as e:
             # Handle failures and keyboard interrupts
             status = EStatus.ABORTED if isinstance(
                 e, KeyboardInterrupt) else EStatus.FAILED
@@ -102,13 +114,4 @@ class RiskAssessmentService:
             self.status_tracker.update_status(risk_assessment,
                                               status,
                                               f"Exception occurred: {str(e)}")
-            raise
-
-    def _run_calculation(self, config_path: Path):
-        """Run calculation from config file."""
-
-        calculation, branch_settings = CalculationDataService.import_from_file(
-            self.session, [config_path], [1])
-
-        calc_service = CalculationExecutionService(self.session)
-        return calc_service.run_calculations(calculation, branch_settings)
+            raise e

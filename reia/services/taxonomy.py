@@ -16,7 +16,7 @@ class TaxonomyService(DataService):
     logger = LoggerService.get_logger(__name__)
 
     @classmethod
-    def import_from_file(
+    def import_from_files(
             cls,
             session: SessionType,
             file_path: Path,

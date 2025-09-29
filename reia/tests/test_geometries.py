@@ -12,9 +12,9 @@ DATAFOLDER = Path(__file__).parent / 'data'
 
 @pytest.fixture()
 def exposure_with_geoms(db_session):
-    exposure = ExposureService.import_from_file(db_session,
-                                                DATAFOLDER / 'ria_test'
-                                                / 'exposure_test.xml', 'test')
+    exposure = ExposureService.import_from_files(db_session,
+                                                 DATAFOLDER / 'ria_test'
+                                                 / 'exposure_test.xml', 'test')
     add_geometries_from_shapefile(db_session,
                                   exposure.oid,
                                   DATAFOLDER

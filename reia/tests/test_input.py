@@ -39,7 +39,7 @@ def compare_xml_semantically(xml1_str, xml2_str):
 
 
 def test_exposuremodel(db_session):
-    exposure_model = ExposureService.import_from_file(
+    exposure_model = ExposureService.import_from_files(
         db_session,
         file_path=DATAFOLDER / 'exposure_test.xml',
         name='Test Exposure Model'
@@ -66,7 +66,7 @@ def test_exposuremodel(db_session):
 
 
 def test_fragilitymodel(db_session):
-    fragility_model = FragilityService.import_from_file(
+    fragility_model = FragilityService.import_from_files(
         db_session,
         file_path=DATAFOLDER / 'fragility_test.xml',
         name='Test Fragility Model'
@@ -88,7 +88,7 @@ def test_fragilitymodel(db_session):
 
 
 def test_vulnerabilitymodel(db_session):
-    vulnerability_model = VulnerabilityService.import_from_file(
+    vulnerability_model = VulnerabilityService.import_from_files(
         db_session,
         file_path=DATAFOLDER / 'vulnerability_test.xml',
         name='Test Vulnerability Model'

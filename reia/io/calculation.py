@@ -5,8 +5,8 @@ from reia.io import (CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING,
                      MODEL_FIELD_MAPPINGS)
 from reia.schemas.calculation_schemas import (Calculation, CalculationBranch,
                                               CalculationBranchSettings)
-from reia.utils import flatten_config
 from reia.services.creation_info import populate_creation_info
+from reia.utils import flatten_config
 
 
 def validate_calculation_input(
@@ -99,7 +99,7 @@ def create_calculation_branch(config: configparser.ConfigParser,
     """
 
     # Clean and flatten config
-    flat_job = configparser.ConfigParser()
+    flat_job = configparser.ConfigParser(interpolation=None)
     flat_job.read_dict(config)
     for s in ['vulnerability', 'exposure', 'hazard', 'fragility']:
         if flat_job.has_section(s):

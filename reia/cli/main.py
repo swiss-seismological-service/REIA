@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 
 import typer
@@ -253,7 +254,7 @@ def add_exposure(
 ) -> int:
     """Add an exposure model from file."""
     with DatabaseSession() as session:
-        exposuremodel = ExposureService.import_from_file(
+        exposuremodel = ExposureService.import_from_files(
             session, exposure, name)
         assets_count = AssetRepository.count_by_exposuremodel(
             session, exposuremodel.oid)
@@ -364,7 +365,7 @@ def add_fragility(
 ) -> int:
     """Add a fragility model from file."""
     with DatabaseSession() as session:
-        fragility_model = FragilityService.import_from_file(
+        fragility_model = FragilityService.import_from_files(
             session, fragility, name)
 
     typer.echo(
@@ -421,7 +422,7 @@ def add_taxonomymap(
 ) -> int:
     """Add a taxonomy mapping from file."""
     with DatabaseSession() as session:
-        taxonomy_map = TaxonomyService.import_from_file(
+        taxonomy_map = TaxonomyService.import_from_files(
             session, map_file, name)
 
     typer.echo(
@@ -477,7 +478,7 @@ def add_vulnerability(
 ) -> int:
     """Add a vulnerability model from file."""
     with DatabaseSession() as session:
-        vulnerability_model = VulnerabilityService.import_from_file(
+        vulnerability_model = VulnerabilityService.import_from_files(
             session, vulnerability, name)
 
     typer.echo(
@@ -656,6 +657,67 @@ def list_risk_assessment() -> None:
             for c in risk_assessments]
 
     display_table('List of existing risk assessments:', headers, rows)
+
+
+@risk_assessment.command('run_new')
+def run_risk_assessment_new(
+    config: Annotated[list[Path],
+                      typer.Option("--config",
+                                   "-c",
+                                   help="Config file path.")
+                      ] = [],
+    weight: Annotated[list[float],
+                      typer.Option("--weight",
+                                   "-w",
+                                   help="Weight for the calculation branch.")
+                      ] = [],
+    originid: Annotated[str | None,
+                        typer.Option("--originid",
+                                     "-o",
+                                     help="Origin ID for the risk assessment.")
+                        ] = None,
+    simple_config: Annotated[Path | None,
+                             typer.Argument(help="Single config file.")
+                             ] = None
+) -> None:
+    # Determine configs and weights
+    if simple_config and not config:
+        # Simple mode: single config file as argument
+        configs = [simple_config]
+        weights = [1.0]
+    elif config and not simple_config:
+        # Complex mode: multiple configs with optional weights
+        configs = config
+        weights = weight or [1 / len(configs)] * len(configs)
+    else:
+        raise typer.BadParameter(
+            "Must provide either a config file argument OR --config options")
+
+    # Validate config files exist
+    for config_path in configs:
+        if not config_path.exists():
+            raise typer.BadParameter(f"Config file not found: {config_path}")
+
+    # Generate ID if not provided
+    if not originid:
+        originid = str(uuid.uuid4())[:8]
+
+    # Display what will be executed
+    typer.echo(f'Running risk assessment for: {originid}')
+    typer.echo("Calculation branches:")
+    for i, (cfg, wgt) in enumerate(zip(configs, weights), 1):
+        typer.echo(f"  {i}. {cfg} (weight: {wgt})")
+
+    with DatabaseSession() as session:
+        service = RiskAssessmentService(session)
+        risk_assessment = service.run_risk_assessment(
+            originid, configs, weights)
+
+    typer.echo(
+        f'Successfully completed risk assessment with status: '
+        f'{risk_assessment.status.name}')
+
+    return risk_assessment.oid
 
 
 @risk_assessment.command('run')

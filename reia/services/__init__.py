@@ -8,10 +8,10 @@ from reia.schemas.base import Model
 
 class DataService(ABC):
     @classmethod
-    def import_from_file(cls,
-                         session: SessionType,
-                         file_path: Path,
-                         name: str) -> Model:
+    def import_from_files(cls,
+                          session: SessionType,
+                          file_path: Path,
+                          name: str) -> Model:
         """Load data from a file and store it via the repository."""
         raise NotImplementedError
 

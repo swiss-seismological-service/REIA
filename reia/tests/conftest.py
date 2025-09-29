@@ -79,28 +79,28 @@ async def test_client():
 
 @pytest.fixture(scope='module')
 def exposure(db_session):
-    exposure = ExposureService.import_from_file(
+    exposure = ExposureService.import_from_files(
         db_session, DATAFOLDER / 'exposure_test.xml', 'test')
     return exposure
 
 
 @pytest.fixture(scope='module')
 def fragility(db_session):
-    fragility = FragilityService.import_from_file(
+    fragility = FragilityService.import_from_files(
         db_session, DATAFOLDER / 'fragility_test.xml', 'test')
     return fragility
 
 
 @pytest.fixture(scope='module')
 def taxonomy(db_session):
-    taxonomy = TaxonomyService.import_from_file(
+    taxonomy = TaxonomyService.import_from_files(
         db_session, DATAFOLDER / 'taxonomy_test.csv', 'test')
     return taxonomy
 
 
 @pytest.fixture(scope='module')
 def vulnerability(db_session):
-    vulnerability = VulnerabilityService.import_from_file(
+    vulnerability = VulnerabilityService.import_from_files(
         db_session, DATAFOLDER / 'vulnerability_test.xml', 'test')
     return vulnerability
 
@@ -130,7 +130,7 @@ def loss_config(exposure, vulnerability):
 @pytest.fixture(scope='module')
 def loss_calculation(loss_config, db_session):
 
-    calculation, branch_settings = CalculationDataService.import_from_file(
+    calculation, branch_settings = CalculationDataService.import_from_files(
         db_session, [loss_config], [1])
 
     calc_service = CalculationExecutionService(db_session)
@@ -162,7 +162,7 @@ def damage_config(exposure, fragility, taxonomy):
 @pytest.fixture(scope='module')
 def damage_calculation(damage_config, db_session):
 
-    calculation, branch_settings = CalculationDataService.import_from_file(
+    calculation, branch_settings = CalculationDataService.import_from_files(
         db_session, [damage_config], [1])
 
     calc_service = CalculationExecutionService(db_session)

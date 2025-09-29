@@ -3,7 +3,9 @@ import configparser
 import io
 import re
 import sys
+import tempfile
 from datetime import datetime
+from io import StringIO
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -168,3 +170,13 @@ def display_table(title: str, headers: list[str], rows: list[list],
             else:
                 formatted_row.append(str(item))
         typer.echo(row_format.format(*formatted_row))
+
+
+def write_buffer_temp(
+        buffer: StringIO,
+        name: str,
+        tmp_dir=tempfile.TemporaryDirectory()) -> Path:
+    path = Path(tmp_dir.name) / name
+    path.write_text(buffer.getvalue(), encoding="utf-8")
+    # keep a reference to tmp_dir for as long as you need the file
+    return path, tmp_dir

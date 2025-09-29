@@ -15,6 +15,7 @@ from reia.schemas.enums import EStatus
 from reia.services import DataService
 from reia.services.exposure import ExposureService
 from reia.services.fragility import FragilityService
+from reia.services.gmfs import GMFConfigurationService
 from reia.services.logger import LoggerService
 from reia.services.oq_api import OQCalculationAPI
 from reia.services.results import ResultsService
@@ -196,7 +197,7 @@ def run_calculation_from_files(session: SessionType,
         raise ValueError('Number of setting files and weights must be equal.')
 
     # Validate and load calculation and branches
-    calculation, branch_settings = CalculationDataService.import_from_file(
+    calculation, branch_settings = CalculationDataService.import_from_files(
         session, settings_files, weights)
 
     # Run calculations using the service
@@ -208,38 +209,61 @@ def run_calculation_from_files(session: SessionType,
 
 class CalculationDataService(DataService):
     @classmethod
-    def import_from_file(cls,
-                         session: SessionType,
-                         config_path: list[Path],
-                         weights: list[int]
-                         ) -> tuple[Calculation,
-                                    list[CalculationBranchSettings]]:
+    def import_from_files(cls,
+                          session: SessionType,
+                          config_path: list[Path],
+                          weights: list[int]) \
+        -> tuple[tuple[Calculation,
+                       list[CalculationBranchSettings]],
+                 tuple[Calculation,
+                       list[CalculationBranchSettings]]]:
         """Load data from a file and store it via the repository."""
         if len(config_path) != len(weights):
             raise ValueError(
                 'Number of setting files and weights must be equal.')
 
-        branch_settings = []
+        losscalculation = None
+        lossbranches = []
+        damagecalculation = None
+        damagebranches = []
 
         for path, weight in zip(config_path, weights):
-            config = configparser.ConfigParser()
+            config = configparser.ConfigParser(interpolation=None)
             config.read(path)
-            branch = create_calculation_branch(config, weight)
-            setting = CalculationBranchSettings(
-                weight=weight, config=config, branch=branch)
-            branch_settings.append(setting)
+            if config.has_section('vulnerability'):
+                config['general']['calculation_mode'] = 'scenario_risk'
+                branch = create_calculation_branch(config, weight)
+                setting = CalculationBranchSettings(
+                    weight=weight, config=config, branch=branch)
+                lossbranches.append(setting)
 
-        validate_calculation_input(branch_settings)
+            if config.has_section('fragility'):
+                config['general']['calculation_mode'] = 'scenario_damage'
+                branch = create_calculation_branch(config, weight)
+                setting = CalculationBranchSettings(
+                    weight=weight, config=config, branch=branch)
+                damagebranches.append(setting)
 
-        calculation = create_calculation(branch_settings)
+        if lossbranches:
+            validate_calculation_input(lossbranches)
+            losscalculation = create_calculation(lossbranches)
+            losscalculation = CalculationRepository.create(
+                session, losscalculation)
+            for b in lossbranches:
+                b.branch.calculation_oid = losscalculation.oid
+                b.branch = CalculationBranchRepository.create(session, b.branch)
 
-        calculation = CalculationRepository.create(session, calculation)
+        if damagebranches:
+            validate_calculation_input(damagebranches)
+            damagecalculation = create_calculation(damagebranches)
+            damagecalculation = CalculationRepository.create(
+                session, damagecalculation)
+            for b in damagebranches:
+                b.branch.calculation_oid = damagecalculation.oid
+                b.branch = CalculationBranchRepository.create(session, b.branch)
 
-        for b in branch_settings:
-            b.branch.calculation_oid = calculation.oid
-            b.branch = CalculationBranchRepository.create(session, b.branch)
-
-        return calculation, branch_settings
+        return ((losscalculation, lossbranches),
+                (damagecalculation, damagebranches))
 
     @classmethod
     def export_branch_to_directory(
@@ -292,7 +316,7 @@ class CalculationDataService(DataService):
         # Read and create deep copy of configparser
 
         if isinstance(config, Path):
-            working_job = configparser.ConfigParser()
+            working_job = configparser.ConfigParser(interpolation=None)
             working_job.read(str(config))
         elif isinstance(config, configparser.ConfigParser):
             tmp = pickle.dumps(config)
@@ -311,7 +335,8 @@ class CalculationDataService(DataService):
         calculation_files.extend([exposure_xml, exposure_csv])
 
         # Generate vulnerability or fragility files
-        if 'vulnerability' in working_job.keys():
+        if working_job['general']['calculation_mode'] == 'scenario_risk':
+            working_job.remove_section('fragility')
             for k, v in working_job['vulnerability'].items():
                 if k == 'taxonomy_mapping_csv':
                     file = TaxonomyService.export_to_buffer(session, v)
@@ -322,7 +347,8 @@ class CalculationDataService(DataService):
                 working_job['vulnerability'][k] = file.name
                 calculation_files.append(file)
 
-        elif 'fragility' in working_job.keys():
+        elif working_job['general']['calculation_mode'] == 'scenario_damage':
+            working_job.remove_section('vulnerability')
             for k, v in working_job['fragility'].items():
                 if k == 'taxonomy_mapping_csv':
                     file = TaxonomyService.export_to_buffer(session, v)
@@ -333,13 +359,14 @@ class CalculationDataService(DataService):
                 working_job['fragility'][k] = file.name
                 calculation_files.append(file)
 
-        # Copy hazard files (gmfs/sites) from disk to memory
-        for k, v in working_job['hazard'].items():
-            with open(v, 'r') as f:
-                file = io.StringIO(f.read())
-            file.name = Path(v).name
-            working_job['hazard'][k] = file.name
-            calculation_files.append(file)
+        gmfs, sites = GMFConfigurationService.parse_hazard_source(
+            working_job, exposure_xml, exposure_csv)
+
+        working_job['hazard']['gmfs_csv'] = gmfs.name
+        working_job['hazard']['sites_csv'] = sites.name
+        calculation_files.extend([gmfs, sites])
+
+        working_job.remove_section('hazard_source')
 
         # Generate job configuration file
         job_file = create_file_buffer_configparser(working_job, 'job.ini')
