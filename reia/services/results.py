@@ -21,7 +21,7 @@ class ResultsService:
                  dstore_path: str | None = None):
         self.logger = LoggerService.get_logger(__name__)
         self.session = session
-        self.config = get_settings()
+        self.app_settings = get_settings()
         self.api_client = api_client
         self.dstore_path = dstore_path
 

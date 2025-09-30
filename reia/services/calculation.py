@@ -32,10 +32,10 @@ class CalculationExecutionService:
         self.logger = LoggerService.get_logger(__name__)
 
         self.session = session
-        self.config = get_settings()
+        self.app_settings = get_settings()
         self.status_tracker = StatusTracker(session)
 
-    def run_calculations(
+    def run_calculation(
             self,
             calculation: Calculation,
             branch_settings: list[CalculationBranchSettings]
@@ -70,8 +70,8 @@ class CalculationExecutionService:
             for i, b in enumerate(branch_settings):
                 self.logger.info(
                     "Executing calculation branch "
-                    f"{i}/{len(branch_settings)} (ID: {b.branch.oid})")
-                b = self._run_single_calculation(b)
+                    f"{i+1}/{len(branch_settings)} (ID: {b.branch.oid})")
+                b = self._run_calculation_branch(b)
 
             # Determine final status
             status = self.status_tracker.validate_calculation_completion(
@@ -100,8 +100,8 @@ class CalculationExecutionService:
                     self.session.commit()
             raise e
 
-    def _run_single_calculation(self,
-                                setting: CalculationBranchSettings
+    def _run_calculation_branch(self,
+                                branch_setting: CalculationBranchSettings
                                 ) -> CalculationBranchSettings:
         """Run a single calculation branch using OQCalculationAPI.
 
@@ -112,24 +112,26 @@ class CalculationExecutionService:
             Updated branch object
         """
         # Create API client
-        api_client = OQCalculationAPI(self.config)
+        api_client = OQCalculationAPI(self.app_settings)
 
         # Prepare calculation files
         self.logger.debug(
-            f"Preparing calculation files for branch {setting.branch.oid}")
+            "Preparing calculation files for branch "
+            f"{branch_setting.branch.oid}")
 
         files = CalculationDataService.export_branch_to_buffer(
-            self.session, setting.config)
+            self.session, branch_setting.config)
 
         api_client.add_calc_files(*files)
 
         # Run calculation and wait for completion
-        self.logger.info(f"Submitting calculation branch {setting.branch.oid} "
-                         "to OpenQuake engine")
+        self.logger.info(
+            f"Submitting calculation branch {branch_setting.branch.oid} "
+            "to OpenQuake engine")
 
         final_status = api_client.run()
         self.logger.info(
-            f"OpenQuake calculation for branch {setting.branch.oid} "
+            f"OpenQuake calculation for branch {branch_setting.branch.oid} "
             f"finished with status: {final_status}")
 
         # Update branch status
@@ -139,23 +141,24 @@ class CalculationExecutionService:
         if status == EStatus.FAILED:
             api_client.log_error_with_traceback(
                 "OpenQuake calculation failed for "
-                f"branch {setting.branch.oid}")
+                f"branch {branch_setting.branch.oid}")
 
-        setting.branch = self.status_tracker.update_status(
-            setting.branch,
+        branch_setting.branch = self.status_tracker.update_status(
+            branch_setting.branch,
             status,
             f"OpenQuake calculation completed with status: {final_status}")
 
         # Save results if calculation completed successfully
-        if setting.branch.status == EStatus.COMPLETE:
+        if branch_setting.branch.status == EStatus.COMPLETE:
             self.logger.info(
-                f'Saving results for calculation branch {setting.branch.oid} '
-                f'with weight {setting.weight}')
+                'Saving results for calculation branch '
+                f'{branch_setting.branch.oid} '
+                f'with weight {branch_setting.weight}')
             results_service = ResultsService(self.session,
                                              api_client=api_client)
-            results_service.save_calculation_results(setting.branch)
+            results_service.save_calculation_results(branch_setting.branch)
 
-        return setting
+        return branch_setting
 
 
 def run_test_calculation(session: SessionType, settings_file: Path) -> str:
@@ -168,8 +171,7 @@ def run_test_calculation(session: SessionType, settings_file: Path) -> str:
     Returns:
         Response from OpenQuake API.
     """
-    config = get_settings()
-    api_client = OQCalculationAPI(config)
+    api_client = OQCalculationAPI(get_settings())
 
     files = CalculationDataService.export_branch_to_buffer(
         session, settings_file)
@@ -177,42 +179,6 @@ def run_test_calculation(session: SessionType, settings_file: Path) -> str:
 
     response = api_client.submit()
     return response
-
-
-def run_calculation_from_files(session: SessionType,
-                               settings_files: list[str],
-                               weights: list[float]) -> Calculation:
-    """Run OpenQuake calculation from multiple settings files.
-
-    Args:
-        session: Database session.
-        settings_files: List of paths to calculation settings files.
-        weights: List of weights for calculation branches.
-
-    Raises:
-        ValueError: If number of settings files and weights don't match.
-    """
-    # Validate input
-    if len(settings_files) != len(weights):
-        raise ValueError('Number of setting files and weights must be equal.')
-
-    # Validate and load calculation and branches
-    calculation_data = CalculationDataService.import_from_files(
-        session, settings_files, weights)
-
-    # expecting only 1 type of calculation
-    calculation = None
-
-    # Run calculations using the service
-    for data in calculation_data:
-        calc, branch_settings = data
-        if calc is None:
-            continue
-        calc_service = CalculationExecutionService(session)
-        calculation = calc_service.run_calculations(
-            calc, branch_settings)
-
-    return calculation
 
 
 class CalculationDataService(DataService):

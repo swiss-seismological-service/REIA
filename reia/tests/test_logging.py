@@ -116,8 +116,7 @@ class TestOQCalculationAPILogging:
         from reia.services.oq_api import OQCalculationAPI
 
         # Create API instance with mocked session
-        config = get_settings()
-        api = OQCalculationAPI(config)
+        api = OQCalculationAPI(get_settings())
         api.id = 123
         api.logger = Mock()
 
@@ -141,8 +140,7 @@ class TestOQCalculationAPILogging:
         from reia.config.settings import get_settings
         from reia.services.oq_api import OQCalculationAPI
 
-        config = get_settings()
-        api = OQCalculationAPI(config)
+        api = OQCalculationAPI(get_settings())
         api.id = 123
         api.logger = Mock()
 

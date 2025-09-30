@@ -57,11 +57,9 @@ def get_creation_info_values() -> dict[str, str]:
     Returns:
         Dictionary with creation info fields populated with system values.
     """
-    settings = get_settings()
-
     return {
         'creationinfo_author': get_system_author(),
-        'creationinfo_agencyid': settings.agency_id,
+        'creationinfo_agencyid': get_settings().agency_id,
         'creationinfo_version': get_reia_version(),
         'creationinfo_creationtime': datetime.now(timezone.utc).replace(
             microsecond=0

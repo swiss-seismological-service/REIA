@@ -40,8 +40,9 @@ def create_engine(
     return _engine
 
 
-config = get_settings()
-engine = create_engine(config.db_connection_string, skip_extensions=True)
+engine = create_engine(
+    get_settings().db_connection_string,
+    skip_extensions=True)
 DatabaseSession = sessionmaker(engine, expire_on_commit=True)
 
 

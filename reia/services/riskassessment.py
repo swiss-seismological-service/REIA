@@ -1,3 +1,4 @@
+import uuid
 from pathlib import Path
 
 from reia.repositories.calculation import RiskAssessmentRepository
@@ -20,15 +21,15 @@ class RiskAssessmentService:
         self.status_tracker = StatusTracker(session)
 
     def run_risk_assessment(self,
-                            originid: str,
+                            originid: str | None,
                             configs: list[Path],
                             weights: list[float]) -> RiskAssessment:
         """Run a complete risk assessment with loss and damage calculations.
 
         Args:
-            originid: Unique identifier for the risk assessment
-            configs:
-            weights:
+            originid:   Unique identifier for the risk assessment
+            configs:    List of configuration file paths
+            weights:    List of weights for each config file
 
         Returns:
             Created RiskAssessment object
@@ -39,6 +40,15 @@ class RiskAssessmentService:
         # Create initial risk assessment record
         self.logger.info(f"Starting risk assessment workflow for {originid}")
 
+        # Validate config files exist
+        for config_path in configs:
+            if not config_path.exists():
+                raise FileNotFoundError(f"Config file not found: {config_path}")
+
+        # Generate ID if not provided
+        if originid is None:
+            originid = str(uuid.uuid4())[:8]
+
         risk_assessment = RiskAssessment(
             originid=originid,
             type=EEarthquakeType.NATURAL,
@@ -47,6 +57,8 @@ class RiskAssessmentService:
 
         # Populate creation info with system values
         populate_creation_info(risk_assessment)
+
+        # Save initial risk assessment to DB
         risk_assessment = RiskAssessmentRepository.create(
             self.session, risk_assessment)
 
@@ -56,6 +68,7 @@ class RiskAssessmentService:
             EStatus.EXECUTING,
             "Starting risk assessment processing")
 
+        # Gather the calculation data
         loss, damage = CalculationDataService.import_from_files(
             self.session, configs, weights)
 
@@ -68,7 +81,7 @@ class RiskAssessmentService:
                 self.logger.info(f"Running loss calculation for "
                                  f"risk assessment {risk_assessment.oid} "
                                  f"with {len(loss_branches)} branches.")
-                loss_calculation = calc_service.run_calculations(
+                loss_calculation = calc_service.run_calculation(
                     loss_calculation, loss_branches)
                 risk_assessment.losscalculation_oid = loss_calculation.oid
                 risk_assessment = RiskAssessmentRepository.update(
@@ -82,7 +95,7 @@ class RiskAssessmentService:
                 self.logger.info(f"Running damage calculation for "
                                  f"risk assessment {risk_assessment.oid} "
                                  f"with {len(damage_branches)} branches.")
-                damage_calculation = calc_service.run_calculations(
+                damage_calculation = calc_service.run_calculation(
                     damage_calculation, damage_branches)
                 risk_assessment.damagecalculation_oid = damage_calculation.oid
                 risk_assessment = RiskAssessmentRepository.update(

@@ -28,8 +28,7 @@ def make_connection():
 
 
 def copy_pooled(df, tablename, max_entries=750_000):
-    config = get_settings()
-    max_procs = config.max_processes
+    max_procs = get_settings().max_processes
 
     nprocs = max(1, min(max_procs, int(np.ceil(len(df) / max_entries))))
 

@@ -1,7 +1,6 @@
 import os
 import subprocess
 import sys
-import uuid
 from pathlib import Path
 
 import typer
@@ -636,8 +635,8 @@ def list_risk_assessment() -> None:
     display_table('List of existing risk assessments:', headers, rows)
 
 
-@risk_assessment.command('run_new')
-def run_risk_assessment_new(
+@risk_assessment.command('run')
+def run_risk_assessment(
     config: Annotated[list[Path],
                       typer.Option("--config",
                                    "-c",
@@ -670,15 +669,6 @@ def run_risk_assessment_new(
         raise typer.BadParameter(
             "Must provide either a config file argument OR --config options")
 
-    # Validate config files exist
-    for config_path in configs:
-        if not config_path.exists():
-            raise typer.BadParameter(f"Config file not found: {config_path}")
-
-    # Generate ID if not provided
-    if not originid:
-        originid = str(uuid.uuid4())[:8]
-
     # Display what will be executed
     typer.echo(f'Running risk assessment for: {originid}')
     typer.echo("Calculation branches:")
@@ -689,30 +679,6 @@ def run_risk_assessment_new(
         service = RiskAssessmentService(session)
         risk_assessment = service.run_risk_assessment(
             originid, configs, weights)
-
-    typer.echo(
-        f'Successfully completed risk assessment with status: '
-        f'{risk_assessment.status.name}')
-
-    return risk_assessment.oid
-
-
-@risk_assessment.command('run')
-def run_risk_assessment(
-    originid: Annotated[str, typer.Argument(
-        help='Origin ID for the risk assessment')],
-    loss: Annotated[Path, typer.Option(
-        help='Path to loss calculation configuration file')] = ...,
-    damage: Annotated[Path, typer.Option(
-        help='Path to damage calculation configuration file')] = ...
-) -> None:
-    """Run a complete risk assessment with loss and damage calculations."""
-    typer.echo('Running risk assessment:')
-    typer.echo('Starting loss calculations...')
-
-    with DatabaseSession() as session:
-        service = RiskAssessmentService(session)
-        risk_assessment = service.run_risk_assessment(originid, loss, damage)
 
     typer.echo(
         f'Successfully completed risk assessment with status: '

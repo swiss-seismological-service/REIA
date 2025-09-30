@@ -12,7 +12,8 @@ from reia.repositories.tests.database import (create_test_database,
                                               get_test_session,
                                               upgrade_test_database)
 from reia.schemas.calculation_schemas import RiskAssessment
-from reia.services.calculation import run_calculation_from_files
+from reia.services.calculation import (CalculationDataService,
+                                       CalculationExecutionService)
 from reia.services.creation_info import populate_creation_info
 from reia.services.exposure import ExposureService
 from reia.services.fragility import FragilityService
@@ -128,9 +129,24 @@ def loss_config(exposure, vulnerability):
 
 @pytest.fixture(scope='module')
 def loss_calculation(loss_config, db_session):
-    return run_calculation_from_files(
-        db_session, [loss_config], [1]
-    )
+    calculation_data = CalculationDataService.import_from_files(
+        db_session, [loss_config], [1])
+
+    # expecting only 1 type of calculation
+    calculation = None
+
+    # Run calculations using the service
+    for data in calculation_data:
+        calc, branch_settings = data
+
+        if calc is None:
+            continue
+
+        calc_service = CalculationExecutionService(db_session)
+        calculation = calc_service.run_calculation(
+            calc, branch_settings)
+
+    return calculation
 
 
 @pytest.fixture(scope='module')
@@ -157,9 +173,24 @@ def damage_config(exposure, fragility, taxonomy):
 
 @pytest.fixture(scope='module')
 def damage_calculation(damage_config, db_session):
-    return run_calculation_from_files(
-        db_session, [damage_config], [1]
-    )
+    calculation_data = CalculationDataService.import_from_files(
+        db_session, [damage_config], [1])
+
+    # expecting only 1 type of calculation
+    calculation = None
+
+    # Run calculations using the service
+    for data in calculation_data:
+        calc, branch_settings = data
+
+        if calc is None:
+            continue
+
+        calc_service = CalculationExecutionService(db_session)
+        calculation = calc_service.run_calculation(
+            calc, branch_settings)
+
+    return calculation
 
 
 @pytest.fixture(scope='module')
