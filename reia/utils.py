@@ -4,10 +4,11 @@ import io
 import re
 import sys
 import tempfile
+from copy import deepcopy
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
-from typing import Any, TextIO
+from typing import Any
 
 import pandas as pd
 import typer
@@ -58,19 +59,15 @@ def import_string(import_name: str, silent: bool = False) -> Any:
     return None
 
 
-def flatten_config(file: TextIO) -> dict:
+def flatten_config(config: configparser.ConfigParser) -> dict:
+    """Flatten a configparser object to a single dictionary.
 
-    if not isinstance(file, configparser.ConfigParser):
-        # make sure ini has at least one section
-        content = file.read()
-        file_content = '[dummy_section]\n' + content
-
-        # read ini
-        config = configparser.RawConfigParser()
-        config.read_string(file_content)
-    else:
-        config = file
-    # parse to dict
+    Args:
+        config: ConfigParser object to flatten.
+    Returns:
+        Flattened dictionary with all sections merged.
+    """
+    config = deepcopy(config)
     mydict = {}
     for k, v in {s: dict(config.items(s)) for s in config.sections()}.items():
         mydict.update({key: value for key, value in v.items()})
@@ -83,6 +80,43 @@ def flatten_config(file: TextIO) -> dict:
             pass
 
     return mydict
+
+
+def clean_config(config: configparser.ConfigParser) -> dict:
+    """
+    Cleans and flattens a configparser object by removing openquake
+    file inputs and only keeping the oqparam inputs.
+
+    Args:
+        config: ConfigParser object to clean.
+    Returns:
+        Cleaned and flattened ConfigParser object.
+    """
+    config = deepcopy(config)
+    if config.has_section('hazard_source'):
+        config.remove_section('hazard_source')
+
+    flat_config = flatten_config(config)
+
+    keys_to_remove = [
+        'exposure_file',
+        'structural_fragility_file',
+        'nonstructural_fragility_file',
+        'contents_fragility_file',
+        'business_interruption_fragility_file',
+        'structural_vulnerability_file',
+        'nonstructural_vulnerability_file',
+        'contents_vulnerability_file',
+        'business_interruption_vulnerability_file',
+        'occupants_vulnerability_file',
+        'taxonomy_mapping_csv',
+        'gmfs_csv',
+        'sites_csv']
+
+    for key in keys_to_remove:
+        flat_config.pop(key, None)
+
+    return flat_config
 
 
 def create_file_buffer_jinja(template_name: str, **kwargs) -> io.StringIO:

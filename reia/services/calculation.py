@@ -1,6 +1,6 @@
 import configparser
 import io
-import pickle
+from copy import deepcopy
 from pathlib import Path
 
 from reia.config.settings import get_settings
@@ -197,12 +197,20 @@ def run_calculation_from_files(session: SessionType,
         raise ValueError('Number of setting files and weights must be equal.')
 
     # Validate and load calculation and branches
-    calculation, branch_settings = CalculationDataService.import_from_files(
+    calculation_data = CalculationDataService.import_from_files(
         session, settings_files, weights)
 
+    # expecting only 1 type of calculation
+    calculation = None
+
     # Run calculations using the service
-    calc_service = CalculationExecutionService(session)
-    calculation = calc_service.run_calculations(calculation, branch_settings)
+    for data in calculation_data:
+        calc, branch_settings = data
+        if calc is None:
+            continue
+        calc_service = CalculationExecutionService(session)
+        calculation = calc_service.run_calculations(
+            calc, branch_settings)
 
     return calculation
 
@@ -231,17 +239,19 @@ class CalculationDataService(DataService):
             config = configparser.ConfigParser(interpolation=None)
             config.read(path)
             if config.has_section('vulnerability'):
-                config['general']['calculation_mode'] = 'scenario_risk'
-                branch = create_calculation_branch(config, weight)
+                config_loss = deepcopy(config)
+                config_loss['general']['calculation_mode'] = 'scenario_risk'
+                branch = create_calculation_branch(config_loss, weight)
                 setting = CalculationBranchSettings(
-                    weight=weight, config=config, branch=branch)
+                    weight=weight, config=config_loss, branch=branch)
                 lossbranches.append(setting)
 
             if config.has_section('fragility'):
-                config['general']['calculation_mode'] = 'scenario_damage'
-                branch = create_calculation_branch(config, weight)
+                config_damage = deepcopy(config)
+                config_damage['general']['calculation_mode'] = 'scenario_damage'
+                branch = create_calculation_branch(config_damage, weight)
                 setting = CalculationBranchSettings(
-                    weight=weight, config=config, branch=branch)
+                    weight=weight, config=config_damage, branch=branch)
                 damagebranches.append(setting)
 
         if lossbranches:
@@ -319,8 +329,7 @@ class CalculationDataService(DataService):
             working_job = configparser.ConfigParser(interpolation=None)
             working_job.read(str(config))
         elif isinstance(config, configparser.ConfigParser):
-            tmp = pickle.dumps(config)
-            working_job = pickle.loads(tmp)
+            working_job = deepcopy(config)
         else:
             raise ValueError("config must be a Path or ConfigParser instance.")
 
@@ -359,11 +368,15 @@ class CalculationDataService(DataService):
                 working_job['fragility'][k] = file.name
                 calculation_files.append(file)
 
-        gmfs, sites = GMFConfigurationService.parse_hazard_source(
-            working_job, exposure_xml, exposure_csv)
+        gmfs_config = GMFConfigurationService(working_job)
+        gmfs, sites = gmfs_config.get_gmfs(
+            exposure_xml, exposure_csv)
 
+        if not working_job.has_section('hazard'):
+            working_job.add_section('hazard')
         working_job['hazard']['gmfs_csv'] = gmfs.name
         working_job['hazard']['sites_csv'] = sites.name
+
         calculation_files.extend([gmfs, sites])
 
         working_job.remove_section('hazard_source')

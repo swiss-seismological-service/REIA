@@ -12,8 +12,7 @@ from reia.repositories.tests.database import (create_test_database,
                                               get_test_session,
                                               upgrade_test_database)
 from reia.schemas.calculation_schemas import RiskAssessment
-from reia.services.calculation import (CalculationDataService,
-                                       CalculationExecutionService)
+from reia.services.calculation import run_calculation_from_files
 from reia.services.creation_info import populate_creation_info
 from reia.services.exposure import ExposureService
 from reia.services.fragility import FragilityService
@@ -129,12 +128,9 @@ def loss_config(exposure, vulnerability):
 
 @pytest.fixture(scope='module')
 def loss_calculation(loss_config, db_session):
-
-    calculation, branch_settings = CalculationDataService.import_from_files(
-        db_session, [loss_config], [1])
-
-    calc_service = CalculationExecutionService(db_session)
-    return calc_service.run_calculations(calculation, branch_settings)
+    return run_calculation_from_files(
+        db_session, [loss_config], [1]
+    )
 
 
 @pytest.fixture(scope='module')
@@ -161,12 +157,9 @@ def damage_config(exposure, fragility, taxonomy):
 
 @pytest.fixture(scope='module')
 def damage_calculation(damage_config, db_session):
-
-    calculation, branch_settings = CalculationDataService.import_from_files(
-        db_session, [damage_config], [1])
-
-    calc_service = CalculationExecutionService(db_session)
-    return calc_service.run_calculations(calculation, branch_settings)
+    return run_calculation_from_files(
+        db_session, [damage_config], [1]
+    )
 
 
 @pytest.fixture(scope='module')

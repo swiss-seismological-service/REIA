@@ -21,7 +21,6 @@ from reia.repositories.vulnerability import VulnerabilityModelRepository
 from reia.schemas.calculation_schemas import RiskAssessment
 from reia.schemas.enums import ECalculationType
 from reia.services.calculation import (CalculationDataService,
-                                       run_calculation_from_files,
                                        run_test_calculation)
 from reia.services.exposure import (ExposureService,
                                     add_geometries_from_shapefile)
@@ -556,28 +555,6 @@ def run_test_calculation_cmd(
 
     typer.echo(
         f'Test calculation submitted successfully. Response: {response}')
-
-
-@calculation.command('run')
-def run_calculation(
-    settings: Annotated[list[str], typer.Option(
-        help='List of calculation settings files')] = ...,
-    weights: Annotated[list[float], typer.Option(
-        help='List of weights for calculation branches')] = ...
-) -> None:
-    """Run an OpenQuake calculation with multiple branches."""
-    try:
-        with DatabaseSession() as session:
-            calculation = run_calculation_from_files(session,
-                                                     settings,
-                                                     weights)
-
-        typer.echo(
-            'Successfully completed OpenQuake calculation.')
-        return calculation.oid
-    except ValueError as e:
-        typer.echo(f'Error: {str(e)} Exiting...')
-        raise typer.Exit(code=1)
 
 
 @calculation.command('list')

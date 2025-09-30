@@ -21,28 +21,23 @@ def test_sample_from_csv(tmp_path, monkeypatch):
     shutil.copy(exposure_xml, tmp_xml)
     shutil.copy(exposure_csv, tmp_data_dir / exposure_csv.name)
 
-    monkeypatch.setattr(
-        GMFService,
-        "_calculate_mean_association_distance",
-        lambda self, data, factor: 1_000_000,
-    )
-
     monkeypatch.chdir(tmp_path)
 
-    GMFService().sample_from_csv(
-        [str(tmp_xml)],
+    imts = ['SA(0.3)', 'SA(0.6)']
+
+    gmfs_buf, sites_buf = GMFService().sample_from_csv(
+        tmp_xml,
         [str(psa03_csv), str(psa06_csv)],
+        imts,
         num_gmfs=5,
+        assoc_distance=1000000,
+        seed=41,
+        gmf_cols=['psa03_%g', 'psa06_%g'],
+        uncertainty_cols=['lnpsa03_uncertainty', 'lnpsa06_uncertainty'],
     )
 
-    sites_path = tmp_path / "sites_gen.csv"
-    gmfs_path = tmp_path / "gmfs_gen.csv"
-
-    assert sites_path.exists()
-    assert gmfs_path.exists()
-
-    sites_df = pd.read_csv(sites_path)
-    gmfs_df = pd.read_csv(gmfs_path)
+    sites_df = pd.read_csv(sites_buf)
+    gmfs_df = pd.read_csv(gmfs_buf)
 
     assert list(sites_df.columns) == ["site_id", "lon", "lat"]
     assert list(gmfs_df.columns) == ["sid", "eid", "gmv_SA(0.3)", "gmv_SA(0.6)"]
@@ -83,21 +78,15 @@ def test_sample_from_shakemap(tmp_path, monkeypatch):
 
     monkeypatch.chdir(tmp_path)
 
-    GMFService().sample_from_shakemap(
+    gmfs_buf, sites_buf = GMFService().sample_from_shakemap(
         [str(tmp_exposure)],
         str(tmp_grid),
         str(tmp_uncertainty),
         ['SA(0.3)', 'SA(1.0)'],
     )
 
-    sites_path = tmp_path / "sites_gen.csv"
-    gmfs_path = tmp_path / "gmfs_gen.csv"
-
-    assert sites_path.exists()
-    assert gmfs_path.exists()
-
-    sites_df = pd.read_csv(sites_path)
-    gmfs_df = pd.read_csv(gmfs_path)
+    sites_df = pd.read_csv(sites_buf)
+    gmfs_df = pd.read_csv(gmfs_buf)
 
     assert list(sites_df.columns) == ["site_id", "lon", "lat"]
     assert list(gmfs_df.columns) == ["sid", "eid", "gmv_SA(0.3)", "gmv_SA(1.0)"]

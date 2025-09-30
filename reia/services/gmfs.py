@@ -1,6 +1,5 @@
 import configparser
 import csv
-import json
 import logging
 import os
 from io import StringIO
@@ -18,7 +17,7 @@ from openquake.hazardlib.site import SiteCollection
 from openquake.risklib.asset import Exposure
 from scipy.stats import truncnorm
 
-from reia.utils import write_buffer_temp
+from reia.utils import clean_config, flatten_config, write_buffer_temp
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,9 +30,9 @@ class GMFService:
         exposure_xml: Path,
         csv_files: list[str],
         imts: list[str],
+        num_gmfs: int,
         gmf_cols: list[str] | None = None,
         uncertainty_cols: list[str] | None = None,
-        num_gmfs: int = 500,
         assoc_distance: float = 10,
         truncation_level: float = 2,
         seed: int = 42,
@@ -142,8 +141,18 @@ class GMFService:
         grid_xml: str,
         uncertainty_xml: str,
         imts: list[str],
-    ) -> None:
-        """Sample ground motion fields (GMFs) from shakemap files."""
+    ) -> tuple[StringIO, StringIO]:
+        """Sample ground motion fields (GMFs) from shakemap files.
+
+        Args:
+            exposure_xml: List of paths to exposure XML files.
+            grid_xml: Path to shakemap grid XML file.
+            uncertainty_xml: Path to shakemap uncertainty XML file.
+            imts: List of intensity measure types to sample.
+
+        Returns:
+            Tuple of (gmfs_csv_buffer, sites_csv_buffer)
+        """
 
         mesh, assets_by_site = Exposure.read(
             exposure_xml, check_dupl=False).get_mesh_assets_by_site()
@@ -390,52 +399,99 @@ class GMFService:
 
 
 class GMFConfigurationService:
-    @staticmethod
-    def parse_hazard_source(config: configparser.ConfigParser,
-                            exposure_xml: StringIO,
-                            exposure_csv: StringIO
-                            ) -> tuple[StringIO, StringIO]:
+
+    def __init__(self, config: configparser.ConfigParser):
+        self.source_func = {'custom_csv': self._parse_custom,
+                            'gmfs_csv': self._parse_gmfs,
+                            'shakemap': self._parse_shakemap}
+
+        self.hazard_source = dict(config['hazard_source']) if \
+            config.has_section('hazard_source') else None
+        self.source_type = self.hazard_source.get('source_type', 'gmfs_csv') \
+            if self.hazard_source else 'gmfs_csv'
+
+        self.full_config = flatten_config(config)
+        self.config = clean_config(config)
+
+        self.imts = [x.strip() for x in
+                     self.config['intensity_measure_types'].split(',')] \
+            if 'intensity_measure_types' in self.config else []
+
+    def get_gmfs(self,
+                 exposure_xml: StringIO,
+                 exposure_csv: StringIO
+                 ) -> tuple[StringIO, StringIO]:
+        """Get GMFs and site collection based on configuration.
+
+        Args:
+            exposure_xml: Exposure XML file buffer.
+            exposure_csv: Exposure CSV file buffer.
+        Returns:
+            Tuple of (gmfs_csv_buffer, sites_csv_buffer)
+        """
+        return self.source_func[self.source_type](
+            exposure_xml, exposure_csv)
+
+    def _parse_shakemap(self, *args, **kwargs) -> tuple[StringIO, StringIO]:
+        raise NotImplementedError(
+            'Shakemap source type is not implemented yet.')
+
+    def _parse_gmfs(self, *args, **kwargs) -> tuple[StringIO, StringIO]:
+        gmfs_csv = self.full_config.get('gmfs_csv', None)
+        sites_csv = self.full_config.get('sites_csv', None)
+
+        if not gmfs_csv or not sites_csv:
+            raise ValueError(
+                'GMF configuration requires either both gmfs_csv and sites_csv'
+                ' to be set. Or to utilize "hazard_source" custom section.')
+
+        with open(gmfs_csv, 'r') as gmf_file:
+            gmfs_buf = StringIO(gmf_file.read())
+            gmfs_buf.name = Path(gmfs_csv).name
+            gmfs_buf.seek(0)
+
+        with open(sites_csv, 'r') as sites_file:
+            sites_buf = StringIO(sites_file.read())
+            sites_buf.name = Path(sites_csv).name
+            sites_buf.seek(0)
+
+        return gmfs_buf, sites_buf
+
+    def _parse_custom(self,
+                      exposure_xml: StringIO,
+                      exposure_csv: StringIO
+                      ) -> tuple[StringIO, StringIO]:
         """Parse hazard source configuration from config file.
 
         Args:
             config: ConfigParser object with hazard source section.
 
         """
-
-        imts = [x.strip() for x in config['hazard']
-                ['intensity_measure_types'].split(',')]
-        truncation_level = config['hazard'].getfloat('truncation_level', None)
-        random_seed = config['hazard'].getint('random_seed', None)
-        asset_hazard_distance = config['hazard'].getfloat(
-            'asset_hazard_distance', None)
-        n_gmfs = config['hazard'].getint('number_of_ground_motion_fields', None)
-        minimum_intensity = json.loads(config["hazard"]["minimum_intensity"])
-
         # write exposure xml and csv to temporary files
         exp_xml, tmp_dir = write_buffer_temp(exposure_xml, 'exposure.xml')
-        exp_csv, tmp_dir = write_buffer_temp(
+        _, tmp_dir = write_buffer_temp(
             exposure_csv, 'exposure_assets.csv', tmp_dir)
 
         # parse the lists of GMF and uncertainty columns
-        if config['hazard_source']['source_type'] == 'custom_csv':
+        if self.hazard_source['source_type'] == 'custom_csv':
             gmf_cols = [x.strip() for x in
-                        config['hazard_source']['gmf_cols'].split(',')]
+                        self.hazard_source['gmf_cols'].split(',')]
             uncertainty_cols = [x.strip() for x in
-                                config['hazard_source']
+                                self.hazard_source
                                 ['uncertainty_cols'].split(',')]
             csv_files = [x.strip() for x in
-                         config['hazard_source']['files'].split(',')]
+                         self.hazard_source['files'].split(',')]
 
         gmfs_service = GMFService()
         return gmfs_service.sample_from_csv(
             exp_xml,
             csv_files,
-            imts,
-            gmf_cols,
-            uncertainty_cols,
-            n_gmfs,
-            asset_hazard_distance,
-            truncation_level,
-            random_seed,
-            minimum_intensity
+            self.imts,
+            self.config['number_of_ground_motion_fields'],
+            gmf_cols=gmf_cols,
+            uncertainty_cols=uncertainty_cols,
+            assoc_distance=self.config.get('asset_hazard_distance', 2),
+            truncation_level=self.config.get('truncation_level', 2),
+            seed=self.config.get('random_seed', 42),
+            minimum_intensities=self.config.get('minimum_intensity', {})
         )

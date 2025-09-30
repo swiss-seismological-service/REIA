@@ -64,29 +64,31 @@ class RiskAssessmentService:
         try:
             # run loss calculations
             loss_calculation, loss_branches = loss
-            self.logger.info(f"Running loss calculation for "
-                             f"risk assessment {risk_assessment.oid} "
-                             f"with {len(loss_branches)} branches.")
-            loss_calculation = calc_service.run_calculations(
-                loss_calculation, loss_branches)
-            risk_assessment.losscalculation_oid = loss_calculation.oid
-            risk_assessment = RiskAssessmentRepository.update(
-                self.session, risk_assessment)
-            self.logger.info("Loss calculation completed with "
-                             f"status: {loss_calculation.status.name}")
+            if loss_calculation is not None:
+                self.logger.info(f"Running loss calculation for "
+                                 f"risk assessment {risk_assessment.oid} "
+                                 f"with {len(loss_branches)} branches.")
+                loss_calculation = calc_service.run_calculations(
+                    loss_calculation, loss_branches)
+                risk_assessment.losscalculation_oid = loss_calculation.oid
+                risk_assessment = RiskAssessmentRepository.update(
+                    self.session, risk_assessment)
+                self.logger.info("Loss calculation completed with "
+                                 f"status: {loss_calculation.status.name}")
 
             # run damage calculations
             damage_calculation, damage_branches = damage
-            self.logger.info(f"Running damage calculation for "
-                             f"risk assessment {risk_assessment.oid} "
-                             f"with {len(damage_branches)} branches.")
-            damage_calculation = calc_service.run_calculations(
-                damage_calculation, damage_branches)
-            risk_assessment.damagecalculation_oid = damage_calculation.oid
-            risk_assessment = RiskAssessmentRepository.update(
-                self.session, risk_assessment)
-            self.logger.info("Damage calculation completed with "
-                             f"status: {damage_calculation.status.name}")
+            if damage_calculation is not None:
+                self.logger.info(f"Running damage calculation for "
+                                 f"risk assessment {risk_assessment.oid} "
+                                 f"with {len(damage_branches)} branches.")
+                damage_calculation = calc_service.run_calculations(
+                    damage_calculation, damage_branches)
+                risk_assessment.damagecalculation_oid = damage_calculation.oid
+                risk_assessment = RiskAssessmentRepository.update(
+                    self.session, risk_assessment)
+                self.logger.info("Damage calculation completed with "
+                                 f"status: {damage_calculation.status.name}")
 
             # Determine final status based on calculation results
             final_status = \

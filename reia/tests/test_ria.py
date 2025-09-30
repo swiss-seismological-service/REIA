@@ -18,7 +18,7 @@ def test_run_risk_assessment_end_to_end(
     originid = 'smi:ch.ethz.sed/e2e_test'
     service = RiskAssessmentService(db_session)
     risk_assessment = service.run_risk_assessment(
-        originid, loss_config, damage_config)
+        originid, [loss_config, damage_config], [1, 1])
 
     # Verify the risk assessment was created properly
     e2e_assessment = RiskAssessmentRepository.get_by_id(

@@ -6,7 +6,7 @@ from reia.io import (CALCULATION_BRANCH_MAPPING, CALCULATION_MAPPING,
 from reia.schemas.calculation_schemas import (Calculation, CalculationBranch,
                                               CalculationBranchSettings)
 from reia.services.creation_info import populate_creation_info
-from reia.utils import flatten_config
+from reia.utils import clean_config, flatten_config
 
 
 def validate_calculation_input(
@@ -99,23 +99,17 @@ def create_calculation_branch(config: configparser.ConfigParser,
     """
 
     # Clean and flatten config
-    flat_job = configparser.ConfigParser(interpolation=None)
-    flat_job.read_dict(config)
-    for s in ['vulnerability', 'exposure', 'hazard', 'fragility']:
-        if flat_job.has_section(s):
-            flat_job.remove_section(s)
-    flat_job = flatten_config(flat_job)
+    flat_job = flatten_config(config)
+    cleaned_job = clean_config(config)
 
     # Extract calculation mode
-    calculation_mode = flat_job.pop('calculation_mode')
-
-    # Get exposure model OID
-    exposuremodel_oid = config['exposure']['exposure_file']
+    calculation_mode = cleaned_job.pop('calculation_mode')
+    exposuremodel_oid = flat_job.pop('exposure_file')
 
     # Build branch data dictionary
     branch_dict = {
         '_exposuremodel_oid': exposuremodel_oid,
-        'config': flat_job,
+        'config': cleaned_job,
         'weight': weight
     }
 

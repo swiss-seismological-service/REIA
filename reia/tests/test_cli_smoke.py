@@ -48,7 +48,6 @@ def test_cli_function_imports():
     # Calculation commands
     assert callable(cli.create_calculation_files)
     assert callable(cli.run_test_calculation_cmd)
-    assert callable(cli.run_calculation)
     assert callable(cli.list_calculations)
     assert callable(cli.delete_calculation)
 
@@ -101,7 +100,6 @@ def test_cli_command_help():
         ["exposure", "list", "--help"],
         ["vulnerability", "add", "--help"],
         ["fragility", "delete", "--help"],
-        ["calculation", "run", "--help"],
         ["risk-assessment", "run", "--help"]
     ]
 
