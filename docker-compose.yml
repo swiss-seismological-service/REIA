@@ -42,8 +42,10 @@ services:
 
   # OpenQuake Engine
   openquake:
-    image: openquake/engine:3.16
+    image: openquake/engine:3.23
     container_name: "${COMPOSE_PROJECT_NAME}_openquake"
+    entrypoint: ["oq"]                                # run the oq CLI
+    command: ["webui", "start", "0.0.0.0:8800", "-s"] # …with these args
     environment:
       # OpenQuake configuration from README.md
       LOCKDOWN: "True"

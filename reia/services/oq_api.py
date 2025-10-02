@@ -13,17 +13,27 @@ from reia.config.settings import REIASettings
 
 
 class APIConnection():
-    def __init__(self, server: str, auth: dict, logger_name: str = '__name__'):
+    def __init__(self,
+                 server: str,
+                 auth: dict | None = None,
+                 logger_name: str = '__name__'):
         self.server = server
         self.auth = auth
         self.logger = logging.getLogger(logger_name)
 
         self.session = requests.Session()
-        self.authenticate()
+        if self.auth:
+            self.authenticate()
 
     def authenticate(self):
-        self.session.post(f'{self.server}/accounts/ajax_login/',
-                          data=self.auth)
+        try:
+            response = self.session.post(f'{self.server}/accounts/ajax_login/',
+                                         data=self.auth)
+            response.raise_for_status()
+        except requests.exceptions.RequestException:
+            self.logger.warning(
+                "Authentication failed - "
+                "OpenQuake may not have LOCKDOWN enabled")
 
 
 class OQCalculationAPI(APIConnection):
@@ -220,11 +230,14 @@ def oqapi_import_remote_calculation(
     if remote:
         datadir = datastore.get_datadir()
         auth = config.oq_api_auth
+        # Pass None for credentials if they're empty (no LOCKDOWN)
+        username = auth.get('username') if auth.get('username') else None
+        password = auth.get('password') if auth.get('password') else None
         webex = WebExtractor(
             calc_id,
             config.oq_host,
-            auth['username'],
-            auth['password'])
+            username,
+            password)
         hc_id = webex.oqparam.hazard_calculation_id
         if hc_id:
             sys.exit('The job has a parent (#%d) and cannot be '

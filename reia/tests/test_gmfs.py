@@ -159,11 +159,11 @@ def test_gmfs_from_csv():
     gmfs_df = pd.read_csv(gmfs_buf)
 
     assert list(sites_df.columns) == ["site_id", "lon", "lat"]
-    assert list(gmfs_df.columns) == ["sid", "eid", "gmv_0", "gmv_1"]
+    assert list(gmfs_df.columns) == ["sid", "eid", "gmv_MMI", "gmv_1"]
 
     sid0 = gmfs_df[gmfs_df["sid"] == 36807].sort_values("eid")[0:5]
 
-    assert sid0["gmv_0"].tolist() == pytest.approx(
+    assert sid0["gmv_MMI"].tolist() == pytest.approx(
         [0.05403812, 0.064683095, 0.0662216, 0.043471977, 0.039713044],
         abs=1e-5,
     )
@@ -172,7 +172,7 @@ def test_gmfs_from_csv():
         abs=1e-5,
     )
 
-    assert gmfs_df["gmv_0"].mean() == pytest.approx(0.303477470988,
-                                                    abs=1e-6)
+    assert gmfs_df["gmv_MMI"].mean() == pytest.approx(0.303477470988,
+                                                      abs=1e-6)
     assert gmfs_df["gmv_1"].mean() == pytest.approx(0.165232480005,
                                                     abs=1e-6)

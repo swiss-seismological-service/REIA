@@ -38,8 +38,8 @@ class GMFService:
         """Sample ground motion fields (GMFs) from CSV files."""
 
         # create a SiteCollection
-        mesh, _ = Exposure.read(
-            [str(exposure_xml)], check_dupl=False).get_mesh_assets_by_site()
+        mesh = Exposure.read_all(
+            [str(exposure_xml)], check_dupl=False).mesh
         full_sitecol = SiteCollection.from_points(
             mesh.lons, mesh.lats)
 
@@ -152,8 +152,8 @@ class GMFService:
             Tuple of (gmfs_csv_buffer, sites_csv_buffer)
         """
 
-        mesh, assets_by_site = Exposure.read(
-            [str(exposure_xml)], check_dupl=False).get_mesh_assets_by_site()
+        mesh = Exposure.read_all(
+            [str(exposure_xml)], check_dupl=False).mesh
         full_sitecol = SiteCollection.from_points(
             mesh.lons, mesh.lats)
 
