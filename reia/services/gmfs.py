@@ -1,12 +1,9 @@
 import configparser
 import csv
 import logging
-import os
 from io import StringIO
 from pathlib import Path
-from typing import Tuple
 
-import geopandas as gpd
 import numpy as np
 import pandas as pd
 from geopy import distance
@@ -97,11 +94,9 @@ class GMFService:
             sitecol, gmfs, discarded = geo.utils.assoc(
                 gmfs, full_sitecol, assoc_distance, 'filter')
         except geo.utils.SiteAssociationError:
-            # if no sites could be associated, check how many sites are in
-            # Switzerland
-            ch, num = self._isin_switzerland(gmfs)
-            LOGGER.warning(f'Error: {num} GMVs are in Switzerland, '
-                           f'{gmfs.shape[0]-num} are outside of Switzerland.')
+            # if no sites could be associated, log a warning
+            LOGGER.warning('No sites could be associated within '
+                           f'{assoc_distance} km.')
             # and return zero-valued gmfs
             empty_gmfs = np.zeros((1, num_gmfs, 2))
             return self._write_gmf_csvs(
@@ -135,13 +130,16 @@ class GMFService:
         LOGGER.info('Writing GMFs to CSV files.')
         return self._write_gmf_csvs(gmfs, full_sitecol, sitecol, imts)
 
-    def sample_from_shakemap(
-        self,
-        exposure_xml: list[str],
-        grid_xml: str,
-        uncertainty_xml: str,
-        imts: list[str],
-    ) -> tuple[StringIO, StringIO]:
+    def sample_from_shakemap(self,
+                             exposure_xml: list[str],
+                             grid_xml: str,
+                             uncertainty_xml: str,
+                             imts: list[str],
+                             num_gmfs: int,
+                             assoc_distance: float = 10,
+                             truncation_level: float = 2,
+                             seed: int = 42
+                             ) -> tuple[StringIO, StringIO]:
         """Sample ground motion fields (GMFs) from shakemap files.
 
         Args:
@@ -155,7 +153,7 @@ class GMFService:
         """
 
         mesh, assets_by_site = Exposure.read(
-            exposure_xml, check_dupl=False).get_mesh_assets_by_site()
+            [str(exposure_xml)], check_dupl=False).get_mesh_assets_by_site()
         full_sitecol = SiteCollection.from_points(
             mesh.lons, mesh.lats)
 
@@ -164,12 +162,13 @@ class GMFService:
                    "uncertainty_url": uncertainty_xml}
 
         sitecol, shkmp, discarded = get_sitecol_shakemap(
-            uridict, imts, full_sitecol, mode='filter')
+            uridict, imts, full_sitecol, assoc_dist=assoc_distance,
+            mode='filter')
 
         gmf_dict = {'kind': 'basic'}
 
         _, gmfs = self.to_gmfs(
-            shkmp, gmf_dict, False, 2, 100, 42, imts)
+            shkmp, gmf_dict, False, truncation_level, num_gmfs, seed, imts)
 
         return self._write_gmf_csvs(gmfs, full_sitecol, sitecol, imts)
 
@@ -182,7 +181,7 @@ class GMFService:
         num_gmfs,
         seed,
         imts=None
-    ) -> Tuple[list, np.ndarray]:
+    ) -> tuple[list, np.ndarray]:
         """Generate ground motion fields from shakemap data.
 
         Compatible with OpenQuake's to_gmfs signature but only supports
@@ -267,7 +266,7 @@ class GMFService:
     def export_from_datastore(
         self,
         dstore: str,
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    ) -> tuple[StringIO, StringIO]:
         """Read the GMFs and site collection from the datastore."""
 
         store = read(dstore)
@@ -294,7 +293,17 @@ class GMFService:
 
         site_collection.rename(columns={'sids': 'site_id'}, inplace=True)
 
-        return (gmf_data, site_collection)
+        # write dataframes to StringIO buffers
+        gmfs_csv = StringIO()
+        gmf_data.to_csv(gmfs_csv, index=False)
+        gmfs_csv.seek(0)
+        gmfs_csv.name = 'gmfs.csv'
+        sites_csv = StringIO()
+        site_collection.to_csv(sites_csv, index=False)
+        sites_csv.seek(0)
+        sites_csv.name = 'sites.csv'
+
+        return (gmfs_csv, sites_csv)
 
     def _write_gmf_csvs(
         self,
@@ -302,7 +311,7 @@ class GMFService:
         full_sitecol,
         sitecol,
         imts: list[str],
-    ) -> Tuple[StringIO, StringIO]:
+    ) -> tuple[StringIO, StringIO]:
         """Write the GMFs and site collection to StringIO CSV buffers."""
 
         sites_buf = StringIO()
@@ -385,25 +394,14 @@ class GMFService:
 
         return dist
 
-    def _isin_switzerland(self, data: pd.DataFrame):
-        """Check if the data points lie inside of Switzerland."""
-        data_poly = gpd.read_file(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                         '../data/geometries/CH.json'))
-        gdf = gpd.GeoDataFrame(
-            data, geometry=gpd.points_from_xy(
-                data.lon, data.lat), crs='EPSG:4326')
-
-        joined_gdf = gpd.sjoin(gdf, data_poly, predicate='within')
-        return joined_gdf.empty, joined_gdf.shape[0]
-
 
 class GMFConfigurationService:
 
     def __init__(self, config: configparser.ConfigParser):
         self.source_func = {'custom_csv': self._parse_custom,
                             'gmfs_csv': self._parse_gmfs,
-                            'shakemap': self._parse_shakemap}
+                            'shakemap': self._parse_shakemap,
+                            'dstore': self._parse_dstore}
 
         self.hazard_source = dict(config['hazard_source']) if \
             config.has_section('hazard_source') else None
@@ -432,9 +430,43 @@ class GMFConfigurationService:
         return self.source_func[self.source_type](
             exposure_xml, exposure_csv)
 
-    def _parse_shakemap(self, *args, **kwargs) -> tuple[StringIO, StringIO]:
-        raise NotImplementedError(
-            'Shakemap source type is not implemented yet.')
+    def _parse_shakemap(self,
+                        exposure_xml: StringIO,
+                        exposure_csv: StringIO) -> tuple[StringIO, StringIO]:
+        """Parse shakemap configuration from config file.
+        """
+        # write exposure xml and csv to temporary files
+        exp_xml, tmp_dir = write_buffer_temp(exposure_xml)
+        _, tmp_dir = write_buffer_temp(exposure_csv, tmp_dir)
+
+        grid_xml = self.hazard_source.get('grid_xml', None)
+        uncertainty_xml = self.hazard_source.get('uncertainty_xml', None)
+
+        if not grid_xml or not uncertainty_xml:
+            raise ValueError(
+                'Shakemap configuration requires both grid_xml and '
+                'uncertainty_xml to be set.')
+
+        gmfs_service = GMFService()
+        return gmfs_service.sample_from_shakemap(
+            exp_xml,
+            grid_xml,
+            uncertainty_xml,
+            self.imts,
+            self.config['number_of_ground_motion_fields'],
+            assoc_distance=self.config.get('asset_hazard_distance', 2),
+            truncation_level=self.config.get('truncation_level', 2),
+            seed=self.config.get('random_seed', 42)
+        )
+
+    def _parse_dstore(self, *args, **kwargs) -> tuple[StringIO, StringIO]:
+        dstore_file = self.hazard_source.get('dstore_file', None)
+
+        if not dstore_file:
+            raise ValueError(
+                'Datastore configuration requires dstore_file to be set.')
+
+        return GMFService().export_from_datastore(str(dstore_file))
 
     def _parse_gmfs(self, *args, **kwargs) -> tuple[StringIO, StringIO]:
         gmfs_csv = self.full_config.get('gmfs_csv', None)
@@ -468,9 +500,9 @@ class GMFConfigurationService:
 
         """
         # write exposure xml and csv to temporary files
-        exp_xml, tmp_dir = write_buffer_temp(exposure_xml, 'exposure.xml')
+        exp_xml, tmp_dir = write_buffer_temp(exposure_xml)
         _, tmp_dir = write_buffer_temp(
-            exposure_csv, 'exposure_assets.csv', tmp_dir)
+            exposure_csv, tmp_dir)
 
         # parse the lists of GMF and uncertainty columns
         if self.hazard_source['source_type'] == 'custom_csv':

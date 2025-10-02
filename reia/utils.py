@@ -208,9 +208,8 @@ def display_table(title: str, headers: list[str], rows: list[list],
 
 def write_buffer_temp(
         buffer: StringIO,
-        name: str,
         tmp_dir=tempfile.TemporaryDirectory()) -> Path:
-    path = Path(tmp_dir.name) / name
+    path = Path(tmp_dir.name) / buffer.name
     path.write_text(buffer.getvalue(), encoding="utf-8")
     # keep a reference to tmp_dir for as long as you need the file
     return path, tmp_dir
