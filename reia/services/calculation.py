@@ -70,7 +70,7 @@ class CalculationExecutionService:
             for i, b in enumerate(branch_settings):
                 self.logger.info(
                     "Executing calculation branch "
-                    f"{i+1}/{len(branch_settings)} (ID: {b.branch.oid})")
+                    f"{i + 1}/{len(branch_settings)} (ID: {b.branch.oid})")
                 b = self._run_calculation_branch(b)
 
             # Determine final status

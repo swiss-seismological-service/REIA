@@ -11,7 +11,7 @@ jobs:
     tests:
         uses: ./.github/workflows/_tests.yml
         with:
-            python-versions: '["3.10"]'
+            python-versions: '["3.12"]'
     codecov:
         name: Upload coverage reports to Codecov
         needs:

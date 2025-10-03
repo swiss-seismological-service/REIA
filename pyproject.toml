@@ -28,7 +28,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Physics",
 ]
-requires-python = "~=3.10"
+requires-python = ">=3.10"
 dependencies = [
     "alembic",
     "fiona<1.10",

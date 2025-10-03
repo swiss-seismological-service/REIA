@@ -5,7 +5,7 @@ on:
             python-versions:
                 required: true
                 type: string
-                default: '["3.10"]'
+                default: '["3.12"]'
 
 jobs:
     tests:
@@ -28,7 +28,7 @@ jobs:
                 ports:
                     - 5430:5432
             openquake:
-                image: openquake/engine:3.16
+                image: ghcr.io/swiss-seismological-service/reia/openquake-engine:latest
                 env:
                     LOCKDOWN: 'True'
                     OQ_ADMIN_LOGIN: oq_user
@@ -38,7 +38,7 @@ jobs:
                     --health-cmd "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8800/engine/'); print('ok')\" || exit 1"
                     --health-interval 20s
                     --health-timeout 10s
-                    --health-retries 6
+                    --health-retries 15
                     --health-start-period 30s
                 ports:
                     - 8700:8800
@@ -72,7 +72,7 @@ jobs:
                   OQ_PASSWORD: oq_password
                   OQ_HOST: http://localhost:8700
             - name: Store the codecov report
-              if: matrix.python-version == '3.10'
+              if: matrix.python-version == '3.12'
               uses: actions/upload-artifact@v4
               with:
                   name: coverage-report
