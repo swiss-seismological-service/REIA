@@ -1,8 +1,12 @@
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+import pytest
+
+from reia.services.calculation import CalculationDataService
 from reia.services.exposure import ExposureService
 from reia.services.fragility import FragilityService
 from reia.services.vulnerability import VulnerabilityService
@@ -107,3 +111,37 @@ def test_vulnerabilitymodel(db_session):
     # Compare the raw XML with the exported buffer XML semantically
     assert compare_xml_semantically(vulnerability_raw, vulnerability_db), \
         "Database-generated XML does not match original XML semantically"
+
+
+@pytest.mark.parametrize(
+    ("calculation_time", "expected_time_event"),
+    [
+        (datetime(2020, 1, 1, 12, 0, 0), "day"),
+        (datetime(2020, 1, 1, 18, 0, 0), "transit"),
+        (datetime(2020, 1, 1, 23, 0, 0), "night"),
+    ],
+)
+def test_loss_calculation(
+    loss_config, db_session, calculation_time, expected_time_event
+):
+    calculation_data = CalculationDataService.import_from_files(
+        db_session, [loss_config], [1], calculation_time)
+
+    # expecting only 1 type of calculation
+    calculation = None
+
+    # Run calculations using the service
+    for data in calculation_data:
+        calc, branch_settings = data
+
+        if calc is None:
+            continue
+        else:
+            calculation = branch_settings
+
+    assert calculation is not None
+    assert calculation[0].config.has_section('risk_calculation')
+    assert (
+        calculation[0].config.get('risk_calculation', 'time_event')
+        == expected_time_event
+    )

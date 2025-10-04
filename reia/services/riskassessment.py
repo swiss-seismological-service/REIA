@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 from reia.repositories.calculation import RiskAssessmentRepository
@@ -23,14 +24,16 @@ class RiskAssessmentService:
     def run_risk_assessment(self,
                             originid: str | None,
                             configs: list[Path],
-                            weights: list[float]) -> RiskAssessment:
+                            weights: list[float],
+                            origin_time: datetime | None = None
+                            ) -> RiskAssessment:
         """Run a complete risk assessment with loss and damage calculations.
 
         Args:
             originid:   Unique identifier for the risk assessment
             configs:    List of configuration file paths
             weights:    List of weights for each config file
-
+            origin_time: Time of the event
         Returns:
             Created RiskAssessment object
 
@@ -70,7 +73,7 @@ class RiskAssessmentService:
 
         # Gather the calculation data
         loss, damage = CalculationDataService.import_from_files(
-            self.session, configs, weights)
+            self.session, configs, weights, origin_time)
 
         calc_service = CalculationExecutionService(self.session)
 

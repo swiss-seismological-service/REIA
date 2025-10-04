@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import typer
@@ -654,7 +655,12 @@ def run_risk_assessment(
                         ] = None,
     simple_config: Annotated[Path | None,
                              typer.Argument(help="Single config file.")
-                             ] = None
+                             ] = None,
+    time: Annotated[str | None,
+                    typer.Option("--time",
+                                 "-t",
+                                 help="Origin time for the risk assessment.")
+                    ] = None
 ) -> None:
     # Determine configs and weights
     if simple_config and not config:
@@ -669,6 +675,8 @@ def run_risk_assessment(
         raise typer.BadParameter(
             "Must provide either a config file argument OR --config options")
 
+    origin_time = datetime.fromisoformat(time) if time is not None else None
+
     # Display what will be executed
     typer.echo(f'Running risk assessment for: {originid}')
     typer.echo("Calculation branches:")
@@ -678,7 +686,7 @@ def run_risk_assessment(
     with DatabaseSession() as session:
         service = RiskAssessmentService(session)
         risk_assessment = service.run_risk_assessment(
-            originid, configs, weights)
+            originid, configs, weights, origin_time)
 
     typer.echo(
         f'Successfully completed risk assessment with status: '

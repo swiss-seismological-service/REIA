@@ -1,6 +1,7 @@
 import configparser
 import io
 from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 
 from reia.config.settings import get_settings
@@ -56,8 +57,8 @@ class CalculationExecutionService:
                          f"{len(branch_settings)} branches.")
 
         self.logger.info(
-            f"Running calculation {calculation.oid} with "
-            f"branches {[b.branch.oid for b in branch_settings]}.")
+            f"Running calculation with id {calculation.oid} and "
+            f"branch ids {[b.branch.oid for b in branch_settings]}.")
 
         try:
             # Update calculation status to executing
@@ -186,7 +187,8 @@ class CalculationDataService(DataService):
     def import_from_files(cls,
                           session: SessionType,
                           config_path: list[Path],
-                          weights: list[int]) \
+                          weights: list[int],
+                          origin_time: datetime | None = None) \
         -> tuple[tuple[Calculation,
                        list[CalculationBranchSettings]],
                  tuple[Calculation,
@@ -204,6 +206,10 @@ class CalculationDataService(DataService):
         for path, weight in zip(config_path, weights):
             config = configparser.ConfigParser(interpolation=None)
             config.read(path)
+
+            if origin_time is not None:
+                config = add_time(config, origin_time)
+
             if config.has_section('vulnerability'):
                 config_loss = deepcopy(config)
                 config_loss['general']['calculation_mode'] = 'scenario_risk'
@@ -333,6 +339,8 @@ class CalculationDataService(DataService):
                     file.name = "{}.xml".format(k.replace('_file', ''))
                 working_job['fragility'][k] = file.name
                 calculation_files.append(file)
+        else:
+            raise ValueError(f"Unsupported calculation_mode '{calculation_mode}'")
 
         gmfs_config = GMFConfigurationService(working_job)
         gmfs, sites = gmfs_config.get_gmfs(
@@ -352,3 +360,26 @@ class CalculationDataService(DataService):
         calculation_files.append(job_file)
 
         return calculation_files
+
+
+def add_time(config: configparser.ConfigParser,
+             origin_time: datetime) -> configparser.ConfigParser:
+    config = deepcopy(config)
+    if not config.has_section('risk_calculation'):
+        config.add_section('risk_calculation')
+
+    app_settings = get_settings()
+
+    time_event = None
+
+    for period, intervals in app_settings.periods.items():
+        if any(start <= origin_time.time() < end for start, end in intervals):
+            time_event = period
+            break
+
+    if time_event is None:
+        raise ValueError("Origin time does not fall within any defined period.")
+
+    config['risk_calculation']['time_event'] = time_event
+
+    return config

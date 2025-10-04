@@ -1,4 +1,5 @@
 import os
+from datetime import time
 from functools import lru_cache
 from pathlib import Path
 
@@ -86,6 +87,12 @@ class REIASettings(Settings):
             "username": self.oq_user,
             "password": self.oq_password
         }
+
+    periods: dict[str, list] = Field(default={
+        'night': [(time(20, 0), time(23, 59, 59, 59)), (time(0, 0), time(7, 0))],
+        'transit': [(time(7, 0), time(9, 0)), (time(17, 0), time(19, 0))],
+        'day': [(time(9, 0), time(17, 0))]
+    })
 
     @computed_field
     @property
