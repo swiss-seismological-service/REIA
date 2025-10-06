@@ -242,8 +242,17 @@ def oqapi_import_remote_calculation(
         if hc_id:
             sys.exit('The job has a parent (#%d) and cannot be '
                      'downloaded' % hc_id)
-        webex.dump('%s/calc_%d.hdf5' % (datadir, calc_id))
-        webex.close()
+
+        # Download the datastore
+        datastore_path = '%s/calc_%d.hdf5' % (datadir, calc_id)
+        try:
+            webex.dump(datastore_path)
+        except Exception as e:
+            logger.error(
+                f"Failed to download datastore for calc {calc_id}: {e}")
+            raise
+        finally:
+            webex.close()
     with datastore.read(calc_id) as dstore:
         engine.expose_outputs(dstore, status='complete')
     logger.info('Imported calculation %s successfully', calc_id)

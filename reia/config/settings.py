@@ -65,8 +65,8 @@ class REIASettings(Settings):
 
     # OpenQuake API Configuration
     oq_host: str = Field(default='http://localhost:8800')
-    oq_user: str = Field(default='user')
-    oq_password: str = Field(default='password')
+    oq_user: str = Field(default='')
+    oq_password: str = Field(default='')
 
     oq_version: int = Field(default=16)
 
