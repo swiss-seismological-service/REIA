@@ -340,7 +340,7 @@ class CalculationDataService(DataService):
                 working_job['fragility'][k] = file.name
                 calculation_files.append(file)
         else:
-            raise ValueError(f"Unsupported calculation_mode '{calculation_mode}'")
+            raise ValueError("Unsupported calculation_mode")
 
         gmfs_config = GMFConfigurationService(working_job)
         gmfs, sites = gmfs_config.get_gmfs(
