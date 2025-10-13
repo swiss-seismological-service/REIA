@@ -56,13 +56,15 @@ async def async_db_session():
     """Async database session for webservice tests."""
 
     async_session = get_test_async_session()
-    engine = async_session.bind
 
     async with async_session() as session:
         yield session
         await session.close()
 
-    await engine.dispose()
+    # Get engine from sessionmaker and dispose
+    engine = async_session.kw.get('bind')
+    if engine:
+        await engine.dispose()
 
 
 @pytest_asyncio.fixture
