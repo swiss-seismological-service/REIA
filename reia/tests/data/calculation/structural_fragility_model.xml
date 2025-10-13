@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nrml xmlns="http://openquake.org/xmlns/nrml/0.5">
+    <fragilityModel id="structural_fragility" assetCategory="buildings" lossCategory="structural">
+        <description>Structural fragility model for test calculation</description>
+        <limitStates>slight moderate extensive severe complete</limitStates>
+
+        <!-- tax1: Low-rise reinforced concrete building (higher resistance) -->
+        <fragilityFunction id="tax1" format="discrete" shape="logncdf">
+            <imls imt="PGA" noDamageLimit="0">
+                0.05 0.10 0.15 0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.60 0.70 0.80 0.90 1.00 1.20 1.40 1.60 1.80 2.00
+            </imls>
+            <poes ls="slight">
+                0.001 0.01 0.05 0.15 0.30 0.48 0.65 0.78 0.87 0.93 0.97 0.99 0.995 0.998 0.999 1.0 1.0 1.0 1.0 1.0
+            </poes>
+            <poes ls="moderate">
+                0.0001 0.001 0.005 0.02 0.06 0.13 0.23 0.35 0.48 0.61 0.78 0.88 0.94 0.97 0.985 0.995 0.998 0.999 1.0 1.0
+            </poes>
+            <poes ls="extensive">
+                0.00001 0.0001 0.001 0.005 0.015 0.04 0.08 0.15 0.24 0.35 0.54 0.69 0.80 0.88 0.93 0.97 0.985 0.992 0.996 0.998
+            </poes>
+            <poes ls="severe">
+                0.00001 0.00005 0.0003 0.002 0.007 0.02 0.04 0.08 0.14 0.22 0.38 0.53 0.66 0.77 0.85 0.92 0.96 0.98 0.99 0.995
+            </poes>
+            <poes ls="complete">
+                0.00001 0.00001 0.0001 0.0007 0.003 0.009 0.022 0.045 0.08 0.13 0.25 0.39 0.53 0.65 0.75 0.86 0.92 0.96 0.98 0.99
+            </poes>
+        </fragilityFunction>
+
+        <!-- tax2: Unreinforced masonry building (medium vulnerability) -->
+        <fragilityFunction id="tax2" format="discrete" shape="logncdf">
+            <imls imt="PGA" noDamageLimit="0">
+                0.05 0.10 0.15 0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.60 0.70 0.80 0.90 1.00 1.20 1.40 1.60 1.80 2.00
+            </imls>
+            <poes ls="slight">
+                0.005 0.04 0.13 0.28 0.47 0.64 0.77 0.86 0.92 0.96 0.985 0.995 0.998 0.999 1.0 1.0 1.0 1.0 1.0 1.0
+            </poes>
+            <poes ls="moderate">
+                0.0005 0.005 0.02 0.07 0.17 0.30 0.45 0.59 0.71 0.80 0.91 0.96 0.98 0.99 0.995 0.998 0.999 1.0 1.0 1.0
+            </poes>
+            <poes ls="extensive">
+                0.0001 0.001 0.006 0.02 0.06 0.13 0.23 0.35 0.48 0.60 0.77 0.87 0.93 0.96 0.98 0.992 0.996 0.998 0.999 1.0
+            </poes>
+            <poes ls="severe">
+                0.00003 0.0003 0.002 0.009 0.03 0.07 0.13 0.22 0.33 0.45 0.64 0.77 0.86 0.92 0.95 0.98 0.99 0.995 0.998 0.999
+            </poes>
+            <poes ls="complete">
+                0.00001 0.0001 0.0008 0.004 0.014 0.04 0.08 0.14 0.23 0.34 0.52 0.67 0.78 0.86 0.91 0.96 0.98 0.99 0.995 0.997
+            </poes>
+        </fragilityFunction>
+
+        <!-- tax3: Wood frame or unreinforced masonry (higher vulnerability) -->
+        <fragilityFunction id="tax3" format="discrete" shape="logncdf">
+            <imls imt="PGA" noDamageLimit="0">
+                0.05 0.10 0.15 0.20 0.25 0.30 0.35 0.40 0.45 0.50 0.60 0.70 0.80 0.90 1.00 1.20 1.40 1.60 1.80 2.00
+            </imls>
+            <poes ls="slight">
+                0.02 0.10 0.25 0.45 0.63 0.77 0.87 0.93 0.96 0.98 0.995 0.998 0.999 1.0 1.0 1.0 1.0 1.0 1.0 1.0
+            </poes>
+            <poes ls="moderate">
+                0.002 0.015 0.06 0.15 0.29 0.45 0.60 0.72 0.82 0.88 0.95 0.98 0.99 0.995 0.998 0.999 1.0 1.0 1.0 1.0
+            </poes>
+            <poes ls="extensive">
+                0.0005 0.005 0.02 0.06 0.14 0.26 0.40 0.54 0.66 0.76 0.88 0.94 0.97 0.985 0.992 0.997 0.999 0.999 1.0 1.0
+            </poes>
+            <poes ls="severe">
+                0.0001 0.001 0.008 0.03 0.08 0.16 0.27 0.41 0.54 0.66 0.81 0.90 0.95 0.97 0.985 0.994 0.997 0.999 0.999 1.0
+            </poes>
+            <poes ls="complete">
+                0.00005 0.0005 0.004 0.015 0.045 0.10 0.18 0.30 0.43 0.56 0.73 0.84 0.91 0.95 0.97 0.99 0.995 0.997 0.998 0.999
+            </poes>
+        </fragilityFunction>
+    </fragilityModel>
+</nrml>
