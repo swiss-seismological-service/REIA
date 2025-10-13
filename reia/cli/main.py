@@ -5,9 +5,6 @@ from datetime import datetime
 from pathlib import Path
 
 import typer
-from typer import Argument
-from typing_extensions import Annotated
-
 from reia.cli.extensions import plugin_manager
 from reia.repositories import DatabaseSession
 from reia.repositories.asset import (AggregationGeometryRepository,
@@ -31,6 +28,8 @@ from reia.services.riskassessment import RiskAssessmentService
 from reia.services.taxonomy import TaxonomyService
 from reia.services.vulnerability import VulnerabilityService
 from reia.utils import display_table
+from typer import Argument
+from typing_extensions import Annotated
 
 # Initialize logging once at startup
 LoggerService.setup_logging()
@@ -700,10 +699,10 @@ def export_gmfs_from_dstore(dstore: Path, directory: Path):
     gmf_data, site_collection = gmf_service.export_from_datastore(str(dstore))
 
     with open(Path(directory, 'gmfs.csv'), 'w') as f:
-        gmf_data.to_csv(f, index=False)
+        f.write(gmf_data.getvalue())
 
     with open(Path(directory, 'sites.csv'), 'w') as f:
-        site_collection.to_csv(f, index=False)
+        f.write(site_collection.getvalue())
 
 
 @gmfs.command('sample')
