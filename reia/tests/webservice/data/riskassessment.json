@@ -1,0 +1,61 @@
+{
+    "count": 1,
+    "items": [
+        {
+            "creationinfo_author": "nicolas@Laptrip",
+            "creationinfo_agencyid": "",
+            "creationinfo_creationtime": "2025-10-13T10:39:23",
+            "creationinfo_version": "1.0.0",
+            "_oid": "0bfc56c7-b54f-4928-b7cf-555429929e4e",
+            "originid": "smi:ch.ethz.sed/example",
+            "status": 3,
+            "type": "natural",
+            "preferred": false,
+            "published": false,
+            "losscalculation": {
+                "creationinfo_author": "nicolas@Laptrip",
+                "creationinfo_agencyid": "",
+                "creationinfo_creationtime": "2025-10-13T10:38:52",
+                "creationinfo_version": "1.0.0",
+                "_oid": 1,
+                "aggregateby": [
+                    "state"
+                ],
+                "status": 6,
+                "description": "scenario risk example calculation",
+                "_type": "loss",
+                "creationinfo": {
+                    "author": "nicolas@Laptrip",
+                    "agencyid": "",
+                    "creationtime": "2025-10-13T10:38:52",
+                    "version": "1.0.0"
+                }
+            },
+            "damagecalculation": {
+                "creationinfo_author": "nicolas@Laptrip",
+                "creationinfo_agencyid": "",
+                "creationinfo_creationtime": "2025-10-13T10:39:07",
+                "creationinfo_version": "1.0.0",
+                "_oid": 2,
+                "aggregateby": [
+                    "state"
+                ],
+                "status": 6,
+                "description": "scenario risk example calculation",
+                "_type": "damage",
+                "creationinfo": {
+                    "author": "nicolas@Laptrip",
+                    "agencyid": "",
+                    "creationtime": "2025-10-13T10:39:07",
+                    "version": "1.0.0"
+                }
+            },
+            "creationinfo": {
+                "author": "nicolas@Laptrip",
+                "agencyid": "",
+                "creationtime": "2025-10-13T10:39:23",
+                "version": "1.0.0"
+            }
+        }
+    ]
+}

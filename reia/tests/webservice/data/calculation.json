@@ -1,0 +1,92 @@
+{
+    "count": 2,
+    "items": [
+        {
+            "creationinfo_author": "nicolas@Laptrip",
+            "creationinfo_agencyid": "",
+            "creationinfo_creationtime": "2025-10-13T10:39:07",
+            "creationinfo_version": "1.0.0",
+            "_oid": 2,
+            "aggregateby": [
+                "state"
+            ],
+            "status": 6,
+            "description": "scenario risk example calculation",
+            "_type": "damage",
+            "damagecalculationbranches": [
+                {
+                    "_oid": 2,
+                    "config": {
+                        "description": "scenario risk example calculation",
+                        "aggregate_by": "state",
+                        "master_seed": 42,
+                        "random_seed": 42,
+                        "truncation_level": 2.0,
+                        "asset_hazard_distance": 200.0,
+                        "number_of_ground_motion_fields": 100,
+                        "intensity_measure_types": "PGA,SA(0.1),SA(0.3),SA(0.4)"
+                    },
+                    "status": 6,
+                    "weight": 1.0,
+                    "_calculation_oid": 2,
+                    "_exposuremodel_oid": 1,
+                    "_taxonomymap_oid": 1,
+                    "_type": "damage",
+                    "_structuralfragilitymodel_oid": 1
+                }
+            ],
+            "creationinfo": {
+                "author": "nicolas@Laptrip",
+                "agencyid": "",
+                "creationtime": "2025-10-13T10:39:07",
+                "version": "1.0.0"
+            }
+        },
+        {
+            "creationinfo_author": "nicolas@Laptrip",
+            "creationinfo_agencyid": "",
+            "creationinfo_creationtime": "2025-10-13T10:38:52",
+            "creationinfo_version": "1.0.0",
+            "_oid": 1,
+            "aggregateby": [
+                "state"
+            ],
+            "status": 6,
+            "description": "scenario risk example calculation",
+            "_type": "loss",
+            "losscalculationbranches": [
+                {
+                    "_oid": 1,
+                    "config": {
+                        "description": "scenario risk example calculation",
+                        "aggregate_by": "state",
+                        "master_seed": 42,
+                        "random_seed": 42,
+                        "truncation_level": 2.0,
+                        "asset_hazard_distance": 200.0,
+                        "number_of_ground_motion_fields": 100,
+                        "intensity_measure_types": "PGA,SA(0.1),SA(0.3),SA(0.4)",
+                        "time_event": "night"
+                    },
+                    "status": 6,
+                    "weight": 1.0,
+                    "_calculation_oid": 1,
+                    "_exposuremodel_oid": 1,
+                    "_taxonomymap_oid": 1,
+                    "_type": "loss",
+                    "_occupantsvulnerabilitymodel_oid": 5,
+                    "_contentsvulnerabilitymodel_oid": 3,
+                    "_structuralvulnerabilitymodel_oid": 1,
+                    "_nonstructuralvulnerabilitymodel_oid": 2,
+                    "_businessinterruptionvulnerabilitymodel_oid": 4
+                }
+            ],
+            "creationinfo": {
+                "author": "nicolas@Laptrip",
+                "agencyid": "",
+                "creationtime": "2025-10-13T10:38:52",
+                "version": "1.0.0"
+            }
+        }
+    ]
+}

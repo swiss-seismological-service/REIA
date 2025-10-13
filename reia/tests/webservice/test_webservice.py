@@ -7,8 +7,7 @@ import pytest
 
 def load_expected_response(endpoint_name):
     """Load expected response from JSON file."""
-    data_path = Path(__file__).parent / "data" / \
-        "webservice" / f"{endpoint_name}.json"
+    data_path = Path(__file__).parent / "data" / f"{endpoint_name}.json"
     with open(data_path, 'r') as f:
         return json.load(f)
 
@@ -58,7 +57,7 @@ def compare_responses(
 
 
 @pytest.mark.asyncio
-async def test_riskassessment_endpoint(test_client, risk_assessment):
+async def test_riskassessment_endpoint(test_client, example_risk_assessment):
     """Test /riskassessment endpoint structure and keys."""
     response = await test_client.get("/v1/riskassessment")
     assert response.status_code == 200
@@ -77,10 +76,10 @@ async def test_calculation_endpoint(test_client):
 
 
 @pytest.mark.asyncio
-async def test_loss_endpoint(test_client, loss_calculation):
+async def test_loss_endpoint(test_client, example_loss_calculation):
     """Test /loss endpoint structure, keys and values."""
     response = await test_client.get(
-        f"/v1/loss/{loss_calculation.oid}/structural/Canton")
+        f"/v1/loss/{example_loss_calculation.oid}/structural/state")
     assert response.status_code == 200, response.text
 
     expected_data = load_expected_response("loss")
@@ -93,10 +92,10 @@ async def test_loss_endpoint(test_client, loss_calculation):
 
 
 @pytest.mark.asyncio
-async def test_damage_endpoint(test_client, damage_calculation):
+async def test_damage_endpoint(test_client, example_damage_calculation):
     """Test /damage endpoint structure, keys and values."""
     response = await test_client.get(
-        f"/v1/damage/{damage_calculation.oid}/structural/Canton")
+        f"/v1/damage/{example_damage_calculation.oid}/structural/state")
     assert response.status_code == 200, response.text
 
     expected_data = load_expected_response("damage")

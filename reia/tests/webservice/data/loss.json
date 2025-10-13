@@ -1,0 +1,29 @@
+[
+    {
+        "category": "structural",
+        "tag": [
+            "S01"
+        ],
+        "loss_mean": 2906.11976,
+        "loss_pc10": 565.6292,
+        "loss_pc90": 7302.275
+    },
+    {
+        "category": "structural",
+        "tag": [
+            "S02"
+        ],
+        "loss_mean": 2690.89712,
+        "loss_pc10": 890.1865,
+        "loss_pc90": 5539.687
+    },
+    {
+        "category": "structural",
+        "tag": [
+            "S03"
+        ],
+        "loss_mean": 1819.93758,
+        "loss_pc10": 582.84467,
+        "loss_pc90": 3931.689
+    }
+]
