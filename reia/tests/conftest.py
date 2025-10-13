@@ -24,6 +24,7 @@ from reia.webservice.tests.database import (cleanup_test_client,
                                             get_test_client)
 
 DATAFOLDER = Path(__file__).parent / 'data' / 'ria_test'
+CALCULATION = Path(__file__).parent / 'data' / 'calculation'
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -131,6 +132,85 @@ def loss_config(exposure, vulnerability):
 def loss_calculation(loss_config, db_session):
     calculation_data = CalculationDataService.import_from_files(
         db_session, [loss_config], [1])
+
+    # expecting only 1 type of calculation
+    calculation = None
+
+    # Run calculations using the service
+    for data in calculation_data:
+        calc, branch_settings = data
+
+        if calc is None:
+            continue
+
+        calc_service = CalculationExecutionService(db_session)
+        calculation = calc_service.run_calculation(
+            calc, branch_settings)
+
+    return calculation
+
+
+@pytest.fixture(scope='module')
+def loss_calculation_example(db_session):
+    """Load example loss calculation from file."""
+    exposure = ExposureService.import_from_files(
+        db_session,
+        CALCULATION
+        / 'exposure_model_converted.xml',
+        'exposure')
+    contents = VulnerabilityService.import_from_files(
+        db_session,
+        CALCULATION / 'contents_vulnerability_model.xml',
+        'contents')
+    downtime = VulnerabilityService.import_from_files(
+        db_session,
+        CALCULATION / 'downtime_vulnerability_model.xml',
+        'downtime')
+    structural = VulnerabilityService.import_from_files(
+        db_session,
+        CALCULATION / 'structural_vulnerability_model.xml',
+        'structural')
+    nonstructural = VulnerabilityService.import_from_files(
+        db_session,
+        CALCULATION / 'nonstructural_vulnerability_model.xml',
+        'nonstructural')
+    occupants = VulnerabilityService.import_from_files(
+        db_session,
+        CALCULATION / 'occupants_vulnerability_model.xml',
+        'occupants')
+    taxonomy = TaxonomyService.import_from_files(
+        db_session,
+        CALCULATION / 'taxonomy_mapping.csv',
+        'taxonomy')
+
+    risk_file = configparser.ConfigParser()
+    risk_file.read(str(CALCULATION / 'job.ini'))
+
+    risk_file['exposure']['exposure_file'] = str(exposure.oid)
+    risk_file['vulnerability']['contents_vulnerability_file'] = \
+        str(contents.oid)
+    risk_file['vulnerability']['business_interruption_vulnerability_file'] = \
+        str(downtime.oid)
+    risk_file['vulnerability']['structural_vulnerability_file'] = \
+        str(structural.oid)
+    risk_file['vulnerability']['nonstructural_vulnerability_file'] = \
+        str(nonstructural.oid)
+    risk_file['vulnerability']['occupants_vulnerability_file'] = \
+        str(occupants.oid)
+    risk_file['vulnerability']['taxonomy_mapping_csv'] = \
+        str(taxonomy.oid)
+
+    risk_file['hazard']['gmfs_csv'] = str(CALCULATION / 'gmfs.csv')
+    risk_file['hazard']['sites_csv'] = str(CALCULATION / 'sites.csv')
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        # Write to temporary file
+        loss_file_path = Path(tmpdirname) / 'loss_calculation.ini'
+        with open(loss_file_path, 'w') as f:
+            risk_file.write(f)
+
+        calculation_data = CalculationDataService.import_from_files(
+            db_session, [loss_file_path], [1])
 
     # expecting only 1 type of calculation
     calculation = None
