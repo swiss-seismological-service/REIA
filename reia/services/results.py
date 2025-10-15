@@ -1,3 +1,4 @@
+import pandas as pd
 from openquake.commonlib.datastore import read
 
 from reia.config.settings import get_settings
@@ -25,16 +26,15 @@ class ResultsService:
         self.api_client = api_client
         self.dstore_path = dstore_path
 
-    def save_calculation_results(
-            self,
-            calculationbranch: CalculationBranch) -> None:
-        """Save OpenQuake calculation results to database.
+    def extract_calculation_results(self,
+                                    calculationbranch: CalculationBranch
+                                    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Extract OpenQuake calculation results from datastore.
 
         Args:
             calculationbranch: The calculation branch object
-
-        Raises:
-            Exception: If result retrieval or saving fails
+        Returns:
+            Tuple of DataFrames: risk values and aggregation mappings
         """
         # Get calculation data using OQCalculationAPI
         self.logger.info("Retrieving results for calculation "
@@ -71,6 +71,22 @@ class ResultsService:
         risk_values, df_agg_val = prepare_risk_data_for_storage(
             raw_risk_values, calculationbranch, risk_type,
             aggregation_tag_by_name)
+
+        return (risk_values, df_agg_val)
+
+    def save_calculation_results(
+            self,
+            calculationbranch: CalculationBranch) -> None:
+        """Save OpenQuake calculation results to database.
+
+        Args:
+            calculationbranch: The calculation branch object
+
+        Raises:
+            Exception: If result retrieval or saving fails
+        """
+        risk_values, df_agg_val = self.extract_calculation_results(
+            calculationbranch)
 
         # Save to database
         self.logger.debug(
