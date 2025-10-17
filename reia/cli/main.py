@@ -58,7 +58,8 @@ def _get_alembic_directory():
         raise typer.Exit(code=1)
 
 
-app = typer.Typer(add_completion=False)
+app = typer.Typer(add_completion=False,
+                  pretty_exceptions_enable=False)
 db = typer.Typer()
 exposure = typer.Typer()
 vulnerability = typer.Typer()
