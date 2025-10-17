@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     postgres_pool_size: int = Field(default=5)
     postgres_max_overflow: int = Field(default=10)
 
+    # Logging Configuration
+    log_level: str = Field(default='INFO')
+
 
 class REIASettings(Settings):
     """Application settings with environment variable support."""

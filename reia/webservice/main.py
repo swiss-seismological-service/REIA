@@ -8,8 +8,9 @@ from reia.services.logger import LoggerService
 from reia.webservice.database import sessionmanager
 from reia.webservice.routers import calculation, damage, loss, riskassessment
 
-# Initialize logging once at startup
-LoggerService.setup_logging()
+# Load settings and initialize logging once at startup
+_webservice_settings = get_webservice_settings()
+LoggerService.setup_logging(log_level=_webservice_settings.log_level)
 logger = LoggerService.get_logger(__name__)
 
 

@@ -22,7 +22,6 @@ class TestLoggerService:
 
             try:
                 # Change to temp directory
-                import os
                 os.chdir(temp_path)
 
                 # Ensure logs directory doesn't exist
@@ -77,10 +76,9 @@ class TestLoggerService:
         mock_open_text.assert_called_once_with("reia.config", "logger.ini")
         mock_basicconfig.assert_called_once()
 
-    @patch.dict(os.environ, {'LOG_LEVEL': 'DEBUG'})
     @patch('logging.getLogger')
-    def test_setup_logging_respects_log_level_env_var(self, mock_get_logger):
-        """Test that LOG_LEVEL environment variable is respected."""
+    def test_setup_logging_respects_log_level_parameter(self, mock_get_logger):
+        """Test that log_level parameter is respected."""
         mock_logger = Mock()
         mock_handler = Mock()
         mock_logger.handlers = [mock_handler]
@@ -89,7 +87,7 @@ class TestLoggerService:
         with patch('reia.services.logger.LoggerService._ensure_logs_directory'):
             with patch('importlib.resources.open_text'):
                 with patch('logging.config.fileConfig'):
-                    LoggerService.setup_logging()
+                    LoggerService.setup_logging(log_level='DEBUG')
 
         mock_logger.setLevel.assert_called_once_with(logging.DEBUG)
         mock_handler.setLevel.assert_called_once_with(logging.DEBUG)

@@ -11,12 +11,14 @@ class LoggerService:
     _initialized = False
 
     @staticmethod
-    def setup_logging(config_path: str = None) -> None:
+    def setup_logging(config_path: str = None, log_level: str = None) -> None:
         """Setup centralized logging configuration.
 
         Args:
             config_path: Path to logging configuration file
                         (optional, uses package resource by default)
+            log_level: Log level to use (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+                      (optional, uses logger.ini defaults if not specified)
         """
         # Prevent multiple initializations
         if LoggerService._initialized:
@@ -41,13 +43,14 @@ class LoggerService:
             # Fallback to basic configuration
             LoggerService._setup_basic_logging()
 
-        # Apply environment variable log level if specified
-        log_level = os.environ.get('LOG_LEVEL', '').upper()
-        if log_level in ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'):
-            logging.getLogger().setLevel(getattr(logging, log_level))
-            # Also update all handlers
-            for handler in logging.getLogger().handlers:
-                handler.setLevel(getattr(logging, log_level))
+        # Apply log level if specified
+        if log_level:
+            log_level = log_level.upper()
+            if log_level in ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'):
+                logging.getLogger().setLevel(getattr(logging, log_level))
+                # Also update all handlers
+                for handler in logging.getLogger().handlers:
+                    handler.setLevel(getattr(logging, log_level))
 
         LoggerService._initialized = True
 

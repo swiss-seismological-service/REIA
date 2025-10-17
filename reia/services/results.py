@@ -1,6 +1,5 @@
 import pandas as pd
 from openquake.commonlib.datastore import read
-
 from reia.config.settings import get_settings
 from reia.io.results import (extract_risk_from_datastore,
                              prepare_risk_data_for_storage)
@@ -85,6 +84,7 @@ class ResultsService:
         Raises:
             Exception: If result retrieval or saving fails
         """
+
         risk_values, df_agg_val = self.extract_calculation_results(
             calculationbranch)
 

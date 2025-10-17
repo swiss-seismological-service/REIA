@@ -5,7 +5,11 @@ from datetime import datetime
 from pathlib import Path
 
 import typer
+from typer import Argument
+from typing_extensions import Annotated
+
 from reia.cli.extensions import plugin_manager
+from reia.config.settings import get_settings
 from reia.repositories import DatabaseSession
 from reia.repositories.asset import (AggregationGeometryRepository,
                                      AssetRepository, ExposureModelRepository,
@@ -28,17 +32,14 @@ from reia.services.riskassessment import RiskAssessmentService
 from reia.services.taxonomy import TaxonomyService
 from reia.services.vulnerability import VulnerabilityService
 from reia.utils import display_table
-from typer import Argument
-from typing_extensions import Annotated
 
-# Initialize logging once at startup
-LoggerService.setup_logging()
+# Load settings and initialize logging once at startup
+_settings = get_settings()
+LoggerService.setup_logging(log_level=_settings.log_level)
 
 
 def _get_alembic_directory():
     """Find the Alembic configuration directory."""
-    import os
-    from pathlib import Path
 
     # For installed package, alembic files are now in the reia/alembic package
     package_alembic = Path(__file__).parent.parent / "alembic" / "alembic.ini"
@@ -77,10 +78,9 @@ def main(
 ) -> None:
     """REIA - Rapid Earthquake Impact Assessment Switzerland."""
     if verbose:
-        os.environ['LOG_LEVEL'] = 'DEBUG'
-        # Re-initialize logging with new level
+        # Re-initialize logging with DEBUG level
         LoggerService._initialized = False
-        LoggerService.setup_logging()
+        LoggerService.setup_logging(log_level='DEBUG')
 
 
 app.add_typer(db, name='db',
