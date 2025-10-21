@@ -17,6 +17,10 @@ class RiskValueRepository(repository_factory(RiskValue, RiskValueORM)):
                     session: Session,
                     risk_values: pd.DataFrame,
                     df_agg_val: pd.DataFrame) -> None:
+
+        if 'name' in df_agg_val.columns:
+            df_agg_val = df_agg_val.drop(columns=['name'])
+
         with db_cursor_from_session(session) as cursor:
             db_indexes = allocate_oids(cursor,
                                        RiskValueORM.__table__.name,

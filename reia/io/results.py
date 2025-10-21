@@ -105,5 +105,6 @@ def prepare_risk_data_for_storage(
     tag_objs = df_agg_val['aggregationtag'].map(aggregation_tag_by_name)
     df_agg_val['aggregationtype'] = tag_objs.map(attrgetter('type'))
     df_agg_val['aggregationtag'] = tag_objs.map(attrgetter('oid'))
+    df_agg_val['name'] = tag_objs.map(attrgetter('name'))
 
     return risk_values, df_agg_val
