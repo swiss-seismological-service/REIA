@@ -1,13 +1,12 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Select, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-
 from reia.datamodel import RiskAssessment
 from reia.webservice.repositories.base import async_repository_factory
 from reia.webservice.schemas import WSRiskAssessment
+from sqlalchemy import Select, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 
 class RiskAssessmentRepository(async_repository_factory(
@@ -55,5 +54,18 @@ class RiskAssessmentRepository(async_repository_factory(
             .where(RiskAssessment._oid == oid) \
             .options(selectinload(RiskAssessment.losscalculation),
                      selectinload(RiskAssessment.damagecalculation))
+        result = await session.execute(stmt)
+        return result.unique().scalar_one_or_none()
+
+    @classmethod
+    async def get_by_calculation_id(
+            cls,
+            session: AsyncSession,
+            calculation_id: int) -> RiskAssessment | None:
+        """Get a single risk assessment by calculation ID """
+        stmt = select(RiskAssessment) \
+            .where((RiskAssessment._losscalculation_oid == calculation_id)
+                   | (RiskAssessment._damagecalculation_oid == calculation_id))
+
         result = await session.execute(stmt)
         return result.unique().scalar_one_or_none()
