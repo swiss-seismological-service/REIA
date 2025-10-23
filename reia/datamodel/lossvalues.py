@@ -46,7 +46,7 @@ class RiskValue(ORMBase):
 
     _calculation_oid = Column(BigInteger,
                               ForeignKey('loss_calculation._oid',
-                                        ondelete='CASCADE'),
+                                         ondelete='CASCADE'),
                               primary_key=True)
 
     _calculationbranch_oid = Column(BigInteger,
