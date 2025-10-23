@@ -26,7 +26,7 @@ class RiskAssessment(ORMBase, CreationInfoMixin):
 
     _losscalculation_oid = Column(BigInteger,
                                   ForeignKey('loss_calculation._oid',
-                                             ondelete="RESTRICT"),
+                                             ondelete="SET NULL"),
                                   nullable=True)
     losscalculation = relationship('LossCalculation',
                                    backref='riskassessments',
@@ -34,7 +34,7 @@ class RiskAssessment(ORMBase, CreationInfoMixin):
 
     _damagecalculation_oid = Column(BigInteger,
                                     ForeignKey('loss_calculation._oid',
-                                               ondelete="RESTRICT"),
+                                               ondelete="SET NULL"),
                                     nullable=True)
     damagecalculation = relationship('DamageCalculation',
                                      backref='riskassessments',
@@ -83,7 +83,8 @@ class LossCalculationBranch(CalculationBranch):
                                    back_populates='losscalculationbranches')
 
     losses = relationship('LossValue',
-                          back_populates='losscalculationbranch')
+                          back_populates='losscalculationbranch',
+                          passive_deletes=True)
 
     _occupantsvulnerabilitymodel_oid = Column(
         BigInteger,
@@ -140,7 +141,8 @@ class DamageCalculationBranch(CalculationBranch):
     __tablename__ = None
 
     damages = relationship('DamageValue',
-                           back_populates='damagecalculationbranch')
+                           back_populates='damagecalculationbranch',
+                           passive_deletes=True)
 
     damagecalculation = relationship(
         'DamageCalculation',

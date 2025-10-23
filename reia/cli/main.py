@@ -530,11 +530,11 @@ def create_vulnerability(
 @calculation.command('create_files')
 def create_calculation_files(
         target_folder: Annotated[Path, typer.Argument(
-            help='Target folder for calculation files')],
+            help='Target folder for exported calculation files.')],
         settings_file: Annotated[Path, typer.Argument(
-            help='Path to calculation settings file')]
+            help='Path to calculation settings file (eg. job.ini).')]
 ) -> None:
-    """Create all files for an OpenQuake calculation."""
+    """Create all input files to manually run a OpenQuake calculation."""
     with DatabaseSession() as session:
         CalculationDataService.export_branch_to_directory(
             session, settings_file, target_folder)
@@ -549,7 +549,7 @@ def run_test_calculation_cmd(
     settings_file: Annotated[Path, typer.Argument(
         help='Path to calculation settings file')]
 ) -> None:
-    """Send a calculation to OpenQuake as a test."""
+    """Send a calculation to OpenQuake as a test, without storing results."""
     with DatabaseSession() as session:
         response = run_test_calculation(session, settings_file)
 
@@ -596,7 +596,7 @@ def add_risk_assessment(
         damage_id: Annotated[int, typer.Argument(
             help='ID of damage calculation')]
 ) -> int:
-    """Add a risk assessment linking loss and damage calculations."""
+    """Add a risk assessment entry and assign a loss and damage calculation."""
     riskassessment = RiskAssessment(
         originid=originid,
         losscalculation_oid=loss_id,
@@ -617,7 +617,7 @@ def delete_risk_assessment(
     riskassessment_oid: Annotated[str, typer.Argument(
         help='ID of risk assessment to delete')]
 ) -> None:
-    """Delete a risk assessment."""
+    """Delete a risk assessment and all associated calculations and results."""
     with DatabaseSession() as session:
         rowcount = RiskAssessmentRepository.delete(session, riskassessment_oid)
     typer.echo(f'Successfully deleted {rowcount} risk assessment(s).')
@@ -641,7 +641,7 @@ def run_risk_assessment(
     config: Annotated[list[Path],
                       typer.Option("--config",
                                    "-c",
-                                   help="Config file path.")
+                                   help="Config file path (job.ini)")
                       ] = [],
     weight: Annotated[list[float],
                       typer.Option("--weight",
@@ -662,15 +662,46 @@ def run_risk_assessment(
                                  help="Origin time for the risk assessment.")
                     ] = None
 ) -> None:
+    """
+    Run a risk assessment with one or more calculation branches.
+
+    You can provide either a single config file as argument (simple mode),
+    containing all settings for the loss and damage calculations.
+
+    Eg. `reia risk-assessment run simple_job.ini`
+    \n\n
+    Alternatively, you can provide separate config files for loss and damage
+    calculations along with their weights (complex mode).
+
+    Eg. `reia risk-assessment run --config loss_job.ini --config damage_job.ini
+    --weight 1 --weight 1 --originid some_origin_id`
+    \n\n
+    You can provide multiple config files per loss and damge calculation with
+    respective weights to run ensemble calculations.
+
+    Eg. `reia risk-assessment run --config loss_job1.ini --config loss_job2.ini
+    --config damage_job1.ini --config damage_job2.ini
+    --weight 0.5 --weight 0.5 --weight 0.7 --weight 0.3
+    --originid some_origin_id`
+    \n\n
+    Additionally, you can specify an origin time for the risk assessment
+    using the `--time` option in ISO format (YYYY-MM-DDTHH:MM:SS). The
+    appropriate day/night/transit values will be applied based on the
+    provided time and exposure model. Configurable working hours are taken
+    from the settings.
+    """
     # Determine configs and weights
     if simple_config and not config:
         # Simple mode: single config file as argument
         configs = [simple_config]
         weights = [1.0]
     elif config and not simple_config:
-        # Complex mode: multiple configs with optional weights
+        # Complex mode: multiple configs with weights
         configs = config
-        weights = weight or [1 / len(configs)] * len(configs)
+        weights = weight
+        if weights is []:
+            raise typer.BadParameter(
+                "When using --config, must also provide --weight options")
     else:
         raise typer.BadParameter(
             "Must provide either a config file argument OR --config options")

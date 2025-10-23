@@ -63,7 +63,7 @@ class RiskAssessmentRepository(repository_factory(
             DamageCalculationRepository.delete(session, damagecalc_oid)
 
         session.commit()
-        session.remove()
+
         logger.info(
             f"Successfully deleted risk assessment {riskassessment_oid}")
         return 1
@@ -142,6 +142,45 @@ class CalculationRepository(repository_factory(
             return LossCalculationRepository.get_by_id(session, oid)
         elif calc.type == ECalculationType.DAMAGE:
             return DamageCalculationRepository.get_by_id(session, oid)
+
+    @classmethod
+    def delete(cls, session: Session, calculation_oid: int) -> int:
+        logger.info(f"Deleting calculation {calculation_oid}")
+
+        bind = session.get_bind()
+
+        logger.debug(
+            f"Dropping partition tables for calculation {calculation_oid}")
+
+        try:
+            drop_dynamic_table(bind, f"loss_assoc_{calculation_oid}")
+            drop_partition_table(bind, "loss_riskvalue", calculation_oid)
+        except Exception as e:
+            if "does not exist" in str(e):
+                logger.warning(
+                    f"No risk values for calculation "
+                    f"{calculation_oid} found.")
+            else:
+                logger.error(
+                    f"Error dropping tables for calculation "
+                    f"{calculation_oid}: {e}")
+                raise
+        try:
+            super().delete(session, calculation_oid)
+
+            session.commit()
+
+            logger.info(f"Successfully deleted calculation {calculation_oid}")
+            return 1
+        except Exception as e:
+            if "No object with id" in str(e):
+                logger.warning(
+                    f"Calculation {calculation_oid} does not exist.")
+                return 0
+            else:
+                logger.error(
+                    f"Error deleting calculation {calculation_oid}: {e}")
+                raise
 
     @classmethod
     def get_all_by_type(

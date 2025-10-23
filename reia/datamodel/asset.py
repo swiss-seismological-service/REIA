@@ -50,7 +50,7 @@ class Asset(ORMBase, ClassificationMixin('taxonomy')):
 
     # site relationship
     _site_oid = Column(BigInteger,
-                       ForeignKey('loss_site._oid'),
+                       ForeignKey('loss_site._oid', ondelete='CASCADE'),
                        nullable=False)
     site = relationship('Site',
                         back_populates='assets',

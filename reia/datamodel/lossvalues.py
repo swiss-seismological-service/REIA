@@ -28,7 +28,7 @@ riskvalue_aggregationtag = Table(
     ForeignKeyConstraint(['aggregationtag', 'aggregationtype'],
                          ['loss_aggregationtag._oid',
                          'loss_aggregationtag.type'],
-                         ondelete='CASCADE'),
+                         ondelete='RESTRICT'),
 
     postgresql_partition_by='LIST (_calculation_oid)'
 )
@@ -45,12 +45,14 @@ class RiskValue(ORMBase):
     weight = Column(Float)
 
     _calculation_oid = Column(BigInteger,
-                              ForeignKey('loss_calculation._oid'),
+                              ForeignKey('loss_calculation._oid',
+                                        ondelete='CASCADE'),
                               primary_key=True)
 
     _calculationbranch_oid = Column(BigInteger,
                                     ForeignKey(
-                                        'loss_calculationbranch._oid'))
+                                        'loss_calculationbranch._oid',
+                                        ondelete='CASCADE'))
 
     aggregationtags = relationship('AggregationTag',
                                    secondary=riskvalue_aggregationtag,
