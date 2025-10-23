@@ -168,3 +168,22 @@ lat,lon,psa03_%g,lnpsa03_uncertainty
 47.8,6.0167,1.168,0.6082
 47.8,6.025,1.1749999999999998,0.6082
 ```
+
+## Day and Night
+You can either specify the time of day in the job `ini` file, as you normally would with OpenQuake:
+
+```ini
+[risk_calculation]
+time_event = day
+```
+
+Or you can specify the actual time via the CLI command when running the calculation:
+
+```bash
+reia risk-assessment run docs/example/job.ini --time 2025-10-2025T13:00:00
+```
+
+The standard time periods can be configured in the settings (reia/config/settings.py).
+- day: 09:00 - 17:00
+- night: 20:00 - 07:00
+- transit: 07:00 - 09:00 and 17:00 - 19:00
