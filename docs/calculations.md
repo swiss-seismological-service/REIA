@@ -77,7 +77,7 @@ reia risk-assessment run docs/example/job.ini
 This command will execute the risk assessment based on the parameters defined in the job configuration file. The results will be stored in the REIA engine and can be accessed or exported as needed.
 
 ### Specifying Calculations Separately
-Alternatively you can specify the loss and damage calculation separately, or even run ensemble models. You can specify this accordingly in the run command.
+Alternatively you can specify the loss and damage calculation separately, or even run ensemble models. You can specify this accordingly in the `run` command.
 
 Separate ini files for loss and damage:
 
@@ -95,24 +95,7 @@ reia risk-assessment run --config risk.ini --weight 0.3 --config risk2.ini --wei
 ```
 
 ## Hazard Input Options
-The simplest way to provide hazard input data is via the `gmfs_csv` and `sites_csv` parameters in the job configuration file as shown above.
-
-```ini
-[hazard]
-random_seed = 42
-truncation_level = 2.0
-asset_hazard_distance = 200.0
-number_of_ground_motion_fields = 100
-intensity_measure_types = PGA,SA(0.1),SA(0.3),SA(0.4)
-gmfs_csv = docs/example/gmfs.csv
-sites_csv = docs/example/sites.csv
-```
-
-The gmfs are already sampled and in the final format as expected by OpenQuake.
-
-### Alternative Hazard Source Options
-You can also provide the ground motion fields via different options, as described below. An additional custon section `[hazard_source]` is added to specify the source type. The relevant hazard parameters stay the same:
-
+You can also provide the ground motion fields via different options, as described below. The relevant hazard parameters stay the same:
 ```ini
 [hazard]
 random_seed  = 568
@@ -125,6 +108,19 @@ minimum_intensity = {"SA(0.3)": 0.10, "SA(0.6)": 0.05}
 
 Where the `intensity_measure_types` and `number_of_ground_motion_fields` are required to specify the used intensity measures and the number of ground motion fields to be generated, or already computed, from the provided hazard source.
 
+An additional custon section `[hazard_source]` is added to specify the source type if an alternative to the CSV format is used as described in the following section.
+
+### OpenQuake CSV format
+The simplest way to provide hazard input data is via the `gmfs_csv` and `sites_csv` parameters in the job configuration file as shown above.
+
+```ini
+[hazard]
+...
+gmfs_csv = docs/example/gmfs.csv
+sites_csv = docs/example/sites.csv
+```
+
+The gmfs are expected to be sampled and in the final format as expected by OpenQuake. No `[hazard_source]` section is required in this case.
 
 ### USGS ShakeMap XML format
 You can also provide shakemaps in the USGS ShakeMap XML format, in the same manner as the CSV format above:
