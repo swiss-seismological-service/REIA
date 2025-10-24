@@ -68,9 +68,7 @@ services:
         condition: service_healthy
 
   webservice:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.webservice
+    image: ghcr.io/swiss-seismological-service/reia:latest
     container_name: "${COMPOSE_PROJECT_NAME}_webservice"
     environment:
       - DB_NAME
