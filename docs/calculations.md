@@ -155,7 +155,8 @@ uncertainty_cols = lnpsa03_uncertainty, lnpsa06_uncertainty
 files = psa03.csv, psa06.csv
 ```
 
-With the csv files in this the respective format, standard units used by USGS shakemaps are expected. Ie. %g for acceleration, cm/s for velocity, etc. The order of the IMT's should match the order specified in the `intensity_measure_types` parameter.
+With the csv files in this the respective format. One or multiple files can be specified (with one or multiple IMTs per file), if multiple files are provided, they will be combined by matching the lat/lon coordinates, coordinates not present in all files will be fully ignored (inner join).  
+Standard units used by USGS shakemaps are expected. Ie. %g for acceleration, cm/s for velocity, etc. The order of the IMT's should match the order specified in the `intensity_measure_types` parameter.
 
 ```csv
 lat,lon,psa03_%g,lnpsa03_uncertainty
