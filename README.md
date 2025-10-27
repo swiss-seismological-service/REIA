@@ -1,153 +1,64 @@
 [![codecov](https://codecov.io/gh/swiss-seismological-service/REIA/graph/badge.svg?token=HDUMCZ0VLK)](https://codecov.io/gh/swiss-seismological-service/REIA)
 
-# Rapid Earthquake Impact Assessment
+# Rapid Earthquake Impact Assessment (REIA)
 
-REIA is a tool for rapid earthquake impact assessment that integrates with OpenQuake engine for seismic risk calculations.
+## Overview
+REIA works as an orchestrator to run seismic risk assessments using the OpenQuake engine. It stores and manages data in a PostgreSQL database, and allows for easy access via a webservice.
 
-## Quick Start
+It provides the user with a structured workflow for configuring and running seismic risk assessments and evaluating the results. Reproducibility, persistence, and traceability of data and results are built into the software.
+
+REIA is developed by the Swiss Seismological Service (SED) at ETH Zurich as part of the [Swiss National Earthquake Risk Model (ERM-CH)](http://seismo.ethz.ch/en/research-and-teaching/projects/erm-ch23/) project. It is operational in Switzerland to provide rapid earthquake impact assessments ([example](http://seismo.ethz.ch/en/earthquakes/switzerland/event-ria/index.html?originId=%27c21pOmNoLmV0aHouc2VkL3NjMjBhZy9PcmlnaW4vTkxMLjIwMjUwOTAyMjEzMzQ3LjA2NjAzNC4xMzU2MTM=%27&date_ch=2025-09-02&time_ch=09:49&region=Strada%20GR&magnitude=3.8)) after significant seismic events. Its detailed results are distributed to civil protection authorities and other stakeholders to support emergency response and recovery efforts.  
+The software is also used for [scenarios](http://seismo.ethz.ch/en/earthquake-country-switzerland/earthquake-scenarios/) in research projects, civil protection planning, and insurance applications.
+
+## Components
+The REIA software consists of four main components:
+1. A PostgreSQL database with [PostGIS](https://postgis.net/) and [pg_weighted_statistics](https://gitlab.seismo.ethz.ch/erm-ch/pg-weighted-statistics) extensions
+2. An [OpenQuake Engine](https://github.com/gem/oq-engine) instance
+3. A webservice to access the data
+4. This repository, containing the `REIA CLI`, configuration examples and base data.
+
+## Installation
 
 ### Prerequisites
 
 - Python ≥3.10, ≤3.12
 - Docker
 
-### 1. Installation
+### Installing the Services using Docker Compose
 
-1.1 **Clone the repository**:
-   ```bash
-   git clone https://github.com/swiss-seismological-service/REIA.git
-   cd REIA
-   ```
-
-1.2 **Set up environment**:
-   ```bash
-   # Create virtual environment
-   python -m venv env
-   source env/bin/activate  # On Windows: env\Scripts\activate
-   
-   # Install REIA
-   pip install -e .[dev]
-   ```
-
-1.3 **Configure environment variables**:
-   ```bash
-   # Copy example environment file
-   cp .env.example .env
-   # Edit .env with your settings
-   ```
-
-### 2. Set up Services with Docker Compose (Recommended)
-
-2.1 **Start services**:
-   ```bash
-   docker-compose up -d --build
-   ```
-
-2.2 **Set up database schema**:
-   ```bash
-   # This must be run manually after Docker services are up
-   reia db migrate
-   ```
-
-### 2. (Alternative) Set up Services without Docker
-
-   2.1 **Set up PostgreSQL** with PostGIS extension
-
-   2.2 **Install pg_weighted_statistics extension**:  
-     - Follow installation instructions at: https://github.com/schmidni/pg_weighted_statistics  
-     - Or install via PGXN: `pgxn install pg_weighted_statistics`  
-
-   2.3 **Create Extensions** in your database:
-   ```sql
-   CREATE EXTENSION postgis;
-   CREATE EXTENSION weighted_statistics;
-   ```
-
-2.4 **Configure `.env`** with your database connection details  
-2.5 **Run migrations**:
-   ```bash
-   reia db migrate
-   ```
-2.6 Install OpenQuake engine: [Instructions](https://docs.openquake.org/oq-engine/master/manual/getting-started/installation-instructions/index.html)
-
-### 3. Run Tests
+First, clone the repository:
 
 ```bash
-pytest --cov=.
+git clone https://github.com/swiss-seismological-service/REIA.git
+cd REIA
 ```
 
-## Services
+Then, copy the example environment file, which contains the necessary settings and credentials. A list with descriptions can be found [here](./docs/configurations.md). The file can be left as is for a local setup, for a server installation you should edit the variables accordingly.  
+With a valid `.env` file, you can start the services using Docker Compose:
 
-When using Docker Compose, the following services are available:
-
-- **PostgreSQL**: Database with PostGIS and pg_weighted_statistics extensions (port 5432)
-- **OpenQuake**: Seismic hazard and risk calculations (port 8800)
-
-## Environment Variables
-
-See `.env.example` for all available configuration options.
-
-## Usage
-
-### Database Operations
 ```bash
-# Database migrations
-reia db migrate          # Run database migrations
-reia db current          # Show current migration
-reia db history          # Show migration history
-reia db downgrade <revision>    # Rollback to previous migration
-reia db downgrade -- -1 # Rollback to by 1 migration
-reia db downgrade base  # Remove all Tables, Functions and Triggers
+cp .env.example .env
+docker-compose up -d
 ```
 
-### Data Management
+### Installing the CLI
+
+All operations are performed via the `REIA CLI` tool. It can be installed in a virtual environment as follows:
+
 ```bash
-# Add models from files
-reia exposure add <file> <name>         # Add exposure model
-reia vulnerability add <file> <name>    # Add vulnerability model
-reia fragility add <file> <name>        # Add fragility model
-reia taxonomymap add <file> <name>      # Add taxonomy mapping
-
-# List existing models
-reia exposure list                      # List exposure models
-reia vulnerability list                 # List vulnerability models
-reia fragility list                     # List fragility models
-
-# Export models to files
-reia exposure create_file <id> <path>   # Export exposure model
-reia vulnerability create_file <id> <path>  # Export vulnerability model
+python -m venv env
+source env/bin/activate
+pip install -e .
+reia --help
 ```
 
-### Risk Assessment
+### Get started
+
+After those installation steps, you can start using the REIA CLI to manage your data and run risk assessments. The first thing you need to do is to set up the database schema:
+
 ```bash
-# Run complete risk assessment
-reia risk-assessment run <origin_id> --loss <loss_settings> --damage <damage_settings>
-
-# Manage risk assessments
-reia risk-assessment list               # List all risk assessments
-reia risk-assessment delete <id>        # Delete risk assessment
-
-# Individual calculations
-reia calculation run --settings <file1> <file2> --weights <w1> <w2>
-reia calculation list                   # List all calculations
-```
-
-### Example Workflow
-```bash
-# 1. Start services
-docker-compose up -d --build
-
-# 2. Set up database
 reia db migrate
-
-# 3. Add models
-reia exposure add data/exposure.xml "Exposure_model_1"
-reia vulnerability add data/vulnerability.xml "Vulnerability_model_1"
-reia fragility add data/fragility.xml "Fragility_model_1"
-
-# 4. Run risk assessment
-reia risk-assessment run "scenario_1" --loss settings/loss.ini --damage settings/damage.ini
-
-# 5. Check results
-reia risk-assessment list
 ```
+
+Now you can add models, run calculations and risk assessments. Please refer to the [Calculations](./docs/calculations.md) document for more details.
+
