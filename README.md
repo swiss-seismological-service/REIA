@@ -38,7 +38,7 @@ With a valid `.env` file, you can start the services using Docker Compose:
 
 ```bash
 cp .env.example .env
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Installing the CLI
