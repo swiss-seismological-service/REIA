@@ -64,7 +64,7 @@ ws = ["asyncpg", "fastapi[all]", "gunicorn", "uvicorn"]
 reia = "reia.cli:app"
 
 [tool.setuptools.package-data]
-"*" = ["*.xml", "*.ini"]
+"*" = ["*.xml", "*.ini", "*.csv", "*.json"]
 "reia" = ["alembic/**/*"]
 
 [tool.pytest.ini_options]
