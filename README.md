@@ -24,6 +24,8 @@ The REIA software consists of four main components:
 - Python ≥3.10, ≤3.12
 - Docker
 
+(in ubuntu vanilla 24.04: apt-get install docker.io docker-compose python-is-python3 python3.12-venv libpq-dev gcc python3-dev)
+
 ### Installing the Services using Docker Compose
 
 First, clone the repository:
