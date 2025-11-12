@@ -5,7 +5,6 @@ from datetime import datetime
 from pathlib import Path
 
 import typer
-from typer import Argument
 from typing_extensions import Annotated
 
 from reia.cli.extensions import plugin_manager
@@ -67,7 +66,6 @@ fragility = typer.Typer()
 taxonomymap = typer.Typer()
 calculation = typer.Typer()
 risk_assessment = typer.Typer()
-gmfs = typer.Typer()
 
 gmf_service = GMFService()
 
@@ -98,8 +96,6 @@ app.add_typer(calculation, name='calculation',
               help='Create or execute calculations')
 app.add_typer(risk_assessment, name='risk-assessment',
               help='Manage Risk Assessments')
-app.add_typer(gmfs, name='gmfs',
-              help='Manage GMF files')
 
 # Load and register plugins
 plugin_manager.register_plugins(app)
@@ -724,45 +720,3 @@ def run_risk_assessment(
         f'{risk_assessment.status.name}')
 
     return risk_assessment.oid
-
-
-@gmfs.command('from-dstore')
-def export_gmfs_from_dstore(dstore: Path, directory: Path):
-    gmf_data, site_collection = gmf_service.export_from_datastore(str(dstore))
-
-    with open(Path(directory, 'gmfs.csv'), 'w') as f:
-        f.write(gmf_data.getvalue())
-
-    with open(Path(directory, 'sites.csv'), 'w') as f:
-        f.write(site_collection.getvalue())
-
-
-@gmfs.command('sample')
-def sample_gmfs(
-    exposure_xml: Annotated[Path, Argument(help='Exposure xml file path.')],
-    csv_files: Annotated[list[Path],
-                         Argument(help='List of CSV shakemap file paths.')]
-):
-    try:
-        gmf_service.sample_from_csv([exposure_xml], [str(f) for f in csv_files])
-    except BaseException as e:
-        typer.echo('Uncaught error sampling gmfs.')
-        typer.echo(str(e))
-        import errno
-        sys.exit(errno.EINVAL)
-
-
-@gmfs.command('shakemap')
-def sample_shakemap(
-    exposure_xml: Path,
-    grid_xml: Path,
-    uncertainty_xml: Path,
-    imts: Annotated[list[str], Argument(
-        help='List of intensity measure types (e.g., SA(0.3) SA(1.0))'
-    )]
-):
-    gmf_service.sample_from_shakemap(
-        [exposure_xml],
-        str(grid_xml),
-        str(uncertainty_xml),
-        imts)
