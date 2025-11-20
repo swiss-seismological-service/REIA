@@ -42,7 +42,8 @@ class CreationInfoMixin(object):
     creationinfo_agencyid = Column(String)
     creationinfo_agencyuri_resourceid = Column(String)
     creationinfo_creationtime = Column(
-        DateTime, default=datetime.datetime.utcnow().isoformat(
+        DateTime, default=datetime.datetime.now(
+            datetime.timezone.utc).isoformat(
             ' ', 'seconds'))
     creationinfo_version = Column(String)
     creationinfo_copyrightowner = Column(String)
