@@ -23,7 +23,7 @@ Superuser credentials. Used by the CLI for database initialization.
 #### `POSTGRES_POOL_SIZE`, `POSTGRES_MAX_OVERFLOW`  
 Connection pool settings for the ORM layer database connections.
 
-#### `POSTGRES_PGCONF`, `POSTGRES_PGHBA`, `POSTGRES_DATADIR`
+#### `POSTGRES_PGCONF`, `POSTGRES_DATADIR`
 Paths to the docker volume mounts for PostgreSQL configuration files and data directory. Defaults will be used if not set.
 
 #### `ROOT_PATH`  
