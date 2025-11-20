@@ -229,7 +229,7 @@ def _extract_sites(assets: pd.DataFrame) -> tuple[pd.DataFrame, list[int]]:
         DataFrame of `n` unique Sites and list of `len(assets)` indices
         mapping each asset to its corresponding site.
     """
-    site_keys = list(zip(assets['longitude'], assets['latitude']))
+    site_keys = pd.Series(list(zip(assets['longitude'], assets['latitude'])))
     group_indices, unique_keys = pd.factorize(site_keys)
     unique_sites = pd.DataFrame(unique_keys.tolist(),
                                 columns=['longitude', 'latitude'])
@@ -259,8 +259,8 @@ def _normalize_tags(df: pd.DataFrame,
 def _normalize_tag_pairs(
         tag_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Normalize (type, name) pairs using pd.factorize."""
-    tag_idx, unique_tags = pd.factorize(
-        list(zip(tag_df['type'], tag_df['name'])))
+    tag_keys = pd.Series(list(zip(tag_df['type'], tag_df['name'])))
+    tag_idx, unique_tags = pd.factorize(tag_keys)
     tag_table = pd.DataFrame(unique_tags.tolist(), columns=['type', 'name'])
 
     mapping_df = tag_df[['asset', 'type']].copy()
