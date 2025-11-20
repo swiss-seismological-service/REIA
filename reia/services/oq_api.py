@@ -5,7 +5,7 @@ import time
 
 import requests
 from openquake.calculators.extract import WebExtractor
-from openquake.commonlib import datastore, logs
+from openquake.commonlib import datastore
 from openquake.engine import engine
 from openquake.server import dbserver
 
@@ -189,12 +189,7 @@ class OQCalculationAPI(APIConnection):
         Returns:
             OpenQuake datastore with calculation results
         """
-        dbserver.ensure_on()
-
-        # if id doesn not exist locally, try getting it on remote
-        job = logs.dbcmd('get_job', self.id)
-        if job is None:
-            oqapi_import_remote_calculation(self.id, self.config)
+        oqapi_import_remote_calculation(self.id, self.config)
 
         return datastore.read(self.id)
 
@@ -205,7 +200,8 @@ def oqapi_import_remote_calculation(
     """Import a remote calculation into the local database.
 
     Args:
-        calc_id: Can be a local pathname to a datastore not already
+        calc_id: Usually a integer id of a remote calculation.
+                Can be a local pathname to a datastore not already
                 present in the database: in that case it is imported in the db.
         config: Configuration object containing API settings.
 
@@ -218,18 +214,16 @@ def oqapi_import_remote_calculation(
 
     # TODO: Error handling and logs
     dbserver.ensure_on()
+    logger.info('Starting import of %s...', calc_id)
     try:
         calc_id = int(calc_id)
     except ValueError:  # assume calc_id is a pathname
-        remote = False
+        pass
     else:
-        remote = True
-        job = logs.dbcmd('get_job', calc_id)
-        if job is not None:
-            sys.exit('There is already a job #%d in the local db' % calc_id)
-    if remote:
+        logger.info('Importing remote calculation %s...', calc_id)
         datadir = datastore.get_datadir()
         auth = config.oq_api_auth
+
         # Pass None for credentials if they're empty (no LOCKDOWN)
         username = auth.get('username') if auth.get('username') else None
         password = auth.get('password') if auth.get('password') else None
@@ -238,12 +232,15 @@ def oqapi_import_remote_calculation(
             config.oq_host,
             username,
             password)
+
+        # Extraction does not work for child calculations of a hazard calc
         hc_id = webex.oqparam.hazard_calculation_id
         if hc_id:
             sys.exit('The job has a parent (#%d) and cannot be '
-                     'downloaded' % hc_id)
+                     'downloaded.' % hc_id)
 
-        # Download the datastore
+        # Download the datastore, overwrites any existing datastore with
+        # the same ID.
         datastore_path = '%s/calc_%d.hdf5' % (datadir, calc_id)
         try:
             webex.dump(datastore_path)
@@ -253,6 +250,27 @@ def oqapi_import_remote_calculation(
             raise
         finally:
             webex.close()
+
+        # If a calculation already exists with this ID, the datastore got
+        # overwritten, we need to delete the entry in the DB so it can be
+        # updated.
+        # TODO: Check whether this works if a local OQ installation is used
+        #       instead of a remote/dockerized one.
+        try:
+            existing_calc = dbserver.actions.calc_info(dbserver.db, calc_id)
+        except Exception:
+            pass
+        else:
+            logger.info(f'Another calculation with id {calc_id} is already '
+                        'present in the local database, replacing...')
+
+            dbserver.actions.del_calc(dbserver.db,
+                                      calc_id,
+                                      existing_calc['user_name'],
+                                      delete_file=False,
+                                      force=True)
+
     with datastore.read(calc_id) as dstore:
         engine.expose_outputs(dstore, status='complete')
+
     logger.info('Imported calculation %s successfully', calc_id)
