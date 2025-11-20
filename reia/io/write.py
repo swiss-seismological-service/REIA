@@ -68,6 +68,14 @@ def create_fragility_buffer(
         In-memory file object for fragility XML.
     """
     data = fragility_model.model_dump(mode='json')
+
+    # sort limitstates in fragility functions according to header
+    for f in data['fragilityfunctions']:
+        for ls in data['limitstates']:
+            f['limitstates'].sort(
+                key=lambda x: data['limitstates'].index(ls)
+                if x['name'] == ls else -1)
+
     return create_file_buffer_jinja(template_name, data=data)
 
 
