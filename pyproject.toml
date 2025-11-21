@@ -31,13 +31,13 @@ classifiers = [
 requires-python = ">=3.10"
 dependencies = [
     "alembic",
-    "fiona<1.10",
+    "fiona",
     "geoalchemy2",
     "geopandas",
     "geopy",
     "Jinja2",
-    "numpy<2",
-    "openquake.engine==v3.23.2",
+    "numpy",
+    "openquake.engine>=v3.24.0",
     "pandas",
     "psycopg2",
     "pydantic",

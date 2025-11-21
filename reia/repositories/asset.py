@@ -299,7 +299,7 @@ class AggregationGeometryRepository(repository_factory(
 
         geometries['_aggregationtag_oid'] = geometries['aggregationtag'] \
             .map(lookup) \
-            .replace({np.NAN: None})
+            .replace({np.nan: None})
 
         geometries.drop(columns=['aggregationtag'], inplace=True)
 

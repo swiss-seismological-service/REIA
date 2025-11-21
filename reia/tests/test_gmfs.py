@@ -95,12 +95,12 @@ def test_sample_from_shakemap():
         abs=1e-5,
     )
     assert sid0["gmv_SA(1.0)"].tolist() == pytest.approx(
-        [0.02385, 0.01816, 0.01249, 0.03008, 0.02328],
+        [0.00974, 0.01833, 0.03492, 0.02541, 0.0296],
         abs=1e-5,
     )
 
-    assert gmfs_df["gmv_SA(0.3)"].mean() == pytest.approx(0.04983328, abs=1e-6)
-    assert gmfs_df["gmv_SA(1.0)"].mean() == pytest.approx(0.02681144, abs=1e-6)
+    assert gmfs_df["gmv_SA(0.3)"].mean() == pytest.approx(0.047828, abs=1e-6)
+    assert gmfs_df["gmv_SA(1.0)"].mean() == pytest.approx(0.02820739, abs=1e-6)
 
 
 def test_gmfs_from_datastore(tmp_path):
