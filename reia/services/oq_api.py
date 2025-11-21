@@ -2,6 +2,7 @@ import io
 import logging
 import sys
 import time
+import zipfile
 
 import requests
 from openquake.calculators.extract import WebExtractor
@@ -41,7 +42,7 @@ class OQCalculationAPI(APIConnection):
         super().__init__(config.oq_host, config.oq_api_auth, 'openquake')
 
         self.url = f'{self.server}/v1/calc'
-        self.files = []
+        self.files = None
         self.config = config
 
         self.id = None
@@ -169,20 +170,32 @@ class OQCalculationAPI(APIConnection):
     def add_calc_files(self, *args: io.StringIO) -> None:
         """Add calculation files for submission to OpenQuake.
 
+        Creates a single zip archive containing all files and
+        stores it for upload.
+
         Args:
             *args: IO objects representing calculation files
         """
-        args = list(args)
-        job_config_index = next(
-            (i for i, f in enumerate(args) if f.name == 'job.ini'), None)
+        if not args:
+            raise ValueError("At least one file must be provided")
 
-        # All files must use the field name 'archive' for OpenQuake API
-        if job_config_index is not None:
-            job_config = args.pop(job_config_index)
-            self.files.append(('archive', job_config))
+        # Create a zip file in memory
+        zip_buffer = io.BytesIO()
 
-        # Add remaining files with the same field name 'archive'
-        self.files.extend([('archive', v) for v in args])
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for file_obj in args:
+                filename = getattr(file_obj, 'name', 'unnamed_file')
+
+                file_obj.seek(0)
+                file_content = file_obj.read()
+
+                # Add file to zip
+                zip_file.writestr(filename, file_content)
+
+        zip_buffer.seek(0)
+
+        self.files = {'archive':
+                      ('calculation.zip', zip_buffer, 'application/zip')}
 
     def get_result(self) -> datastore.DataStore:
         """Get calculation results as datastore.
