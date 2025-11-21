@@ -41,7 +41,7 @@ class OQCalculationAPI(APIConnection):
         super().__init__(config.oq_host, config.oq_api_auth, 'openquake')
 
         self.url = f'{self.server}/v1/calc'
-        self.files = {}
+        self.files = []
         self.config = config
 
         self.id = None
@@ -176,12 +176,13 @@ class OQCalculationAPI(APIConnection):
         job_config_index = next(
             (i for i, f in enumerate(args) if f.name == 'job.ini'), None)
 
+        # All files must use the field name 'archive' for OpenQuake API
         if job_config_index is not None:
             job_config = args.pop(job_config_index)
-            self.files['job_config'] = job_config
+            self.files.append(('archive', job_config))
 
-        self.files = self.files | {
-            f'input_model_{i + 1}': v for i, v in enumerate(args)}
+        # Add remaining files with the same field name 'archive'
+        self.files.extend([('archive', v) for v in args])
 
     def get_result(self) -> datastore.DataStore:
         """Get calculation results as datastore.
