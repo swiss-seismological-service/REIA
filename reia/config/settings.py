@@ -68,8 +68,8 @@ class REIASettings(Settings):
 
     # OpenQuake API Configuration
     oq_host: str = Field(default='http://localhost:8800')
-    oq_user: str = Field(default='')
-    oq_password: str = Field(default='')
+    oq_admin_login: str = Field(default='')
+    oq_admin_password: str = Field(default='')
 
     oq_version: int = Field(default=16)
 
@@ -87,8 +87,8 @@ class REIASettings(Settings):
     def oq_api_auth(self) -> dict[str, str]:
         """OpenQuake API authentication dictionary."""
         return {
-            "username": self.oq_user,
-            "password": self.oq_password
+            "username": self.oq_admin_login,
+            "password": self.oq_admin_password
         }
 
     periods: dict[str, list] = Field(default={

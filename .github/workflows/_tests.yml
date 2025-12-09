@@ -1,80 +1,80 @@
 name: tests
 on:
-    workflow_call:
-        inputs:
-            python-versions:
-                required: true
-                type: string
-                default: '["3.12"]'
+  workflow_call:
+    inputs:
+      python-versions:
+        required: true
+        type: string
+        default: '["3.12"]'
 
 jobs:
-    tests:
-        runs-on: ubuntu-latest
+  tests:
+    runs-on: ubuntu-latest
 
-        services:
-            postgres:
-                image: ghcr.io/schmidni/pg_weighted_statistics:pg16-postgis3.5
-                env:
-                    POSTGRES_USER: postgres
-                    POSTGRES_PASSWORD: postgres
-                    DB_USER: db_user
-                    DB_PASSWORD: db_password
-                    DB_NAME: db_name
-                options: >-
-                    --health-cmd "pg_isready -U postgres"
-                    --health-interval 10s
-                    --health-timeout 5s
-                    --health-retries 5
-                ports:
-                    - 5430:5432
-            openquake:
-                image: ghcr.io/swiss-seismological-service/reia/openquake-engine:latest
-                env:
-                    LOCKDOWN: 'True'
-                    OQ_ADMIN_LOGIN: oq_user
-                    OQ_ADMIN_PASSWORD: oq_password
-                    OQ_ADMIN_EMAIL: email@domain.com
-                options: >-
-                    --health-cmd "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8800/engine/'); print('ok')\" || exit 1"
-                    --health-interval 20s
-                    --health-timeout 10s
-                    --health-retries 15
-                    --health-start-period 30s
-                ports:
-                    - 8700:8800
+    services:
+      postgres:
+        image: ghcr.io/schmidni/pg_weighted_statistics:pg16-postgis3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          DB_USER: db_user
+          DB_PASSWORD: db_password
+          DB_NAME: db_name
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5430:5432
+      openquake:
+        image: ghcr.io/swiss-seismological-service/reia/openquake-engine:latest
+        env:
+          LOCKDOWN: "True"
+          OQ_ADMIN_LOGIN: oq_user
+          OQ_ADMIN_PASSWORD: oq_password
+          OQ_ADMIN_EMAIL: email@domain.com
+        options: >-
+          --health-cmd "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8800/engine/'); print('ok')\" || exit 1"
+          --health-interval 20s
+          --health-timeout 10s
+          --health-retries 15
+          --health-start-period 30s
+        ports:
+          - 8700:8800
 
-        strategy:
-            matrix:
-                python-version: ${{ fromJson(inputs.python-versions) }}
-        steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-python@v5
-              with:
-                  python-version: ${{ matrix.python-version }}
+    strategy:
+      matrix:
+        python-version: ${{ fromJson(inputs.python-versions) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-            - name: Install dependencies
-              run: |
-                  python -m pip install --upgrade pip setuptools wheel
-                  pip install -e .[dev,ws]
-            - name: Run tests
-              run: |
-                  flake8
-                  pytest --cov=reia --cov-report=xml
-              env:
-                  POSTGRES_HOST: localhost
-                  POSTGRES_PORT: 5430
-                  POSTGRES_USER: postgres
-                  POSTGRES_PASSWORD: postgres
-                  DB_USER: db_user
-                  DB_PASSWORD: db_password
-                  DB_NAME: db_name
-                  OQ_USER: oq_user
-                  OQ_PASSWORD: oq_password
-                  OQ_HOST: http://localhost:8700
-            - name: Store the codecov report
-              if: matrix.python-version == '3.12'
-              uses: actions/upload-artifact@v4
-              with:
-                  name: coverage-report
-                  path: coverage.xml
-                  overwrite: true
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e .[dev,ws]
+      - name: Run tests
+        run: |
+          flake8
+          pytest --cov=reia --cov-report=xml
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5430
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          DB_USER: db_user
+          DB_PASSWORD: db_password
+          DB_NAME: db_name
+          OQ_ADMIN_LOGIN: oq_user
+          OQ_ADMIN_PASSWORD: oq_password
+          OQ_HOST: http://localhost:8700
+      - name: Store the codecov report
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          overwrite: true

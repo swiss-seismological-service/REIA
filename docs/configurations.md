@@ -29,7 +29,7 @@ Paths to the docker volume mounts for PostgreSQL configuration files and data di
 #### `ROOT_PATH`  
 Root path of the REIA webservice. I.e. the path segment after the host URL and before the webservice version (eg. `/reiaws`).
 
-#### `OQ_HOST`, `OQ_USER`, `OQ_PASSWORD`, `OQ_ADMIN_EMAIL`, `OQ_PORT`, `OQ_VERSION`  
+#### `OQ_HOST`, `OQ_ADMIN_LOGIN`, `OQ_ADMIN_PASSWORD`, `OQ_ADMIN_EMAIL`, `OQ_PORT`, `OQ_VERSION`  
 Credentials and connection settings for the OpenQuake container. OQ Version should currently be set to 14 for scenario calculations (which are done with OQ 3.14) and >14 otherwise. The criteria is only <= or > 14.
 
 #### `ALLOW_ORIGIN_REGEX`  
