@@ -1,5 +1,5 @@
 from sqlalchemy import select, true
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from reia.datamodel.calculations import Calculation as CalculationORM
 from reia.datamodel.calculations import \
@@ -205,9 +205,23 @@ class CalculationRepository(repository_factory(
 
 class LossCalculationRepository(repository_factory(
         LossCalculation, LossCalculationORM)):
-    pass
+
+    @classmethod
+    def get_with_values(cls, session: Session, oid: int) -> LossCalculation:
+        q = select(LossCalculationORM).where(
+            LossCalculationORM._oid == oid
+        ).options(selectinload(LossCalculationORM.losses))
+        result = session.execute(q).unique().scalar_one_or_none()
+        return cls.model.model_validate(result) if result else None
 
 
 class DamageCalculationRepository(repository_factory(
         DamageCalculation, DamageCalculationORM)):
-    pass
+
+    @classmethod
+    def get_with_values(cls, session: Session, oid: int) -> DamageCalculation:
+        q = select(DamageCalculationORM).where(
+            DamageCalculationORM._oid == oid
+        ).options(selectinload(DamageCalculationORM.damages))
+        result = session.execute(q).unique().scalar_one_or_none()
+        return cls.model.model_validate(result) if result else None

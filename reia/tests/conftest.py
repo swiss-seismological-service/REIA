@@ -5,7 +5,9 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 
-from reia.repositories.calculation import RiskAssessmentRepository
+from reia.repositories.calculation import (DamageCalculationRepository,
+                                           LossCalculationRepository,
+                                           RiskAssessmentRepository)
 from reia.repositories.tests.database import (create_test_database,
                                               downgrade_test_database,
                                               drop_test_database,
@@ -149,7 +151,9 @@ def loss_calculation(loss_config, db_session):
         calculation = calc_service.run_calculation(
             calc, branch_settings)
 
-    return calculation
+    # Re-fetch with values eagerly loaded for tests that need them
+    return LossCalculationRepository.get_with_values(
+        db_session, calculation.oid)
 
 
 @pytest.fixture(scope='module')
@@ -193,7 +197,9 @@ def damage_calculation(damage_config, db_session):
         calculation = calc_service.run_calculation(
             calc, branch_settings)
 
-    return calculation
+    # Re-fetch with values eagerly loaded for tests that need them
+    return DamageCalculationRepository.get_with_values(
+        db_session, calculation.oid)
 
 
 @pytest.fixture(scope='module')

@@ -214,7 +214,8 @@ class LossCalculation(Calculation):
     losses = relationship('LossValue',
                           back_populates='losscalculation',
                           passive_deletes=True,
-                          cascade='all, delete-orphan')
+                          cascade='all, delete-orphan',
+                          lazy='noload')
 
     losscalculationbranches = relationship('LossCalculationBranch',
                                            back_populates='losscalculation',
@@ -232,7 +233,8 @@ class DamageCalculation(Calculation):
     damages = relationship('DamageValue',
                            back_populates='damagecalculation',
                            passive_deletes=True,
-                           cascade='all, delete-orphan')
+                           cascade='all, delete-orphan',
+                           lazy='noload')
 
     damagecalculationbranches = relationship(
         'DamageCalculationBranch',
