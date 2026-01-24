@@ -80,7 +80,6 @@ python-multipart==0.0.20
 pytz==2025.2
 PyYAML==6.0.3
 pyzmq==27.1.0
--e git+ssh://git@github.com/swiss-seismological-service/REIA.git@019576ff2b5b1287fc607d46721b9ae36aef193c#egg=reia
 requests==2.32.5
 rich==14.2.0
 rich-toolkit==0.16.0
