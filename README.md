@@ -62,3 +62,5 @@ reia db migrate
 
 Now you can add models, run calculations and risk assessments. Please refer to the [Calculations](./docs/calculations.md) document for more details.
 
+### Build a new version of the webservice
+If you want to build a new version of the webservice and push it to the registry (for example after making changes to the code), you can do so by going to the **Actions** tab of this repository, selecting the **publish** workflow, and clicking on **Run workflow**. This will trigger the build and push process, and create a new image with the `latest` tag in the Docker registry.
