@@ -37,7 +37,7 @@ dependencies = [
     "geopy",
     "Jinja2",
     "numpy<2.4",
-    "openquake.engine<3.25.0",
+    "openquake.engine<3.24.1",
     "pandas<3.0.0",
     "psycopg2",
     "pydantic",
