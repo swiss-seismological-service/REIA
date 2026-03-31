@@ -92,10 +92,10 @@ class REIASettings(Settings):
         }
 
     periods: dict[str, list] = Field(default={
-        'night': [(time(20, 0), time(23, 59, 59, 59)),
+        'night': [(time(19, 30), time(23, 59, 59, 999999)),
                   (time(0, 0), time(7, 0))],
         'transit': [(time(7, 0), time(9, 0)),
-                    (time(17, 0), time(19, 0))],
+                    (time(17, 0), time(19, 30))],
         'day': [(time(9, 0), time(17, 0))]
     })
 
